@@ -1,0 +1,19 @@
+# dsh-calendar 组合包补丁：把日历工具插件行插入 profile。
+# 本补丁按 id 覆盖；用户应在自己 profile 的 cordis.patch.yml 里覆盖本行的整个
+# config（见 README 的配置示例）。配置缺失时插件仍会加载，但每个工具在调用时
+# 会抛出带中文指引的错误，提示补全配置后重启。
+#
+# 示例（用户 profile 的 cordis.patch.yml）：
+#   - id: calendar
+#     name: 'dsh-calendar'
+#     config:
+#       provider: google              # google | icloud | nextcloud | custom
+#       username: you@gmail.com       # CalDAV 账号（Google/iCloud 用账号邮箱）
+#       calendarId: you@gmail.com     # google：日历 ID（通常是你的邮箱地址）
+#       # password: xxxx              # 应用专用密码；推荐改用环境变量 DSH_CALENDAR_PASSWORD
+#
+- insert:
+    - id: calendar
+      name: 'dsh-calendar'
+      config:
+        provider: custom
