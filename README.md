@@ -87,7 +87,7 @@ iCloud：登录 appleid.apple.com → 登录与安全 → App 专用密码，生
 
 ## 工具清单
 
-- `calendar_list`：列出某时间段事件（start/end，ISO 8601，缺省未来 7 天）
+- `calendar_list`：列出某时间段事件（start/end，ISO 8601，缺省未来 7 天）。默认展开重复事件（`expand` 默认 true，`maxOccurrences` 默认 30、clamp 1-200）：每个实例独立成行，带 `isOccurrence: true` 与 `seriesStart`；非重复事件保持 `isOccurrence: false`。`expand=false` 时重复事件按原始单条返回并带 `rrule`
 - `calendar_create`：新建事件（summary/start/end 必填，description/location/allDay 可选）
 - `calendar_update`：按 uid 改事件（summary/start/end/description/location/allDay 可选，未提供保留原值）
 - `calendar_delete`：按 uid 删事件
@@ -101,7 +101,8 @@ iCloud：登录 appleid.apple.com → 登录与安全 → App 专用密码，生
 
 ## 已知限制
 
-- 重复事件（RRULE）不展开：calendar_list / calendar_search 返回的是原始事件时间与 `rrule` 字段，重复实例需要模型自行按 rrule 计算。
+- 重复事件展开：calendar_list 默认用 ICAL.RecurExpansion 展开 RRULE（`expand=true`），受 `maxOccurrences` 封顶；calendar_search 仍返回原始系列（不展开）。
+- 不支持单次实例的改/删：calendar_update / calendar_delete 针对整个重复系列（按 uid 操作），无法只修改或删除某一次发生（不支持 RECURRENCE-ID 实例级操作）。
 - 不做 OAuth：仅支持 Basic 认证（应用专用密码），不支持 Google / iCloud 的 OAuth 登录流程。
 - 时区规则：带 TZID（命名时区）的事件输出会转成 UTC（Z）；全天边界、夏令时等复杂时区规则不做精细化处理。
 - 无设置页 UI：本轮为 node 半身，配置只走 cordis.patch.yml，不提供 Web 设置页。

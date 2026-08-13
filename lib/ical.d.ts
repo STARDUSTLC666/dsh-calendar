@@ -1,10 +1,10 @@
 /**
- * iCal 解析与生成：用 ical.js 处理 VEVENT 的字段提取与 round-trip 序列化。
+ * iCal 解析与生成：用 ical.js 处理 VEVENT 的字段提取、round-trip 序列化与重复展开。
  * 输入输出统一 ISO 8601（含时区偏移）：全天事件用 YYYY-MM-DD，定时事件转 UTC（Z）。
  *
  * @module dsh-calendar/ical
  */
-/** 一个暴露给模型的日历事件。 */
+/** 一个暴露给模型的日历事件（或重复系列的一个展开实例）。 */
 export interface CalendarEvent {
     /** 稳定标识（CalDAV href），calendar_update / calendar_delete 用它。 */
     uid: string;
@@ -22,8 +22,12 @@ export interface CalendarEvent {
     /** 结束时间，同上；无 DTEND/DURATION 时等于 start。 */
     end: string;
     allDay: boolean;
-    /** 重复规则原样返回，不展开（见 README 已知限制）。 */
+    /** 重复规则原样返回（未展开时）；展开后的实例不带此字段。 */
     rrule?: string;
+    /** 是否为重复系列展开出的实例；非重复事件为 false。 */
+    isOccurrence?: boolean;
+    /** 系列原开始时间（仅 isOccurrence 为 true 的实例存在）。 */
+    seriesStart?: string;
     status?: string;
     url?: string;
     created?: string;
@@ -47,6 +51,18 @@ export interface EventFields {
  * @param etag - 服务器 ETag。
  */
 export declare function parseEventFromICal(data: string, href: string, etag?: string): CalendarEvent | null;
+/**
+ * 解析并（可选）展开一个 VEVENT：非重复事件原样返回（isOccurrence: false）；
+ * 重复事件用 ICAL.RecurExpansion 在 [rangeStart, rangeEnd] 内展开，最多返回
+ * maxOccurrences 个实例（isOccurrence: true + seriesStart）。
+ * @param data - iCal 文本。
+ * @param href - CalDAV 对象 href，作为稳定 uid。
+ * @param etag - 服务器 ETag。
+ * @param rangeStart - 查询窗口起始（ISO 8601）。
+ * @param rangeEnd - 查询窗口结束（ISO 8601）。
+ * @param maxOccurrences - 每个事件最多展开的实例数（防死循环）。
+ */
+export declare function expandEventFromICal(data: string, href: string, etag: string | undefined, rangeStart: string, rangeEnd: string, maxOccurrences: number): CalendarEvent[];
 /** 生成随机 iCal UID（带 host 后缀，形如 UUID）。 */
 export declare function generateUid(): string;
 /** 把字段生成一段完整 iCal 文本（单个 VEVENT）。 */

@@ -19,11 +19,16 @@ export declare class CalendarService {
     constructor(config: ResolvedConfig);
     private client;
     private calendar;
-    /** 列出某时间段内的事件（不展开 RRULE）。 */
-    list(startIso: string, endIso: string): Promise<CalendarEvent[]>;
+    /** 列出某时间段内的事件；expand 为 true 时在窗口内展开 RRULE。 */
+    list(startIso: string, endIso: string, options?: {
+        expand?: boolean;
+        maxOccurrences?: number;
+    }): Promise<CalendarEvent[]>;
     /** 列出全部事件（客户端过滤用）。 */
     all(): Promise<CalendarEvent[]>;
     private toEvents;
+    /** 列出并展开：每个对象经 expandEventFromICal 展开为若干实例行。 */
+    private toExpandedEvents;
     /** 按 uid（href）找到服务器对象（含 etag 与原始 data）。 */
     private findObject;
     /** 新建事件，返回带 href/uid 的事件。 */

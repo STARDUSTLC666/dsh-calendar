@@ -9,6 +9,7 @@ import { createDAVClient } from 'tsdav'
 import type { ResolvedConfig } from './config.js'
 import {
   buildICalString,
+  expandEventFromICal,
   generateUid,
   parseEventFromICal,
   type CalendarEvent,
@@ -74,8 +75,14 @@ export class CalendarService {
     return { url: this.collectionUrl }
   }
 
-  /** 列出某时间段内的事件（不展开 RRULE）。 */
-  async list(startIso: string, endIso: string): Promise<CalendarEvent[]> {
+  /** 列出某时间段内的事件；expand 为 true 时在窗口内展开 RRULE。 */
+  async list(
+    startIso: string,
+    endIso: string,
+    options?: { expand?: boolean; maxOccurrences?: number },
+  ): Promise<CalendarEvent[]> {
+    const expand = options?.expand !== false
+    const maxOccurrences = options?.maxOccurrences ?? 30
     try {
       const client = await this.client()
       const objects = await client.fetchCalendarObjects({
@@ -83,7 +90,9 @@ export class CalendarService {
         timeRange: { start: startIso, end: endIso },
         urlFilter: (url: string) => typeof url === 'string' && url.length > 0,
       })
-      return this.toEvents(objects)
+      return expand
+        ? this.toExpandedEvents(objects, startIso, endIso, maxOccurrences)
+        : this.toEvents(objects)
     } catch (error) {
       throw translateError(error, '读取日历')
     }
@@ -108,6 +117,27 @@ export class CalendarService {
     for (const object of objects) {
       const event = parseEventFromICal(String(object.data ?? ''), object.url, object.etag)
       if (event !== null) events.push(event)
+    }
+    return events
+  }
+
+  /** 列出并展开：每个对象经 expandEventFromICal 展开为若干实例行。 */
+  private toExpandedEvents(
+    objects: DAVCalendarObject[],
+    startIso: string,
+    endIso: string,
+    maxOccurrences: number,
+  ): CalendarEvent[] {
+    const events: CalendarEvent[] = []
+    for (const object of objects) {
+      events.push(...expandEventFromICal(
+        String(object.data ?? ''),
+        object.url,
+        object.etag,
+        startIso,
+        endIso,
+        maxOccurrences,
+      ))
     }
     return events
   }

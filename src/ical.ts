@@ -1,5 +1,5 @@
 /**
- * iCal 解析与生成：用 ical.js 处理 VEVENT 的字段提取与 round-trip 序列化。
+ * iCal 解析与生成：用 ical.js 处理 VEVENT 的字段提取、round-trip 序列化与重复展开。
  * 输入输出统一 ISO 8601（含时区偏移）：全天事件用 YYYY-MM-DD，定时事件转 UTC（Z）。
  *
  * @module dsh-calendar/ical
@@ -8,7 +8,7 @@
 import { randomUUID } from 'node:crypto'
 import ICAL from 'ical.js'
 
-/** 一个暴露给模型的日历事件。 */
+/** 一个暴露给模型的日历事件（或重复系列的一个展开实例）。 */
 export interface CalendarEvent {
   /** 稳定标识（CalDAV href），calendar_update / calendar_delete 用它。 */
   uid: string
@@ -26,8 +26,12 @@ export interface CalendarEvent {
   /** 结束时间，同上；无 DTEND/DURATION 时等于 start。 */
   end: string
   allDay: boolean
-  /** 重复规则原样返回，不展开（见 README 已知限制）。 */
+  /** 重复规则原样返回（未展开时）；展开后的实例不带此字段。 */
   rrule?: string
+  /** 是否为重复系列展开出的实例；非重复事件为 false。 */
+  isOccurrence?: boolean
+  /** 系列原开始时间（仅 isOccurrence 为 true 的实例存在）。 */
+  seriesStart?: string
   status?: string
   url?: string
   created?: string
@@ -73,9 +77,22 @@ function icalTimeToIso(time: ICAL.Time): string {
   return time.toJSDate().toISOString().replace(/\.\d{3}Z$/, 'Z')
 }
 
+/** 把 ISO 字符串转成 epoch 毫秒，用于时间窗口比较。 */
+function isoToEpochMs(value: string): number {
+  return new Date(value).getTime()
+}
+
 function timePropertyValue(vevent: ICAL.Component, name: string): ICAL.Time | undefined {
   const value = vevent.getFirstPropertyValue(name)
   return value instanceof ICAL.Time ? value : undefined
+}
+
+/** 计算事件时长：优先 DTEND，其次 DURATION；两者皆无返回 null（时长视为 0）。 */
+function veventDuration(vevent: ICAL.Component, dtstart: ICAL.Time): ICAL.Duration | null {
+  const dtend = timePropertyValue(vevent, 'dtend')
+  if (dtend !== undefined) return dtend.subtractDate(dtstart)
+  const duration = vevent.getFirstPropertyValue('duration')
+  return duration instanceof ICAL.Duration ? duration : null
 }
 
 /**
@@ -93,7 +110,11 @@ export function parseEventFromICal(data: string, href: string, etag?: string): C
   }
   const vevent = vcal.getFirstSubcomponent('vevent')
   if (vevent === null) return null
+  return veventToEvent(vevent, href, etag)
+}
 
+/** 把单个 VEVENT 组件映射为 CalendarEvent（不展开重复）。 */
+function veventToEvent(vevent: ICAL.Component, href: string, etag?: string): CalendarEvent | null {
   const icalUid = asString(vevent.getFirstPropertyValue('uid'))
   const summary = asString(vevent.getFirstPropertyValue('summary')) ?? ''
   const description = asString(vevent.getFirstPropertyValue('description'))
@@ -141,6 +162,95 @@ export function parseEventFromICal(data: string, href: string, etag?: string): C
     ...(lastModified !== undefined ? { lastModified: icalTimeToIso(lastModified) } : {}),
   }
   return event
+}
+
+/** 由一次 occurrence 起始时间构造实例行。 */
+function buildOccurrence(base: CalendarEvent, occurrenceStart: ICAL.Time, duration: ICAL.Duration | null): CalendarEvent {
+  const start = icalTimeToIso(occurrenceStart)
+  let end = start
+  if (duration !== null) {
+    const endTime = occurrenceStart.clone()
+    endTime.addDuration(duration)
+    end = icalTimeToIso(endTime)
+  }
+  return {
+    uid: base.uid,
+    href: base.href,
+    summary: base.summary,
+    start,
+    end,
+    allDay: base.allDay,
+    isOccurrence: true,
+    seriesStart: base.start,
+    ...(base.icalUid !== undefined ? { icalUid: base.icalUid } : {}),
+    ...(base.etag !== undefined ? { etag: base.etag } : {}),
+    ...(base.description !== undefined ? { description: base.description } : {}),
+    ...(base.location !== undefined ? { location: base.location } : {}),
+    ...(base.status !== undefined ? { status: base.status } : {}),
+    ...(base.url !== undefined ? { url: base.url } : {}),
+    ...(base.created !== undefined ? { created: base.created } : {}),
+    ...(base.lastModified !== undefined ? { lastModified: base.lastModified } : {}),
+  }
+}
+
+/**
+ * 解析并（可选）展开一个 VEVENT：非重复事件原样返回（isOccurrence: false）；
+ * 重复事件用 ICAL.RecurExpansion 在 [rangeStart, rangeEnd] 内展开，最多返回
+ * maxOccurrences 个实例（isOccurrence: true + seriesStart）。
+ * @param data - iCal 文本。
+ * @param href - CalDAV 对象 href，作为稳定 uid。
+ * @param etag - 服务器 ETag。
+ * @param rangeStart - 查询窗口起始（ISO 8601）。
+ * @param rangeEnd - 查询窗口结束（ISO 8601）。
+ * @param maxOccurrences - 每个事件最多展开的实例数（防死循环）。
+ */
+export function expandEventFromICal(
+  data: string,
+  href: string,
+  etag: string | undefined,
+  rangeStart: string,
+  rangeEnd: string,
+  maxOccurrences: number,
+): CalendarEvent[] {
+  const base = parseEventFromICal(data, href, etag)
+  if (base === null) return []
+
+  let vcal: ICAL.Component
+  try {
+    vcal = new ICAL.Component(ICAL.parse(data))
+  } catch {
+    return [{ ...base, isOccurrence: false }]
+  }
+  const vevent = vcal.getFirstSubcomponent('vevent')
+  if (vevent === null) return [{ ...base, isOccurrence: false }]
+
+  if (!vevent.hasProperty('rrule') && !vevent.hasProperty('rdate')) {
+    return [{ ...base, isOccurrence: false }]
+  }
+
+  const dtstart = timePropertyValue(vevent, 'dtstart')
+  if (dtstart === undefined) return [{ ...base, isOccurrence: false }]
+
+  const duration = veventDuration(vevent, dtstart)
+  const expansion = new ICAL.RecurExpansion({ component: vevent, dtstart })
+  const rangeStartMs = isoToEpochMs(rangeStart)
+  const rangeEndMs = isoToEpochMs(rangeEnd)
+  const occurrences: CalendarEvent[] = []
+
+  try {
+    while (occurrences.length < maxOccurrences) {
+      const next = expansion.next() as ICAL.Time | null | undefined
+      if (next === null || next === undefined) break
+      const occMs = next.toUnixTime() * 1000
+      if (occMs > rangeEndMs) break
+      if (occMs < rangeStartMs) continue
+      occurrences.push(buildOccurrence(base, next, duration))
+    }
+  } catch {
+    // 规则无法满足或迭代异常时，返回已成功展开的部分实例。
+  }
+
+  return occurrences
 }
 
 /** 生成随机 iCal UID（带 host 后缀，形如 UUID）。 */
