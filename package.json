@@ -58,5 +58,6 @@
     "url": "https://github.com/STARDUSTLC666/dsh-calendar/issues"
   },
   "homepage": "https://github.com/STARDUSTLC666/dsh-calendar#readme",
-  "author": "stardustlc"
+  "author": "stardustlc",
+  "packageManager": "pnpm@11.7.0"
 }

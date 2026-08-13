@@ -116,3 +116,9 @@ pnpm test   # 构建 + node --test
 ```
 
 构建产物在 `lib/`，测试在 `test/*.test.mjs`（不依赖真实账号）。
+
+## 相关插件
+
+- [dsh-calendar](https://github.com/STARDUSTLC666/dsh-calendar) — CalDAV 日历五件套
+- [dsh-slack](https://github.com/STARDUSTLC666/dsh-slack) — Slack 通知/收件箱
+- [dsh-dingtalk](https://github.com/STARDUSTLC666/dsh-dingtalk) — 钉钉群通知（零依赖）
