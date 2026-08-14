@@ -1,6 +1,8 @@
 [English](README.en.md)
 
-`# dsh-calendar
+# dsh-calendar
+
+> **agent 从此会排期**：CalDAV 读写日历，重复日程自动展开。
 
 ![npm version](https://img.shields.io/npm/v/dsh-calendar?label=npm&color=blue) ![npm downloads](https://img.shields.io/npm/dm/dsh-calendar) ![license](https://img.shields.io/npm/l/dsh-calendar) ![stars](https://img.shields.io/github/stars/STARDUSTLC666/dsh-calendar?style=social)
 
