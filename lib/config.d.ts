@@ -24,6 +24,12 @@ export interface CalendarConfig {
     user?: string;
     /** nextcloud：日历名。 */
     calendar?: string;
+    /**
+     * HTTP 代理地址，如 http://127.0.0.1:7890。
+     * 中国用户访问 Google / iCloud 需经代理：填你本地代理客户端的端口即可，
+     * 插件会把所有 CalDAV 请求路由到该代理，不影响其他插件。
+     */
+    proxyUrl?: string;
 }
 /** 解析完成、可直接建客户端的配置。 */
 export interface ResolvedConfig {
@@ -31,6 +37,7 @@ export interface ResolvedConfig {
     caldavUrl: string;
     username: string;
     password: string;
+    proxyUrl: string;
 }
 /** 预设端点常量。 */
 export declare const GOOGLE_CALDAV_PREFIX = "https://apidata.googleusercontent.com/caldav/v2/";

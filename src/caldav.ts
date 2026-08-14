@@ -6,6 +6,7 @@
  */
 
 import { createDAVClient } from 'tsdav'
+import { createProxyFetch } from './proxy-fetch.js'
 import type { ResolvedConfig } from './config.js'
 import {
   buildICalString,
@@ -67,6 +68,7 @@ export class CalendarService {
       serverUrl: this.config.caldavUrl,
       credentials: { username: this.config.username, password: this.config.password },
       authMethod: 'Basic',
+      ...(this.config.proxyUrl !== '' ? { fetch: createProxyFetch(this.config.proxyUrl) } : {}),
     })
     return this.clientPromise
   }
