@@ -20,6 +20,7 @@ All configuration lives in your profile's cordis.patch.yml; override the `calend
 - `password`: password; for Google / iCloud use an app-specific password. Recommended to use the `DSH_CALENDAR_PASSWORD` env var to avoid storing it in plaintext.
 - `calendarId`: google-specific, the calendar ID (usually your email)
 - `host` / `user` / `calendar`: nextcloud-specific
+- `proxyUrl`: optional HTTP proxy (e.g. `http://127.0.0.1:7890`); routes only this plugin's CalDAV requests through it
 
 ### Google example
 
@@ -84,6 +85,10 @@ Google: sign in to myaccount.google.com → Security → 2-Step Verification (mu
 iCloud: sign in to appleid.apple.com → Sign-In and Security → App-Specific Passwords, generate one and fill it into `password` or `DSH_CALENDAR_PASSWORD`. You cannot use your Apple ID password.
 
 If a call returns 401/403, it's usually the wrong password (login password used instead of an app-specific password); the plugin returns a Chinese hint.
+
+## Proxy
+
+If your CalDAV server is not directly reachable from your network (some regional or corporate networks block it), set `proxyUrl` in the plugin config, e.g. `http://127.0.0.1:7890`, and restart. The proxy only routes this plugin's CalDAV requests; it does not affect other plugins in the same process.
 
 ## Tool reference
 
