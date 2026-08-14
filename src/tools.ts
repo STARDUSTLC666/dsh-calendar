@@ -148,7 +148,7 @@ export function buildCalendarTools(config: CalendarConfig | undefined): Calendar
 
   const create = {
     name: 'calendar_create',
-    description: '新建一个日历事件。summary 与 start、end（ISO 8601，含时区偏移）为必填；description、location、allDay 可选。全天事件 start/end 用 YYYY-MM-DD 或设置 allDay=true。成功返回新事件的稳定标识 uid。',
+    description: '新建一个日历事件。summary 与 start、end（ISO 8601，含时区偏移）为必填；description、location、allDay、rrule 可选。全天事件 start/end 用 YYYY-MM-DD 或设置 allDay=true。成功返回新事件的稳定标识 uid。',
     parameters: compileParameters({
       summary: { type: 'string', required: true, description: '事件标题（必填）。' },
       start: { type: 'string', required: true, description: '开始时间（ISO 8601，含时区偏移，必填）。' },
@@ -156,6 +156,7 @@ export function buildCalendarTools(config: CalendarConfig | undefined): Calendar
       description: { type: 'string', description: '事件描述（可选）。' },
       location: { type: 'string', description: '地点（可选）。' },
       allDay: { type: 'boolean', description: '是否全天事件（可选，默认 false）。' },
+      rrule: { type: 'string', description: '重复规则（可选，RFC 5545 RRULE 语法），如 FREQ=WEEKLY;COUNT=4；calendar_list 会按该规则展开实例。' },
     }),
     output: {
       schema: {
@@ -183,6 +184,7 @@ export function buildCalendarTools(config: CalendarConfig | undefined): Calendar
         ...(optionalString(input, 'description') !== undefined ? { description: optionalString(input, 'description') } : {}),
         ...(optionalString(input, 'location') !== undefined ? { location: optionalString(input, 'location') } : {}),
         ...(optionalBoolean(input, 'allDay') !== undefined ? { allDay: optionalBoolean(input, 'allDay') } : {}),
+        ...(optionalString(input, 'rrule') !== undefined ? { rrule: optionalString(input, 'rrule') } : {}),
       }
       const created = await service().create(fields)
       return { created }
@@ -201,6 +203,7 @@ export function buildCalendarTools(config: CalendarConfig | undefined): Calendar
       description: { type: 'string', description: '新描述（可选）。' },
       location: { type: 'string', description: '新地点（可选）。' },
       allDay: { type: 'boolean', description: '是否全天事件（可选）。' },
+      rrule: { type: 'string', description: '新的重复规则（可选）。' },
     }),
     output: {
       schema: {
@@ -230,6 +233,8 @@ export function buildCalendarTools(config: CalendarConfig | undefined): Calendar
       if (location !== undefined) changes.location = location
       const allDay = optionalBoolean(input, 'allDay')
       if (allDay !== undefined) changes.allDay = allDay
+      const rrule = optionalString(input, 'rrule')
+      if (rrule !== undefined) changes.rrule = rrule
       const updated = await service().update(uid, changes)
       return { updated }
     },

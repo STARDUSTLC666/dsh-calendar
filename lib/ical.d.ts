@@ -41,6 +41,8 @@ export interface EventFields {
     description?: string;
     location?: string;
     allDay?: boolean;
+    /** 重复规则（RFC 5545 RRULE 语法），如 FREQ=WEEKLY;COUNT=4。 */
+    rrule?: string;
     /** iCal UID；创建时缺省则自动生成，更新时用于保留原 UID。 */
     icalUid?: string;
 }

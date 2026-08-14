@@ -103,6 +103,9 @@ iCloud：登录 appleid.apple.com → 登录与安全 → App 专用密码，生
 
 ## 已知限制
 
+- **国内网络**：Google（apidata.googleusercontent.com）与 iCloud（caldav.icloud.com）在中国大陆不可直连；请使用可达的 CalDAV 端点（自建 Nextcloud/Radicale 或代理）。
+
+
 - 重复事件展开：calendar_list 默认用 ICAL.RecurExpansion 展开 RRULE（`expand=true`），受 `maxOccurrences` 封顶；calendar_search 仍返回原始系列（不展开）。
 - 不支持单次实例的改/删：calendar_update / calendar_delete 针对整个重复系列（按 uid 操作），无法只修改或删除某一次发生（不支持 RECURRENCE-ID 实例级操作）。
 - 不做 OAuth：仅支持 Basic 认证（应用专用密码），不支持 Google / iCloud 的 OAuth 登录流程。

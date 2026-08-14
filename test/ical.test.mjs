@@ -76,3 +76,9 @@ test('显式 icalUid 在 round-trip 中保留（用于更新）', () => {
 test('generateUid 每次唯一', () => {
   assert.notEqual(generateUid(), generateUid())
 })
+test('buildICalString serializes rrule (create path)', async () => {
+  const { buildICalString } = await import('../lib/index.js')
+  const ics = buildICalString({ summary: '每周例会', start: '2026-08-17T10:00:00+08:00', end: '2026-08-17T11:00:00+08:00', rrule: 'FREQ=WEEKLY;COUNT=4' })
+  assert.match(ics, /RRULE:FREQ=WEEKLY;COUNT=4/)
+  assert.throws(() => buildICalString({ summary: 'x', start: '2026-08-17T10:00:00+08:00', end: '2026-08-17T11:00:00+08:00', rrule: 'BROKEN' }), /rrule 格式无效/)
+})

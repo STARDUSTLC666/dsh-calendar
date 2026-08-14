@@ -46,6 +46,8 @@ export interface EventFields {
   description?: string
   location?: string
   allDay?: boolean
+  /** 重复规则（RFC 5545 RRULE 语法），如 FREQ=WEEKLY;COUNT=4。 */
+  rrule?: string
   /** iCal UID；创建时缺省则自动生成，更新时用于保留原 UID。 */
   icalUid?: string
 }
@@ -275,6 +277,17 @@ export function buildICalString(fields: EventFields): string {
   }
   if (fields.location !== undefined && fields.location !== '') {
     vevent.addPropertyWithValue('location', fields.location)
+  }
+  if (fields.rrule !== undefined && fields.rrule !== '') {
+    const rule = fields.rrule.trim()
+    if (!/^FREQ=/i.test(rule)) {
+      throw new Error('rrule 格式无效：' + fields.rrule + '（应为 RFC 5545 RRULE，如 FREQ=WEEKLY;COUNT=4）')
+    }
+    try {
+      vevent.addPropertyWithValue('rrule', ICAL.Recur.fromString(rule))
+    } catch (error) {
+      throw new Error('rrule 格式无效：' + fields.rrule)
+    }
   }
   vcal.addSubcomponent(vevent)
   return vcal.toString()
