@@ -9,6 +9,8 @@
  */
 import { type CalendarConfig } from './config.js';
 import { type CalendarToolDefinition } from './tools.js';
+/** cordis 服务注入：apply 里要用 ctx.tools，必须显式声明注入，否则宿主会抛 cannot get property without inject。 */
+export declare const inject: string[];
 /** 插件所需的最小 ctx 面（社区插件不依赖宿主内部类型）。 */
 export interface CalendarPluginContext {
     tools: {
@@ -22,7 +24,6 @@ export interface CalendarPluginContext {
  * @param config - 插件配置（可缺省）。
  */
 export declare function apply(ctx: CalendarPluginContext, config?: CalendarConfig | null): void;
-export default apply;
 export * from './parameters.js';
 export * from './config.js';
 export * from './ical.js';
