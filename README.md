@@ -20,8 +20,33 @@ dsh plugin --profile web add dsh-calendar
 - `caldavUrl`：完整日历集合 URL（custom / icloud 必填；google / nextcloud 也可手填覆盖预设）
 - `username`：CalDAV 账号（Google / iCloud 为账号邮箱）
 - `password`：密码；Google / iCloud 请用应用专用密码。推荐用环境变量 `DSH_CALENDAR_PASSWORD`，避免明文入库。
+- `proxyUrl`：本机代理地址（如 http://127.0.0.1:7890）。中国大陆访问 Google / iCloud 必填，详见上文「特殊代理配置」专节；国内可直连的 CalDAV 服务无需填写。
 - `calendarId`：google 专用，日历 ID（通常是你的邮箱）
 - `host` / `user` / `calendar`：nextcloud 专用
+
+## 中国用户：特殊代理配置（Google / iCloud）
+
+Google 与 iCloud 的 CalDAV 端点在中国大陆**不可直连**，需要配合你常用的梯子/特殊代理使用。插件内置 `proxyUrl` 配置：把 CalDAV 请求路由到**你本机代理客户端的端口**，不影响其他插件，也无需改任何系统设置。
+
+```yaml
+- id: calendar
+  config:
+    provider: google
+    username: you@gmail.com
+    calendarId: you@gmail.com
+    password: 你的应用专用密码
+    proxyUrl: http://127.0.0.1:7890   # 改成你代理客户端的本地端口
+```
+
+### 常见代理客户端本地端口
+
+| 客户端 | 本地端口 |
+|---|---|
+| Clash / Clash Verge（HTTP） | 7890 / 7897 |
+| v2rayN（HTTP / SOCKS） | 10808 / 10809 |
+| Shadowsocks | 1080 |
+
+在客户端界面确认你的实际端口，填进 `proxyUrl` 即可。国内可直连的 CalDAV 服务（如自建 Nextcloud）则无需填写。
 
 ### Google 示例
 
@@ -103,7 +128,7 @@ iCloud：登录 appleid.apple.com → 登录与安全 → App 专用密码，生
 
 ## 已知限制
 
-- **国内网络**：Google（apidata.googleusercontent.com）与 iCloud（caldav.icloud.com）在中国大陆不可直连；请使用可达的 CalDAV 端点（自建 Nextcloud/Radicale 或代理）。
+- **国内网络**：Google 与 iCloud 的 CalDAV 端点在中国大陆不可直连；可用 `proxyUrl` 走本机梯子/特殊代理，或改用国内可直连的 CalDAV 端点（自建 Nextcloud/Radicale）。
 
 
 - 重复事件展开：calendar_list 默认用 ICAL.RecurExpansion 展开 RRULE（`expand=true`），受 `maxOccurrences` 封顶；calendar_search 仍返回原始系列（不展开）。
