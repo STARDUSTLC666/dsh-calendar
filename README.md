@@ -6,6 +6,8 @@
 
 ![npm version](https://img.shields.io/npm/v/dsh-calendar?label=npm&color=blue) ![npm downloads](https://img.shields.io/npm/dm/dsh-calendar) ![license](https://img.shields.io/npm/l/dsh-calendar) ![stars](https://img.shields.io/github/stars/STARDUSTLC666/dsh-calendar?style=social)
 
+[![Awesome DSH Plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
+
 
 DSH 社区插件：通过 CalDAV 读写日历事件。提供 5 个面向模型的工具（calendar_list / calendar_create / calendar_update / calendar_delete / calendar_search），支持 Google / iCloud / Nextcloud 及任意 CalDAV 服务器。本轮为 node 半身，不含设置页 UI，配置全部走 profile 的 cordis.patch.yml。
 
