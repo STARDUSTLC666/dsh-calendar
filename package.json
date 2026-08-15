@@ -1,6 +1,6 @@
 {
   "name": "dsh-calendar",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "DSH 日历工具插件：通过 CalDAV 读写日历事件（Google / iCloud / Nextcloud / 自定义）",
   "type": "module",
   "main": "lib/index.js",

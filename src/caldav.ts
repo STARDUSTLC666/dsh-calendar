@@ -64,13 +64,19 @@ export class CalendarService {
   }
 
   private client(): Promise<DAVClient> {
-    this.clientPromise ??= createDAVClient({
-      serverUrl: this.config.caldavUrl,
-      credentials: { username: this.config.username, password: this.config.password },
-      authMethod: 'Basic',
-      ...(this.config.proxyUrl !== '' ? { fetch: createProxyFetch(this.config.proxyUrl) } : {}),
+    if (this.clientPromise === undefined) {
+      this.clientPromise = createDAVClient({
+        serverUrl: this.config.caldavUrl,
+        credentials: { username: this.config.username, password: this.config.password },
+        authMethod: 'Basic',
+        ...(this.config.proxyUrl !== '' ? { fetch: createProxyFetch(this.config.proxyUrl) } : {}),
+      })
+    }
+    // 创建失败时清掉缓存，让下一次工具调用有机会重试，而不是永久复用 rejected promise。
+    return this.clientPromise.catch((error: unknown) => {
+      this.clientPromise = undefined
+      throw error
     })
-    return this.clientPromise
   }
 
   private calendar(): { url: string } {
@@ -197,6 +203,11 @@ export class CalendarService {
     if (start === undefined || end === undefined) {
       throw new CalDAVError('无法确定事件的开始/结束时间：请同时提供 start 与 end。')
     }
+      const startMs = new Date(start).getTime()
+      const endMs = new Date(end).getTime()
+      if (!Number.isNaN(startMs) && !Number.isNaN(endMs) && endMs < startMs) {
+        throw new CalDAVError('更新时间范围无效：end 不能早于 start（' + end + ' < ' + start + '）。')
+      }
     const merged: EventFields = {
       summary: changes.summary ?? existing?.summary ?? '',
       start,
@@ -204,6 +215,7 @@ export class CalendarService {
       ...(changes.description !== undefined ? { description: changes.description } : existing?.description !== undefined ? { description: existing.description } : {}),
       ...(changes.location !== undefined ? { location: changes.location } : existing?.location !== undefined ? { location: existing.location } : {}),
       allDay: changes.allDay ?? existing?.allDay,
+        ...(changes.rrule !== undefined ? { rrule: changes.rrule } : existing?.rrule !== undefined ? { rrule: existing.rrule } : {}),
       ...(existing?.icalUid !== undefined ? { icalUid: existing.icalUid } : {}),
     }
     const iCalString = buildICalString(merged)
