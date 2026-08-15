@@ -98,3 +98,19 @@ test('无效时间抛中文错误（list 的 start 非法）', async () => {
     (error) => /ISO 8601/.test(error.message),
   )
 })
+
+test('不存在的日历日期抛中文错误（2025-02-30 非法）', async () => {
+  const list = buildCalendarTools({ provider: 'custom', username: 'u', password: 'p', caldavUrl: 'https://x/' })[0]
+  await assert.rejects(
+    () => list.execute({ start: '2025-02-30' }),
+    (error) => /真实存在的日期/.test(error.message),
+  )
+})
+
+test('end 早于 start 时抛中文范围错误', async () => {
+  const list = buildCalendarTools({ provider: 'custom', username: 'u', password: 'p', caldavUrl: 'https://x/' })[0]
+  await assert.rejects(
+    () => list.execute({ start: '2025-01-02T00:00:00Z', end: '2025-01-01T00:00:00Z' }),
+    (error) => /end 不能早于 start/.test(error.message),
+  )
+})
