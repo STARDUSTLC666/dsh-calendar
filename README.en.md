@@ -92,17 +92,25 @@ If your CalDAV server is not directly reachable from your network (some regional
 
 ## Tool reference
 
-- `calendar_list`: list events in a time range (start/end, ISO 8601; defaults to the next 7 days). Recurring events are expanded by default (`expand` defaults to true, `maxOccurrences` defaults to 30, clamped to 1-200): each occurrence is a separate row with `isOccurrence: true` and `seriesStart`; non-recurring events keep `isOccurrence: false`. With `expand=false`, recurring events are returned as a single original entry with `rrule`
-- `calendar_create`: create an event (summary/start/end required; description/location/allDay optional)
-- `calendar_update`: edit an event by uid (summary/start/end/description/location/allDay optional; omitted fields keep their original values)
+- `calendar_list`: list events in a time range (start/end, ISO 8601; defaults to the next 7 days). Recurring events are expanded by default (`expand` defaults to true, `maxOccurrences` defaults to 30, clamped to 1-200): each occurrence is a separate row with `isOccurrence: true` and `seriesStart`; non-recurring events keep `isOccurrence: false`. With `expand=false`, recurring events are returned as a single original entry with `rrule`. Results are stably sorted by start time.
+- `calendar_create`: create an event (summary/start/end required; description/location/allDay/rrule optional). Validates real calendar dates and `end >= start`.
+- `calendar_update`: edit an event by uid (summary/start/end/description/location/allDay/rrule optional; omitted fields keep their original values, including the recurrence rule).
 - `calendar_delete`: delete an event by uid
-- `calendar_search`: search events by keyword (client-side filter over title/description/location/UID, case-insensitive)
+- `calendar_search`: search events by keyword (client-side filter over title/description/location/UID, case-insensitive; `limit` defaults to 50, clamped to 1-200, and results are sorted by start time).
 
 The stable event identifier `uid` is the CalDAV href (full object URL); `calendar_update` / `calendar_delete` use it.
 
 ## Time and timezone
 
 Input and output are uniformly ISO 8601. Timed events are output in UTC (e.g. `2025-01-15T01:00:00Z`); all-day events output `YYYY-MM-DD`. Input may carry a timezone offset (e.g. `2025-01-15T09:00:00+08:00`); the plugin converts to UTC internally for storage.
+
+
+## v0.3.2 improvements
+
+- Fix `calendar_update` dropping `rrule` while updating other fields.
+- Validate `end >= start` and reject impossible dates such as `2025-02-30`.
+- Sort `calendar_list` / `calendar_search` output by start time and clamp search `limit` to 1-200.
+- Reset the cached CalDAV client after creation failure so the next tool call can retry.
 
 ## Known limitations
 

@@ -119,17 +119,25 @@ iCloud：登录 appleid.apple.com → 登录与安全 → App 专用密码，生
 
 ## 工具清单
 
-- `calendar_list`：列出某时间段事件（start/end，ISO 8601，缺省未来 7 天）。默认展开重复事件（`expand` 默认 true，`maxOccurrences` 默认 30、clamp 1-200）：每个实例独立成行，带 `isOccurrence: true` 与 `seriesStart`；非重复事件保持 `isOccurrence: false`。`expand=false` 时重复事件按原始单条返回并带 `rrule`
-- `calendar_create`：新建事件（summary/start/end 必填，description/location/allDay 可选）
-- `calendar_update`：按 uid 改事件（summary/start/end/description/location/allDay 可选，未提供保留原值）
+- `calendar_list`：列出某时间段事件（start/end，ISO 8601，缺省未来 7 天）。默认展开重复事件（`expand` 默认 true，`maxOccurrences` 默认 30、clamp 1-200）：每个实例独立成行，带 `isOccurrence: true` 与 `seriesStart`；非重复事件保持 `isOccurrence: false`。`expand=false` 时重复事件按原始单条返回并带 `rrule`。结果按开始时间稳定排序
+- `calendar_create`：新建事件（summary/start/end 必填，description/location/allDay/rrule 可选）。严格校验真实日历日期与 `end >= start`
+- `calendar_update`：按 uid 改事件（summary/start/end/description/location/allDay/rrule 可选，未提供保留原值，重复规则不再丢失）
 - `calendar_delete`：按 uid 删事件
-- `calendar_search`：按关键词搜事件（客户端过滤标题/描述/地点/UID，不区分大小写）
+- `calendar_search`：按关键词搜事件（客户端过滤标题/描述/地点/UID，不区分大小写；`limit` 默认 50、clamp 1-200，结果按开始时间排序）
 
 事件稳定标识 `uid` 为 CalDAV href（完整对象 URL），`calendar_update` / `calendar_delete` 使用它。
 
 ## 时间与时区
 
 输入输出统一 ISO 8601。定时事件输出为 UTC（如 `2025-01-15T01:00:00Z`），全天事件输出 `YYYY-MM-DD`。输入可带时区偏移（如 `2025-01-15T09:00:00+08:00`），插件内部转 UTC 存储。
+
+## v0.3.2 优化
+
+- 修复 `calendar_update` 更新其他字段时丢失 `rrule` 的问题。
+- 更新与新建都会校验 `end >= start`，并拒绝 `2025-02-30` 这类不存在的日期。
+- `calendar_list` / `calendar_search` 输出按开始时间稳定排序；搜索 `limit` clamp 到 1-200。
+- CalDAV 客户端创建失败后清空缓存，下一次调用可自动重试，不再永久复用 rejected promise。
+
 
 ## 已知限制
 
