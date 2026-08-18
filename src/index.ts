@@ -12,6 +12,7 @@ import { resolveConfig, type CalendarConfig } from './config.js'
 import { buildCalendarTools, type CalendarToolDefinition } from './tools.js'
 
 /** cordis 服务注入：apply 里要用 ctx.tools，必须显式声明注入，否则宿主会抛 cannot get property without inject。 */
+export const name = 'calendar'
 export const inject = ['tools']
 
 

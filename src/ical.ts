@@ -240,7 +240,11 @@ export function expandEventFromICal(
   const occurrences: CalendarEvent[] = []
 
   try {
+    const totalIterationCap = Math.max(100000, maxOccurrences * 1000)
+    let iterations = 0
     while (occurrences.length < maxOccurrences) {
+      iterations += 1
+      if (iterations > totalIterationCap) break
       const next = expansion.next() as ICAL.Time | null | undefined
       if (next === null || next === undefined) break
       const occMs = next.toUnixTime() * 1000
