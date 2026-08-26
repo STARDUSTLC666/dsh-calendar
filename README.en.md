@@ -4,6 +4,10 @@
 
 DSH community plugin: read/write calendar events via CalDAV. Provides 5 model-facing tools (calendar_list / calendar_create / calendar_update / calendar_delete / calendar_search), supporting Google / iCloud / Nextcloud and any CalDAV server. This round is a node half-body with no settings-page UI; all configuration goes through the profile's cordis.patch.yml.
 
+## Compatibility
+
+Verified against `@deepseek-ai/dsh@0.1.1-rc.2` on 2026-08-26. Built for the cordis patch-bundle plugin model (`cordis.patch.yml` + `dsh.bundle.patch`). No runtime imports of `@deepseek-ai/*` internals.
+
 ## Installation
 
 ```bash
@@ -11,6 +15,15 @@ dsh plugin --profile web add dsh-calendar
 ```
 
 After installing, restart dsh. The plugin inserts a `calendar` config line into the profile (see this package's cordis.patch.yml). The default provider is custom with no credentials filled in; the plugin still loads, but tools throw a Chinese guidance error when called, prompting you to complete the configuration.
+
+## Uninstall
+
+```bash
+dsh plugin --profile web remove dsh-calendar
+```
+
+Then restart the web service. To clean up fully, also remove the plugin entry from your profile `cordis.patch.yml` if you overrode it.
+
 
 ## Configuration
 

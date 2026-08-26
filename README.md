@@ -11,6 +11,10 @@
 
 DSH 社区插件：通过 CalDAV 读写日历事件。提供 5 个面向模型的工具（calendar_list / calendar_create / calendar_update / calendar_delete / calendar_search），支持 Google / iCloud / Nextcloud 及任意 CalDAV 服务器。本轮为 node 半身，不含设置页 UI，配置全部走 profile 的 cordis.patch.yml。
 
+## 兼容性
+
+在 `@deepseek-ai/dsh@0.1.1-rc.2` 上验证（2026-08-26）。遵循 cordis 组合包补丁模型（`cordis.patch.yml` + `dsh.bundle.patch`），运行时不 import 任何 `@deepseek-ai/*` 内部模块。
+
 ## 安装
 
 ```bash
@@ -30,6 +34,15 @@ dsh plugin --profile web add dsh-calendar
 - `proxyUrl`：本机代理地址（如 http://127.0.0.1:7890）。中国大陆访问 Google / iCloud 必填，详见上文「特殊代理配置」专节；国内可直连的 CalDAV 服务无需填写。
 - `calendarId`：google 专用，日历 ID（通常是你的邮箱）
 - `host` / `user` / `calendar`：nextcloud 专用
+
+
+## 卸载
+
+```bash
+dsh plugin --profile web remove dsh-calendar
+```
+
+卸载后重启 Web 服务。如需彻底清理，可再手动删除自己 profile `cordis.patch.yml` 中的对应插件行。
 
 ## 中国用户：特殊代理配置（Google / iCloud）
 
@@ -168,4 +181,3 @@ pnpm test   # 构建 + node --test
 - [dsh-calendar](https://github.com/STARDUSTLC666/dsh-calendar) — CalDAV 日历五件套
 - [dsh-slack](https://github.com/STARDUSTLC666/dsh-slack) — Slack 通知/收件箱
 - [dsh-dingtalk](https://github.com/STARDUSTLC666/dsh-dingtalk) — 钉钉群通知（零依赖）
-
