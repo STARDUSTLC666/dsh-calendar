@@ -133,7 +133,7 @@ function buildSearchFilter(query: string): (event: CalendarEvent) => boolean {
   }
 }
 
-/** 构建五个工具定义；每个 execute 惰性解析配置，缺失时抛出中文指引。 */
+/** 构建六个工具定义；每个 execute 惰性解析配置，缺失时抛出中文指引。 */
 export function buildCalendarTools(config: CalendarConfig | undefined): CalendarToolDefinition[] {
   const service = (): CalendarService => new CalendarService(resolveConfig(config))
 
@@ -349,5 +349,46 @@ export function buildCalendarTools(config: CalendarConfig | undefined): Calendar
     timeoutMs: TIMEOUT_MS,
   }
 
-  return [list, create, update, remove, search]
+  const health: CalendarToolDefinition = {
+    name: 'calendar_health',
+    description: 'dsh-calendar 自检：检查 CalDAV 配置完整性（服务商/日历地址/账号/密码），不发起网络连接。遇到问题时先运行本工具定位。',
+    parameters: compileParameters({}),
+    output: {
+      schema: { type: 'object', additionalProperties: true },
+      render: (_args: unknown, value: unknown): ContentBlock[] => {
+        const rec = (value ?? {}) as Record<string, unknown>
+        const rawChecks = Array.isArray(rec.checks) ? rec.checks : []
+        const lines = ['dsh-calendar 自检' + (rec.ok === true ? '：正常。' : '：发现问题。')]
+        for (const item of rawChecks) {
+          const c = (item ?? {}) as Record<string, unknown>
+          lines.push('- ' + String(c.name) + '：' + (c.ok === true ? '✅ ' + String(c.detail ?? '') : '❌ ' + String(c.detail ?? '')))
+        }
+        return [{ type: 'text', text: lines.join('\n') }]
+      },
+    },
+    async execute(): Promise<unknown> {
+      const checks: Array<Record<string, unknown>> = []
+      let ok = true
+      const provider = (config?.provider ?? 'custom') as string
+      checks.push({ name: '服务商', ok: true, detail: provider })
+      const hasUrl = typeof config?.caldavUrl === 'string' && config.caldavUrl.trim() !== ''
+      const derivable = provider === 'google' || provider === 'nextcloud' || provider === 'icloud'
+      if (hasUrl || derivable) {
+        checks.push({ name: '日历地址', ok: true, detail: hasUrl ? '已配置 caldavUrl' : provider + ' 预设可推导' })
+      } else {
+        ok = false
+        checks.push({ name: '日历地址', ok: false, detail: '未配置：请在 profile 的 cordis.patch.yml 里给 calendar 行填 caldavUrl' })
+      }
+      const hasUser = typeof config?.username === 'string' && config.username.trim() !== ''
+      checks.push({ name: '账号', ok: hasUser, detail: hasUser ? '已配置' : '未配置：请填 username（Google/iCloud 为账号邮箱）' })
+      if (!hasUser) ok = false
+      const hasPass = typeof config?.password === 'string' && config.password.trim() !== ''
+      checks.push({ name: '密码', ok: hasPass, detail: hasPass ? '已配置' : '未配置：请填 password 或环境变量 DSH_CALENDAR_PASSWORD（Google/iCloud 用应用专用密码）' })
+      if (!hasPass) ok = false
+      return { ok, plugin: 'dsh-calendar', checks }
+    },
+    timeoutMs: TIMEOUT_MS,
+  }
+
+  return [list, create, update, remove, search, health]
 }
