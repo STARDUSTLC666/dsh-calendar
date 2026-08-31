@@ -1,5 +1,7 @@
 # dsh-calendar
 
+![npm](https://img.shields.io/npm/v/dsh-calendar) ![downloads](https://img.shields.io/npm/dm/dsh-calendar) ![license](https://img.shields.io/github/license/STARDUSTLC666/dsh-calendar) ![stars](https://img.shields.io/github/stars/STARDUSTLC666/dsh-calendar?style=social)
+
 [![Awesome DSH Plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
 
 DSH community plugin: read/write calendar events via CalDAV. Provides 5 model-facing tools (calendar_list / calendar_create / calendar_update / calendar_delete / calendar_search), supporting Google / iCloud / Nextcloud and any CalDAV server. This round is a node half-body with no settings-page UI; all configuration goes through the profile's cordis.patch.yml.
