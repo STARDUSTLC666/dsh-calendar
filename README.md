@@ -146,12 +146,14 @@ iCloud：登录 appleid.apple.com → 登录与安全 → App 专用密码，生
 
 输入输出统一 ISO 8601。定时事件输出为 UTC（如 `2025-01-15T01:00:00Z`），全天事件输出 `YYYY-MM-DD`。输入可带时区偏移（如 `2025-01-15T09:00:00+08:00`），插件内部转 UTC 存储。
 
-## v0.3.2 优化
+## 版本记录
 
-- 修复 `calendar_update` 更新其他字段时丢失 `rrule` 的问题。
-- 更新与新建都会校验 `end >= start`，并拒绝 `2025-02-30` 这类不存在的日期。
-- `calendar_list` / `calendar_search` 输出按开始时间稳定排序；搜索 `limit` clamp 到 1-200。
-- CalDAV 客户端创建失败后清空缓存，下一次调用可自动重试，不再永久复用 rejected promise。
+- **0.4.0**：新增 `calendar_health` 自检（CalDAV 配置完整性一键体检：端点/账号/密码/连接）。
+- **0.3.2**：
+  - 修复 `calendar_update` 更新其他字段时丢失 `rrule` 的问题。
+  - 更新与新建都会校验 `end >= start`，并拒绝 `2025-02-30` 这类不存在的日期。
+  - `calendar_list` / `calendar_search` 输出按开始时间稳定排序；搜索 `limit` clamp 到 1-200。
+  - CalDAV 客户端创建失败后清空缓存，下一次调用可自动重试，不再永久复用 rejected promise。
 
 
 ## 已知限制

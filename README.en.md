@@ -122,12 +122,14 @@ The stable event identifier `uid` is the CalDAV href (full object URL); `calenda
 Input and output are uniformly ISO 8601. Timed events are output in UTC (e.g. `2025-01-15T01:00:00Z`); all-day events output `YYYY-MM-DD`. Input may carry a timezone offset (e.g. `2025-01-15T09:00:00+08:00`); the plugin converts to UTC internally for storage.
 
 
-## v0.3.2 improvements
+## Changelog
 
-- Fix `calendar_update` dropping `rrule` while updating other fields.
-- Validate `end >= start` and reject impossible dates such as `2025-02-30`.
-- Sort `calendar_list` / `calendar_search` output by start time and clamp search `limit` to 1-200.
-- Reset the cached CalDAV client after creation failure so the next tool call can retry.
+- **0.4.0**: new `calendar_health` self-check (one-call CalDAV config health: endpoint/username/password/connection).
+- **0.3.2**:
+  - Fix `calendar_update` dropping `rrule` while updating other fields.
+  - Validate `end >= start` and reject impossible dates such as `2025-02-30`.
+  - Sort `calendar_list` / `calendar_search` output by start time and clamp search `limit` to 1-200.
+  - Reset the cached CalDAV client after creation failure so the next tool call can retry.
 
 ## Known limitations
 
