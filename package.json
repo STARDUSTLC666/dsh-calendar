@@ -1,6 +1,6 @@
 {
   "name": "dsh-calendar",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "DSH 日历工具插件：通过 CalDAV 读写日历事件（Google / iCloud / Nextcloud / 自定义）",
   "type": "module",
   "main": "lib/index.js",
@@ -27,6 +27,13 @@
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
+    },
+    "compatibility": {
+      "dshReleases": {
+        "0.1.0-rc.8": "unknown",
+        "0.1.1-rc.1": "unknown",
+        "0.1.1-rc.2": "compatible"
+      }
     }
   },
   "keywords": [
