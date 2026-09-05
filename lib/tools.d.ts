@@ -27,4 +27,4 @@ export interface CalendarToolDefinition {
     timeoutMs?: number;
 }
 /** 构建六个工具定义；每个 execute 惰性解析配置，缺失时抛出中文指引。 */
-export declare function buildCalendarTools(config: CalendarConfig | undefined): CalendarToolDefinition[];
+export declare function buildCalendarTools(config: CalendarConfig | undefined, env?: NodeJS.ProcessEnv): CalendarToolDefinition[];

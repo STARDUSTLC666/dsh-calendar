@@ -56,7 +56,7 @@ export class ConfigError extends Error {
   }
 }
 
-const PROVIDERS: readonly CalendarProvider[] = ['google', 'icloud', 'nextcloud', 'custom']
+export const CALENDAR_PROVIDERS: readonly CalendarProvider[] = ['google', 'icloud', 'nextcloud', 'custom']
 
 function nonEmpty(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined
@@ -68,7 +68,7 @@ function trimTrailingSlash(value: string): string {
 
 function normalizeProvider(value: unknown): CalendarProvider {
   if (value === undefined || value === null || value === '') return 'custom'
-  if (typeof value === 'string' && (PROVIDERS as readonly string[]).includes(value)) {
+  if (typeof value === 'string' && (CALENDAR_PROVIDERS as readonly string[]).includes(value)) {
     return value as CalendarProvider
   }
   throw new ConfigError(

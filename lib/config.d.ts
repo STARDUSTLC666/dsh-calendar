@@ -47,6 +47,7 @@ export declare const NEXTCLOUD_PATH = "/remote.php/dav/calendars/";
 export declare class ConfigError extends Error {
     constructor(message: string);
 }
+export declare const CALENDAR_PROVIDERS: readonly CalendarProvider[];
 /**
  * 解析配置为可用的 caldavUrl + 凭证。配置缺失抛出 ConfigError（中文指引）。
  * @param config - 插件 config（可能 undefined）。

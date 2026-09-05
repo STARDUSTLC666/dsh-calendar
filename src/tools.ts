@@ -6,7 +6,7 @@
  */
 
 import { CalendarService } from './caldav.js'
-import { resolveConfig, type CalendarConfig } from './config.js'
+import { CALENDAR_PROVIDERS, resolveConfig, type CalendarConfig, type ResolvedConfig } from './config.js'
 import { type CalendarEvent, type EventFields } from './ical.js'
 import { compileParameters } from './parameters.js'
 
@@ -34,6 +34,12 @@ const TIMEOUT_MS = 60000
 
 function asRecord(args: unknown): Record<string, unknown> {
   return typeof args === 'object' && args !== null ? args as Record<string, unknown> : {}
+}
+
+function executionSignal(exec: unknown): AbortSignal | undefined {
+  if (typeof exec !== 'object' || exec === null) return undefined
+  const signal = (exec as { signal?: unknown }).signal
+  return signal instanceof AbortSignal ? signal : undefined
 }
 
 function optionalString(args: Record<string, unknown>, key: string): string | undefined {
@@ -134,8 +140,8 @@ function buildSearchFilter(query: string): (event: CalendarEvent) => boolean {
 }
 
 /** 构建六个工具定义；每个 execute 惰性解析配置，缺失时抛出中文指引。 */
-export function buildCalendarTools(config: CalendarConfig | undefined): CalendarToolDefinition[] {
-  const service = (): CalendarService => new CalendarService(resolveConfig(config))
+export function buildCalendarTools(config: CalendarConfig | undefined, env: NodeJS.ProcessEnv = process.env): CalendarToolDefinition[] {
+  const service = (): CalendarService => new CalendarService(resolveConfig(config, env))
 
   const list = {
     name: 'calendar_list',
@@ -165,7 +171,7 @@ export function buildCalendarTools(config: CalendarConfig | undefined): Calendar
         return [{ type: 'text', text: lines.join('\n') }]
       },
     },
-    async execute(args: unknown): Promise<unknown> {
+    async execute(args: unknown, exec: unknown): Promise<unknown> {
       const input = asRecord(args)
       const now = new Date()
       const defaultEnd = new Date(now.getTime() + 7 * 24 * 3600 * 1000)
@@ -173,10 +179,10 @@ export function buildCalendarTools(config: CalendarConfig | undefined): Calendar
       const end = optionalString(input, 'end') ?? isoNoMillis(defaultEnd.toISOString())
       assertIsoTime(start, 'start')
       assertIsoTime(end, 'end')
-        assertTimeRange(start, end)
+      assertTimeRange(start, end)
       const expand = booleanWithDefault(input, 'expand', true)
       const maxOccurrences = clampedInteger(input, 'maxOccurrences', 30, 1, 200)
-      const events = sortEvents(await service().list(start, end, { expand, maxOccurrences }))
+      const events = sortEvents(await service().list(start, end, { expand, maxOccurrences }, executionSignal(exec)))
       return { count: events.length, start, end, events }
     },
     timeoutMs: TIMEOUT_MS,
@@ -206,18 +212,18 @@ export function buildCalendarTools(config: CalendarConfig | undefined): Calendar
         return [{ type: 'text', text: '已新建事件：' + formatEvent(event) }]
       },
     },
-    async execute(args: unknown): Promise<unknown> {
+    async execute(args: unknown, exec: unknown): Promise<unknown> {
       const input = asRecord(args)
       const summary = requiredString(input, 'summary', '事件标题')
       const start = requiredString(input, 'start', '开始时间')
       const end = requiredString(input, 'end', '结束时间')
       assertIsoTime(start, 'start')
       assertIsoTime(end, 'end')
-        assertTimeRange(start, end)
-        const description = optionalString(input, 'description')
-        const location = optionalString(input, 'location')
-        const allDay = optionalBoolean(input, 'allDay')
-        const rrule = optionalString(input, 'rrule')
+      assertTimeRange(start, end)
+      const description = optionalString(input, 'description')
+      const location = optionalString(input, 'location')
+      const allDay = optionalBoolean(input, 'allDay')
+      const rrule = optionalString(input, 'rrule')
       const fields: EventFields = {
         summary,
         start,
@@ -227,7 +233,7 @@ export function buildCalendarTools(config: CalendarConfig | undefined): Calendar
         ...(allDay !== undefined ? { allDay } : {}),
         ...(rrule !== undefined ? { rrule } : {}),
       }
-      const created = await service().create(fields)
+      const created = await service().create(fields, executionSignal(exec))
       return { created }
     },
     timeoutMs: TIMEOUT_MS,
@@ -258,7 +264,7 @@ export function buildCalendarTools(config: CalendarConfig | undefined): Calendar
         return [{ type: 'text', text: '已更新事件：' + formatEvent(event) }]
       },
     },
-    async execute(args: unknown): Promise<unknown> {
+    async execute(args: unknown, exec: unknown): Promise<unknown> {
       const input = asRecord(args)
       const uid = requiredString(input, 'uid', '事件 uid')
       const changes: Partial<EventFields> = {}
@@ -276,7 +282,7 @@ export function buildCalendarTools(config: CalendarConfig | undefined): Calendar
       if (allDay !== undefined) changes.allDay = allDay
       const rrule = optionalString(input, 'rrule')
       if (rrule !== undefined) changes.rrule = rrule
-      const updated = await service().update(uid, changes)
+      const updated = await service().update(uid, changes, executionSignal(exec))
       return { updated }
     },
     timeoutMs: TIMEOUT_MS,
@@ -304,10 +310,10 @@ export function buildCalendarTools(config: CalendarConfig | undefined): Calendar
         return [{ type: 'text', text: '已删除事件：uid=' + result.uid }]
       },
     },
-    async execute(args: unknown): Promise<unknown> {
+    async execute(args: unknown, exec: unknown): Promise<unknown> {
       const input = asRecord(args)
       const uid = requiredString(input, 'uid', '事件 uid')
-      const result = await service().delete(uid)
+      const result = await service().delete(uid, executionSignal(exec))
       return { deleted: true, uid: result.uid, href: result.href }
     },
     timeoutMs: TIMEOUT_MS,
@@ -338,11 +344,11 @@ export function buildCalendarTools(config: CalendarConfig | undefined): Calendar
         return [{ type: 'text', text: lines.join('\n') }]
       },
     },
-    async execute(args: unknown): Promise<unknown> {
+    async execute(args: unknown, exec: unknown): Promise<unknown> {
       const input = asRecord(args)
       const query = requiredString(input, 'query', '搜索关键词')
       const limit = clampedInteger(input, 'limit', 50, 1, 200)
-      const all = await service().all()
+      const all = await service().all(executionSignal(exec))
       const matched = sortEvents(all).filter(buildSearchFilter(query)).slice(0, limit)
       return { query, count: matched.length, events: matched }
     },
@@ -366,26 +372,43 @@ export function buildCalendarTools(config: CalendarConfig | undefined): Calendar
         return [{ type: 'text', text: lines.join('\n') }]
       },
     },
-    async execute(): Promise<unknown> {
+    async execute(_args: unknown, exec: unknown): Promise<unknown> {
+      executionSignal(exec)?.throwIfAborted()
       const checks: Array<Record<string, unknown>> = []
-      let ok = true
-      const provider = (config?.provider ?? 'custom') as string
-      checks.push({ name: '服务商', ok: true, detail: provider })
-      const hasUrl = typeof config?.caldavUrl === 'string' && config.caldavUrl.trim() !== ''
-      const derivable = provider === 'google' || provider === 'nextcloud' || provider === 'icloud'
-      if (hasUrl || derivable) {
-        checks.push({ name: '日历地址', ok: true, detail: hasUrl ? '已配置 caldavUrl' : provider + ' 预设可推导' })
-      } else {
-        ok = false
-        checks.push({ name: '日历地址', ok: false, detail: '未配置：请在 profile 的 cordis.patch.yml 里给 calendar 行填 caldavUrl' })
+      const rawProvider = (config as { provider?: unknown } | undefined)?.provider
+      const provider = rawProvider === undefined || rawProvider === null || rawProvider === '' ? 'custom' : String(rawProvider)
+      const providerOk = (CALENDAR_PROVIDERS as readonly string[]).includes(provider)
+      checks.push({ name: '服务商', ok: providerOk, detail: providerOk ? provider : '不支持 ' + provider + '；只支持 ' + CALENDAR_PROVIDERS.join(' / ') })
+
+      let resolved: ResolvedConfig | undefined
+      try {
+        resolved = resolveConfig(config, env)
+      } catch {
+        // Each individual check below provides the actionable detail.
       }
+
       const hasUser = typeof config?.username === 'string' && config.username.trim() !== ''
+      const configuredPassword = typeof config?.password === 'string' && config.password.trim() !== ''
+      const envPassword = typeof env.DSH_CALENDAR_PASSWORD === 'string' && env.DSH_CALENDAR_PASSWORD.trim() !== ''
+
+      try {
+        const endpoint = resolved ?? resolveConfig({
+          ...config,
+          username: hasUser ? config!.username : '__health_check__',
+          password: configuredPassword ? config!.password : (envPassword ? env.DSH_CALENDAR_PASSWORD : '__health_check__'),
+        }, env)
+        checks.push({ name: '日历地址', ok: true, detail: '已解析为 ' + endpoint.caldavUrl })
+      } catch (error) {
+        checks.push({ name: '日历地址', ok: false, detail: error instanceof Error ? error.message : String(error) })
+      }
+
       checks.push({ name: '账号', ok: hasUser, detail: hasUser ? '已配置' : '未配置：请填 username（Google/iCloud 为账号邮箱）' })
-      if (!hasUser) ok = false
-      const hasPass = typeof config?.password === 'string' && config.password.trim() !== ''
-      checks.push({ name: '密码', ok: hasPass, detail: hasPass ? '已配置' : '未配置：请填 password 或环境变量 DSH_CALENDAR_PASSWORD（Google/iCloud 用应用专用密码）' })
-      if (!hasPass) ok = false
-      return { ok, plugin: 'dsh-calendar', checks }
+      checks.push({
+        name: '密码',
+        ok: configuredPassword || envPassword,
+        detail: configuredPassword ? '已在插件配置中提供' : envPassword ? '已通过环境变量 DSH_CALENDAR_PASSWORD 提供' : '未配置：请填 password 或环境变量 DSH_CALENDAR_PASSWORD（Google/iCloud 用应用专用密码）',
+      })
+      return { ok: resolved !== undefined, plugin: 'dsh-calendar', checks }
     },
     timeoutMs: TIMEOUT_MS,
   }

@@ -88,34 +88,45 @@ export class CalendarService {
     startIso: string,
     endIso: string,
     options?: { expand?: boolean; maxOccurrences?: number },
+    signal?: AbortSignal,
   ): Promise<CalendarEvent[]> {
     const expand = options?.expand !== false
     const maxOccurrences = options?.maxOccurrences ?? 30
+    signal?.throwIfAborted()
     try {
       const client = await this.client()
+      signal?.throwIfAborted()
       const objects = await client.fetchCalendarObjects({
         calendar: this.calendar(),
         timeRange: { start: startIso, end: endIso },
         urlFilter: (url: string) => typeof url === 'string' && url.length > 0,
+        ...(signal !== undefined ? { fetchOptions: { signal } } : {}),
       })
+      signal?.throwIfAborted()
       return expand
         ? this.toExpandedEvents(objects, startIso, endIso, maxOccurrences)
         : this.toEvents(objects)
     } catch (error) {
+      signal?.throwIfAborted()
       throw translateError(error, '读取日历')
     }
   }
 
   /** 列出全部事件（客户端过滤用）。 */
-  async all(): Promise<CalendarEvent[]> {
+  async all(signal?: AbortSignal): Promise<CalendarEvent[]> {
+    signal?.throwIfAborted()
     try {
       const client = await this.client()
+      signal?.throwIfAborted()
       const objects = await client.fetchCalendarObjects({
         calendar: this.calendar(),
         urlFilter: (url: string) => typeof url === 'string' && url.length > 0,
+        ...(signal !== undefined ? { fetchOptions: { signal } } : {}),
       })
+      signal?.throwIfAborted()
       return this.toEvents(objects)
     } catch (error) {
+      signal?.throwIfAborted()
       throw translateError(error, '读取日历')
     }
   }
@@ -151,29 +162,39 @@ export class CalendarService {
   }
 
   /** 按 uid（href）找到服务器对象（含 etag 与原始 data）。 */
-  private async findObject(uid: string): Promise<DAVCalendarObject | undefined> {
+  private async findObject(uid: string, signal?: AbortSignal): Promise<DAVCalendarObject | undefined> {
+    signal?.throwIfAborted()
     const client = await this.client()
+    signal?.throwIfAborted()
     const target = normalizeUrl(uid)
     const objects = await client.fetchCalendarObjects({
       calendar: this.calendar(),
       urlFilter: (url: string) => normalizeUrl(url) === target,
+      ...(signal !== undefined ? { fetchOptions: { signal } } : {}),
     })
+    signal?.throwIfAborted()
     return objects.find((object) => normalizeUrl(object.url) === target)
   }
 
   /** 新建事件，返回带 href/uid 的事件。 */
-  async create(fields: EventFields): Promise<CalendarEvent> {
-    const iCalString = buildICalString(fields)
-    const filename = (fields.icalUid ?? generateUid()) + '.ics'
+  async create(fields: EventFields, signal?: AbortSignal): Promise<CalendarEvent> {
+    signal?.throwIfAborted()
+    const icalUid = fields.icalUid ?? generateUid()
+    const iCalString = buildICalString({ ...fields, icalUid })
+    const filename = icalUid + '.ics'
     try {
       const client = await this.client()
+      signal?.throwIfAborted()
       const response = await client.createCalendarObject({
         calendar: this.calendar(),
         iCalString,
         filename,
+        ...(signal !== undefined ? { fetchOptions: { signal } } : {}),
       })
+      signal?.throwIfAborted()
       assertOk(response, '新建事件')
     } catch (error) {
+      signal?.throwIfAborted()
       if (error instanceof CalDAVError) throw error
       throw translateError(error, '新建事件')
     }
@@ -184,11 +205,13 @@ export class CalendarService {
   }
 
   /** 按 uid 更新事件；未提供的字段保留原值。 */
-  async update(uid: string, changes: Partial<EventFields>): Promise<CalendarEvent> {
+  async update(uid: string, changes: Partial<EventFields>, signal?: AbortSignal): Promise<CalendarEvent> {
+    signal?.throwIfAborted()
     let object: DAVCalendarObject | undefined
     try {
-      object = await this.findObject(uid)
+      object = await this.findObject(uid, signal)
     } catch (error) {
+      signal?.throwIfAborted()
       throw translateError(error, '查找事件')
     }
     if (object === undefined) {
@@ -221,11 +244,15 @@ export class CalendarService {
     const iCalString = buildICalString(merged)
     try {
       const client = await this.client()
+      signal?.throwIfAborted()
       const response = await client.updateCalendarObject({
         calendarObject: { url: object.url, etag: object.etag, data: iCalString },
+        ...(signal !== undefined ? { fetchOptions: { signal } } : {}),
       })
+      signal?.throwIfAborted()
       assertOk(response, '更新事件')
     } catch (error) {
+      signal?.throwIfAborted()
       if (error instanceof CalDAVError) throw error
       throw translateError(error, '更新事件')
     }
@@ -235,11 +262,13 @@ export class CalendarService {
   }
 
   /** 按 uid 删除事件。 */
-  async delete(uid: string): Promise<{ uid: string; href: string }> {
+  async delete(uid: string, signal?: AbortSignal): Promise<{ uid: string; href: string }> {
+    signal?.throwIfAborted()
     let object: DAVCalendarObject | undefined
     try {
-      object = await this.findObject(uid)
+      object = await this.findObject(uid, signal)
     } catch (error) {
+      signal?.throwIfAborted()
       throw translateError(error, '查找事件')
     }
     if (object === undefined) {
@@ -250,11 +279,15 @@ export class CalendarService {
     }
     try {
       const client = await this.client()
+      signal?.throwIfAborted()
       const response = await client.deleteCalendarObject({
         calendarObject: { url: object.url, etag: object.etag },
+        ...(signal !== undefined ? { fetchOptions: { signal } } : {}),
       })
+      signal?.throwIfAborted()
       assertOk(response, '删除事件')
     } catch (error) {
+      signal?.throwIfAborted()
       if (error instanceof CalDAVError) throw error
       throw translateError(error, '删除事件')
     }

@@ -23,20 +23,20 @@ export declare class CalendarService {
     list(startIso: string, endIso: string, options?: {
         expand?: boolean;
         maxOccurrences?: number;
-    }): Promise<CalendarEvent[]>;
+    }, signal?: AbortSignal): Promise<CalendarEvent[]>;
     /** 列出全部事件（客户端过滤用）。 */
-    all(): Promise<CalendarEvent[]>;
+    all(signal?: AbortSignal): Promise<CalendarEvent[]>;
     private toEvents;
     /** 列出并展开：每个对象经 expandEventFromICal 展开为若干实例行。 */
     private toExpandedEvents;
     /** 按 uid（href）找到服务器对象（含 etag 与原始 data）。 */
     private findObject;
     /** 新建事件，返回带 href/uid 的事件。 */
-    create(fields: EventFields): Promise<CalendarEvent>;
+    create(fields: EventFields, signal?: AbortSignal): Promise<CalendarEvent>;
     /** 按 uid 更新事件；未提供的字段保留原值。 */
-    update(uid: string, changes: Partial<EventFields>): Promise<CalendarEvent>;
+    update(uid: string, changes: Partial<EventFields>, signal?: AbortSignal): Promise<CalendarEvent>;
     /** 按 uid 删除事件。 */
-    delete(uid: string): Promise<{
+    delete(uid: string, signal?: AbortSignal): Promise<{
         uid: string;
         href: string;
     }>;

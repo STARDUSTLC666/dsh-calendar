@@ -21,8 +21,15 @@ test('calendar_health 缺账号密码时 ok=false 且给出指引', async () => 
 })
 
 test('calendar_health google 预设可推导日历地址', async () => {
-  const health = buildCalendarTools({ provider: 'google', username: 'u@gmail.com', password: 'p' }).find((t) => t.name === 'calendar_health')
+  const health = buildCalendarTools({ provider: 'google', calendarId: 'u@gmail.com', username: 'u@gmail.com', password: 'p' }).find((t) => t.name === 'calendar_health')
   const value = await health.execute({})
   assert.equal(value.ok, true)
-  assert.match(String(value.checks[1].detail), /预设可推导/)
+  assert.match(String(value.checks[1].detail), /https:\/\/apidata\.googleusercontent\.com\/caldav\/v2\/u%40gmail\.com\/events/)
+})
+
+test('calendar_health 缺 Google calendarId 时给出可操作指引', async () => {
+  const health = buildCalendarTools({ provider: 'google', username: 'u@gmail.com', password: 'p' }).find((t) => t.name === 'calendar_health')
+  const value = await health.execute({})
+  assert.equal(value.ok, false)
+  assert.match(value.checks.find((check) => check.name === '日历地址').detail, /calendarId/)
 })
