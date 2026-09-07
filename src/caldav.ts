@@ -7,6 +7,7 @@
 
 import { createDAVClient } from 'tsdav'
 import { createProxyFetch } from './proxy-fetch.js'
+import { createOAuthFetch, OAuthError } from './oauth.js'
 import type { ResolvedConfig } from './config.js'
 import {
   buildICalString,
@@ -39,17 +40,24 @@ function normalizeUrl(value: string): string {
   return trimmed.endsWith('/') ? trimmed.slice(0, -1) : trimmed
 }
 
-/** 把底层错误翻译成中文指引；识别 401/403 提示应用专用密码。 */
-function translateError(error: unknown, action: string): CalDAVError {
+function authenticationError(config: ResolvedConfig, status: number): CalDAVError {
+  const guidance = config.oauth !== undefined
+    ? '请检查 OAuth 授权范围、日历访问权限及 refreshToken；授权失效时请重新授权。Google CalDAV 不接受应用专用密码。'
+    : '请检查 username 与 password / DSH_CALENDAR_PASSWORD；iCloud 必须使用应用专用密码，其他服务请确认账号权限。Google CalDAV 需改用 OAuth 2.0。'
+  return new CalDAVError('账号认证失败（' + status + '）：' + guidance, status)
+}
+
+/** 把底层错误翻译成与当前认证方式匹配的指引。 */
+function translateError(error: unknown, action: string, config: ResolvedConfig): CalDAVError {
+  if (error instanceof CalDAVError) return error
+  if (error instanceof OAuthError) return new CalDAVError(error.message, error.status)
   const message = error instanceof Error ? error.message : String(error)
   const status = (error as { status?: number })?.status
   if (status === 401 || status === 403 || /401|403/.test(message)) {
-    return new CalDAVError(
-      '账号认证失败（401/403）：请检查应用专用密码是否正确生成——' +
-      'Google 需在账号安全里创建「应用专用密码」，iCloud 需在 appleid.apple.com 创建 app 专用密码，' +
-      '不能用登录密码。请在 profile 的 cordis.patch.yml 覆盖 calendar 行或设置环境变量 DSH_CALENDAR_PASSWORD 后重启。',
-      status ?? (/401/.test(message) ? 401 : 403),
-    )
+    return authenticationError(config, status ?? (/401/.test(message) ? 401 : 403))
+  }
+  if (config.oauth !== undefined) {
+    return new CalDAVError(action + ' 失败：CalDAV 响应或网络请求异常，请检查日历地址与服务权限。', status)
   }
   return new CalDAVError(action + ' 失败：' + message, status)
 }
@@ -65,11 +73,15 @@ export class CalendarService {
 
   private client(): Promise<DAVClient> {
     if (this.clientPromise === undefined) {
+      const transport = this.config.proxyUrl !== '' ? createProxyFetch(this.config.proxyUrl) : globalThis.fetch
+      const oauth = this.config.oauth
       this.clientPromise = createDAVClient({
         serverUrl: this.config.caldavUrl,
-        credentials: { username: this.config.username, password: this.config.password },
-        authMethod: 'Basic',
-        ...(this.config.proxyUrl !== '' ? { fetch: createProxyFetch(this.config.proxyUrl) } : {}),
+        credentials: oauth === undefined ? { username: this.config.username, password: this.config.password } : {},
+        // createDAVClient 的 Oauth 分支只在初始化时取头；改由 fetch 在每次请求时检查过期。
+        authMethod: oauth === undefined ? 'Basic' : 'Custom',
+        ...(oauth === undefined ? {} : { authFunction: async () => ({}) }),
+        fetch: oauth === undefined ? transport : createOAuthFetch(oauth, transport, this.config.caldavUrl),
       })
     }
     // 创建失败时清掉缓存，让下一次工具调用有机会重试，而不是永久复用 rejected promise。
@@ -108,7 +120,7 @@ export class CalendarService {
         : this.toEvents(objects)
     } catch (error) {
       signal?.throwIfAborted()
-      throw translateError(error, '读取日历')
+      throw translateError(error, '读取日历', this.config)
     }
   }
 
@@ -127,7 +139,7 @@ export class CalendarService {
       return this.toEvents(objects)
     } catch (error) {
       signal?.throwIfAborted()
-      throw translateError(error, '读取日历')
+      throw translateError(error, '读取日历', this.config)
     }
   }
 
@@ -192,11 +204,11 @@ export class CalendarService {
         ...(signal !== undefined ? { fetchOptions: { signal } } : {}),
       })
       signal?.throwIfAborted()
-      assertOk(response, '新建事件')
+      assertOk(response, '新建事件', this.config)
     } catch (error) {
       signal?.throwIfAborted()
       if (error instanceof CalDAVError) throw error
-      throw translateError(error, '新建事件')
+      throw translateError(error, '新建事件', this.config)
     }
     const href = new URL(filename, this.collectionUrl).href
     const event = parseEventFromICal(iCalString, href)
@@ -212,7 +224,7 @@ export class CalendarService {
       object = await this.findObject(uid, signal)
     } catch (error) {
       signal?.throwIfAborted()
-      throw translateError(error, '查找事件')
+      throw translateError(error, '查找事件', this.config)
     }
     if (object === undefined) {
       throw new CalDAVError(
@@ -250,11 +262,11 @@ export class CalendarService {
         ...(signal !== undefined ? { fetchOptions: { signal } } : {}),
       })
       signal?.throwIfAborted()
-      assertOk(response, '更新事件')
+      assertOk(response, '更新事件', this.config)
     } catch (error) {
       signal?.throwIfAborted()
       if (error instanceof CalDAVError) throw error
-      throw translateError(error, '更新事件')
+      throw translateError(error, '更新事件', this.config)
     }
     const event = parseEventFromICal(iCalString, object.url, object.etag)
     if (event === null) throw new CalDAVError('更新事件失败：生成的 iCal 无法解析')
@@ -269,7 +281,7 @@ export class CalendarService {
       object = await this.findObject(uid, signal)
     } catch (error) {
       signal?.throwIfAborted()
-      throw translateError(error, '查找事件')
+      throw translateError(error, '查找事件', this.config)
     }
     if (object === undefined) {
       throw new CalDAVError(
@@ -285,27 +297,23 @@ export class CalendarService {
         ...(signal !== undefined ? { fetchOptions: { signal } } : {}),
       })
       signal?.throwIfAborted()
-      assertOk(response, '删除事件')
+      assertOk(response, '删除事件', this.config)
     } catch (error) {
       signal?.throwIfAborted()
       if (error instanceof CalDAVError) throw error
-      throw translateError(error, '删除事件')
+      throw translateError(error, '删除事件', this.config)
     }
     return { uid: object.url, href: object.url }
   }
 }
 
 /** 校验 HTTP 响应，把 401/403 与其它非 2xx 转成中文错误。 */
-function assertOk(response: Response, action: string): void {
+function assertOk(response: Response, action: string, config: ResolvedConfig): void {
   if (response.status === 401 || response.status === 403) {
-    throw new CalDAVError(
-      '账号认证失败（' + response.status + '）：请检查应用专用密码是否正确生成——' +
-      'Google 需在账号安全里创建「应用专用密码」，iCloud 需在 appleid.apple.com 创建 app 专用密码，' +
-      '不能用登录密码。请在 profile 的 cordis.patch.yml 覆盖 calendar 行或设置环境变量 DSH_CALENDAR_PASSWORD 后重启。',
-      response.status,
-    )
+    throw authenticationError(config, response.status)
   }
   if (!response.ok) {
-    throw new CalDAVError(action + ' 失败：服务器返回 ' + response.status + ' ' + response.statusText, response.status)
+    throw new CalDAVError(action + ' 失败：服务器返回 ' + response.status +
+      (config.oauth === undefined ? ' ' + response.statusText : ''), response.status)
   }
 }

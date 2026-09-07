@@ -9,11 +9,11 @@
 [![Awesome DSH Plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
 
 
-DSH 社区插件：通过 CalDAV 读写日历事件。提供 5 个面向模型的工具（calendar_list / calendar_create / calendar_update / calendar_delete / calendar_search），支持 Google / iCloud / Nextcloud 及任意 CalDAV 服务器。本轮为 node 半身，不含设置页 UI，配置全部走 profile 的 cordis.patch.yml。
+DSH 社区插件：通过 CalDAV 读写日历事件。提供 5 个日历操作工具（calendar_list / calendar_create / calendar_update / calendar_delete / calendar_search）和 `calendar_health` 配置自检。Google 使用 OAuth 2.0；iCloud / Nextcloud / 自定义服务器默认保留 Basic 认证。不含设置页 UI，配置全部走 profile 的 cordis.patch.yml。
 
 ## 兼容性
 
-在 `@deepseek-ai/dsh@0.1.2-alpha.2` 上验证（2026-08-31）。遵循 cordis 组合包补丁模型（`cordis.patch.yml` + `dsh.bundle.patch`），运行时不 import 任何 `@deepseek-ai/*` 内部模块。
+已在 `@deepseek-ai/dsh@0.1.3-alpha.1` 官方源码基线上验证插件接口与 Web profile 同载（2026-09-07）。OAuth 使用离线模拟的令牌端点和 DAV 响应测试，未使用真实 Google 账号验证。遵循 cordis 组合包补丁模型（`cordis.patch.yml` + `dsh.bundle.patch`），运行时不 import 任何 `@deepseek-ai/*` 内部模块。
 
 ## 安装
 
@@ -29,9 +29,11 @@ dsh plugin --profile web add dsh-calendar
 
 - `provider`：google | icloud | nextcloud | custom
 - `caldavUrl`：完整日历集合 URL（custom / icloud 必填；google / nextcloud 也可手填覆盖预设）
-- `username`：CalDAV 账号（Google / iCloud 为账号邮箱）
-- `password`：密码；Google / iCloud 请用应用专用密码。推荐用环境变量 `DSH_CALENDAR_PASSWORD`，避免明文入库。
-- `proxyUrl`：本机代理地址（如 http://127.0.0.1:7890）。中国大陆访问 Google / iCloud 必填，详见上文「特殊代理配置」专节；国内可直连的 CalDAV 服务无需填写。
+- `authMethod`：`basic` | `oauth`；Google 默认且必须为 `oauth`，其他 provider 默认 `basic`。其他 OAuth 服务器需显式设置 `oauth`，不会因环境中存在 Google 凭据而自动切换。
+- `username` / `password`：仅 Basic 认证必需。iCloud 请用应用专用密码；密码推荐用环境变量 `DSH_CALENDAR_PASSWORD`。**Google CalDAV 不接受任何 Basic 密码，包括应用专用密码。**
+- `clientId` / `clientSecret` / `refreshToken`：OAuth 必需；分别支持 `DSH_CALENDAR_CLIENT_ID` / `DSH_CALENDAR_CLIENT_SECRET` / `DSH_CALENDAR_REFRESH_TOKEN`。非空配置值优先于环境变量。请勿把密钥或令牌提交到 Git。
+- `tokenUrl`：可用 `DSH_CALENDAR_TOKEN_URL`；Google 默认 `https://oauth2.googleapis.com/token`，其他 OAuth 服务必填。OAuth 的 tokenUrl 与 caldavUrl 必须为不含内嵌账号密码、查询参数或片段的 HTTPS 地址。
+- `proxyUrl`：可选 HTTP 代理地址（如 http://127.0.0.1:7890）；令牌刷新和 CalDAV 请求共用该代理。可直连时无需填写。
 - `calendarId`：google 专用，日历 ID（通常是你的邮箱）
 - `host` / `user` / `calendar`：nextcloud 专用
 
@@ -46,15 +48,14 @@ dsh plugin --profile web remove dsh-calendar
 
 ## 中国用户：特殊代理配置（Google / iCloud）
 
-Google 与 iCloud 的 CalDAV 端点在中国大陆**不可直连**，需要配合你常用的梯子/特殊代理使用。插件内置 `proxyUrl` 配置：把 CalDAV 请求路由到**你本机代理客户端的端口**，不影响其他插件，也无需改任何系统设置。
+若本机网络无法直连 Google / iCloud，插件内置的 `proxyUrl` 可把 OAuth 令牌请求和 CalDAV 请求路由到**你本机 HTTP 代理客户端的端口**，不影响其他插件，也无需改任何系统设置。
 
 ```yaml
 - id: calendar
   config:
     provider: google
-    username: you@gmail.com
     calendarId: you@gmail.com
-    password: 你的应用专用密码
+    # OAuth 凭据通过下文三个环境变量提供
     proxyUrl: http://127.0.0.1:7890   # 改成你代理客户端的本地端口
 ```
 
@@ -75,12 +76,24 @@ Google 与 iCloud 的 CalDAV 端点在中国大陆**不可直连**，需要配�
   name: dsh-calendar
   config:
     provider: google
-    username: you@gmail.com
     calendarId: you@gmail.com
-    # password 推荐用环境变量 DSH_CALENDAR_PASSWORD
+    # authMethod: oauth  # Google 默认即为 oauth
+    # clientId / clientSecret / refreshToken 推荐用环境变量
 ```
 
 Google 的 CalDAV 集合 URL 由插件拼成：`https://apidata.googleusercontent.com/caldav/v2/<calendarId>/events`。
+
+在启动源码版 `pnpm dsh` 或普通 `dsh` 的同一个终端中设置（以下均为占位值）：
+
+```bash
+export DSH_CALENDAR_CLIENT_ID='你的 OAuth 客户端 ID'
+export DSH_CALENDAR_CLIENT_SECRET='你的 OAuth 客户端密钥'
+export DSH_CALENDAR_REFRESH_TOKEN='你授权后取得的 refresh token'
+```
+
+凭据必须来自你自己的 Google Cloud OAuth 客户端和一次用户授权，而不是邮箱应用专用密码。按 [Google CalDAV 官方设置说明](https://developers.google.com/workspace/calendar/caldav/v2/guide) 启用 API、配置 OAuth；申请日历读写范围 `https://www.googleapis.com/auth/calendar`，并请求离线访问（`access_type=offline`）以取得刷新令牌，参见 [Google 离线授权说明](https://developers.google.com/identity/protocols/oauth2/web-server#offline)。尚未提供浏览器一键登录或独立登录 CLI；已有 OAuth 配置的用户可直接填入刷新令牌。
+
+插件在内存中缓存访问令牌，并在每次 DAV 请求前检查有效期、提前刷新；令牌请求与 DAV 请求都会透传调用的取消信号。401 会使缓存失效，下一次调用重新刷新，**不会自动重放写请求**。OAuth 请求不跟随重定向、不向其它源的对象 href 发送 Bearer token，请填写最终日历集合地址。运行时令牌不会写入配置或日志；若其他 OAuth 提供方轮换 refresh token，重启时需要重新提供有效凭据。
 
 ### iCloud 示例
 
@@ -124,16 +137,17 @@ iCloud 需要完整日历集合 URL（含你的用户 ID 与日历 ID），在 i
     # password 推荐用环境变量 DSH_CALENDAR_PASSWORD
 ```
 
-## 应用专用密码指引
+## 认证失败排查
 
-Google：登录 myaccount.google.com → 安全 → 两步验证（需先开启）→ 应用专用密码，选择「其他」生成 16 位密码，填到 `password` 或 `DSH_CALENDAR_PASSWORD`。不能用你的 Google 登录密码。
+Google：仅支持 OAuth 2.0。401/403 时检查 OAuth 授权、日历范围与日历访问权限；令牌刷新失败时核对 clientId/clientSecret/refreshToken，授权被撤销或过期时重新授权。**重新生成应用专用密码不能解决 Google CalDAV 认证失败。**
 
 iCloud：登录 appleid.apple.com → 登录与安全 → App 专用密码，生成后填到 `password` 或 `DSH_CALENDAR_PASSWORD`。不能用你的 Apple ID 密码。
 
-若调用报 401/403，多半是密码不对（用了登录密码而非应用专用密码），插件会返回中文提示。
+Nextcloud / 自定义 Basic 服务：检查账号、密码或服务要求的应用令牌及日历权限。`calendar_health` 只检查配置完整性，不联网、不证明授权成功；请再用 `calendar_list` 验证真实连接。
 
 ## 工具清单
 
+- `calendar_health`：离线检查服务商、日历集合地址与 Basic/OAuth 凭据完整性，不回显密钥、不发起网络连接。
 - `calendar_list`：列出某时间段事件（start/end，ISO 8601，缺省未来 7 天）。默认展开重复事件（`expand` 默认 true，`maxOccurrences` 默认 30、clamp 1-200）：每个实例独立成行，带 `isOccurrence: true` 与 `seriesStart`；非重复事件保持 `isOccurrence: false`。`expand=false` 时重复事件按原始单条返回并带 `rrule`。结果按开始时间稳定排序
 - `calendar_create`：新建事件（summary/start/end 必填，description/location/allDay/rrule 可选）。严格校验真实日历日期与 `end >= start`
 - `calendar_update`：按 uid 改事件（summary/start/end/description/location/allDay/rrule 可选，未提供保留原值，重复规则不再丢失）
@@ -148,7 +162,8 @@ iCloud：登录 appleid.apple.com → 登录与安全 → App 专用密码，生
 
 ## 版本记录
 
-- **0.4.0**：新增 `calendar_health` 自检（CalDAV 配置完整性一键体检：端点/账号/密码/连接）。
+- **0.5.0（2026-09-07）**：修复 Google CalDAV #2：新增 OAuth 凭据与环境变量配置、请求时刷新、取消与代理透传；健康检查区分 Basic/OAuth，修正误导的应用专用密码说明。保留其他服务的 Basic 认证。
+- **0.4.0**：新增 `calendar_health` 自检（离线检查 CalDAV 端点与凭据配置，不验证连接）。
 - **0.3.2**：
   - 修复 `calendar_update` 更新其他字段时丢失 `rrule` 的问题。
   - 更新与新建都会校验 `end >= start`，并拒绝 `2025-02-30` 这类不存在的日期。
@@ -158,16 +173,16 @@ iCloud：登录 appleid.apple.com → 登录与安全 → App 专用密码，生
 
 ## 已知限制
 
-- **国内网络**：Google 与 iCloud 的 CalDAV 端点在中国大陆不可直连；可用 `proxyUrl` 走本机梯子/特殊代理，或改用国内可直连的 CalDAV 端点（自建 Nextcloud/Radicale）。
+- **网络可达性**：若无法直连，可用 `proxyUrl` 指定本机 HTTP 代理，或改用可直连的 CalDAV 端点。
 
 
 - 重复事件展开：calendar_list 默认用 ICAL.RecurExpansion 展开 RRULE（`expand=true`），受 `maxOccurrences` 封顶；calendar_search 仍返回原始系列（不展开）。
 - 不支持单次实例的改/删：calendar_update / calendar_delete 针对整个重复系列（按 uid 操作），无法只修改或删除某一次发生（不支持 RECURRENCE-ID 实例级操作）。
-- 不做 OAuth：仅支持 Basic 认证（应用专用密码），不支持 Google / iCloud 的 OAuth 登录流程。
+- OAuth 凭据需要事先取得：支持刷新令牌认证，但不提供浏览器登录 UI / 登录 CLI，也不把运行时令牌写回配置文件。
 - 时区规则：带 TZID（命名时区）的事件输出会转成 UTC（Z）；全天边界、夏令时等复杂时区规则不做精细化处理。
 - 无设置页 UI：本轮为 node 半身，配置只走 cordis.patch.yml，不提供 Web 设置页。
 - 日历发现：iCloud 需手动填完整日历集合 URL；不做 principal 自动发现与多日历选择。
-- 取消/超时：工具依赖 timeoutMs（60 秒）做整体超时，不在单次网络请求上透传 AbortSignal。
+- 取消/超时：工具使用 timeoutMs（60 秒），并向令牌刷新与 DAV 网络请求透传宿主 AbortSignal；并发调用独立取消。
 
 ## 开发
 

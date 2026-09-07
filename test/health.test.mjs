@@ -21,10 +21,29 @@ test('calendar_health 缺账号密码时 ok=false 且给出指引', async () => 
 })
 
 test('calendar_health google 预设可推导日历地址', async () => {
-  const health = buildCalendarTools({ provider: 'google', calendarId: 'u@gmail.com', username: 'u@gmail.com', password: 'p' }).find((t) => t.name === 'calendar_health')
+  const health = buildCalendarTools({ provider: 'google', calendarId: 'u@gmail.com', clientId: 'id', clientSecret: 'secret', refreshToken: 'refresh' }).find((t) => t.name === 'calendar_health')
   const value = await health.execute({})
   assert.equal(value.ok, true)
   assert.match(String(value.checks[1].detail), /https:\/\/apidata\.googleusercontent\.com\/caldav\/v2\/u%40gmail\.com\/events/)
+})
+
+test('calendar_health rejects the former Google app-password setup', async () => {
+  const health = buildCalendarTools({ provider: 'google', calendarId: 'u@gmail.com', username: 'u@gmail.com', password: 'p' }, {}).find(t => t.name === 'calendar_health')
+  const value = await health.execute({})
+  assert.equal(value.ok, false)
+  assert.match(value.checks.find(check => check.name === '认证凭据').detail, /OAuth/)
+})
+
+test('OAuth health is offline and never reveals client secrets or tokens', async (t) => {
+  t.mock.method(globalThis, 'fetch', () => assert.fail('health must not use the network'))
+  const health = buildCalendarTools({ provider: 'google', calendarId: 'u@gmail.com' }, {
+    DSH_CALENDAR_CLIENT_ID: 'private-client-id', DSH_CALENDAR_CLIENT_SECRET: 'private-secret', DSH_CALENDAR_REFRESH_TOKEN: 'private-refresh',
+  }).find(tool => tool.name === 'calendar_health')
+  const value = await health.execute({})
+  assert.equal(value.ok, true)
+  const rendered = JSON.stringify(health.output.render({}, value))
+  assert.doesNotMatch(JSON.stringify(value) + rendered, /private-client-id|private-secret|private-refresh/)
+  assert.match(rendered, /未联网验证/)
 })
 
 test('calendar_health 缺 Google calendarId 时给出可操作指引', async () => {

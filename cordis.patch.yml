@@ -8,9 +8,13 @@
 #     name: 'dsh-calendar'
 #     config:
 #       provider: google              # google | icloud | nextcloud | custom
-#       username: you@gmail.com       # CalDAV 账号（Google/iCloud 用账号邮箱）
 #       calendarId: you@gmail.com     # google：日历 ID（通常是你的邮箱地址）
-#       # password: xxxx              # 应用专用密码；推荐改用环境变量 DSH_CALENDAR_PASSWORD
+#       # authMethod: oauth           # google 默认 oauth，不接受 Basic/应用专用密码
+#       # clientId: ...               # 或 DSH_CALENDAR_CLIENT_ID
+#       # clientSecret: ...           # 推荐用环境变量 DSH_CALENDAR_CLIENT_SECRET
+#       # refreshToken: ...           # 推荐用环境变量 DSH_CALENDAR_REFRESH_TOKEN
+#       # proxyUrl: http://127.0.0.1:7890  # 若需要，令牌刷新与 CalDAV 共用此代理
+#       # iCloud/Nextcloud/custom 默认 Basic：配置 username 与 DSH_CALENDAR_PASSWORD
 #
 - insert:
     - id: calendar

@@ -6,7 +6,10 @@
  */
 
 import { CalendarService } from './caldav.js'
-import { CALENDAR_PROVIDERS, resolveConfig, type CalendarConfig, type ResolvedConfig } from './config.js'
+import {
+  CALENDAR_PROVIDERS, buildCaldavUrl, resolveAuthMethod, resolveConfig, resolveCredentials, validateOAuthUrl,
+  type CalendarConfig, type CalendarProvider,
+} from './config.js'
 import { type CalendarEvent, type EventFields } from './ical.js'
 import { compileParameters } from './parameters.js'
 
@@ -141,7 +144,18 @@ function buildSearchFilter(query: string): (event: CalendarEvent) => boolean {
 
 /** 构建六个工具定义；每个 execute 惰性解析配置，缺失时抛出中文指引。 */
 export function buildCalendarTools(config: CalendarConfig | undefined, env: NodeJS.ProcessEnv = process.env): CalendarToolDefinition[] {
-  const service = (): CalendarService => new CalendarService(resolveConfig(config, env))
+  let cachedKey: string | undefined
+  let cachedService: CalendarService | undefined
+  const service = (): CalendarService => {
+    const resolved = resolveConfig(config, env)
+    // 闭包内比较，不写日志或磁盘；凭据/端点变化时不复用旧 token。
+    const key = JSON.stringify(resolved)
+    if (cachedService === undefined || cachedKey !== key) {
+      cachedService = new CalendarService(resolved)
+      cachedKey = key
+    }
+    return cachedService
+  }
 
   const list = {
     name: 'calendar_list',
@@ -357,7 +371,7 @@ export function buildCalendarTools(config: CalendarConfig | undefined, env: Node
 
   const health: CalendarToolDefinition = {
     name: 'calendar_health',
-    description: 'dsh-calendar 自检：检查 CalDAV 配置完整性（服务商/日历地址/账号/密码），不发起网络连接。遇到问题时先运行本工具定位。',
+    description: 'dsh-calendar 自检：检查 CalDAV 配置完整性（服务商/日历地址/Basic 或 OAuth 凭据），不发起网络连接或验证账号授权。遇到问题时先运行本工具定位。',
     parameters: compileParameters({}),
     output: {
       schema: { type: 'object', additionalProperties: true },
@@ -380,35 +394,33 @@ export function buildCalendarTools(config: CalendarConfig | undefined, env: Node
       const providerOk = (CALENDAR_PROVIDERS as readonly string[]).includes(provider)
       checks.push({ name: '服务商', ok: providerOk, detail: providerOk ? provider : '不支持 ' + provider + '；只支持 ' + CALENDAR_PROVIDERS.join(' / ') })
 
-      let resolved: ResolvedConfig | undefined
       try {
-        resolved = resolveConfig(config, env)
-      } catch {
-        // Each individual check below provides the actionable detail.
-      }
-
-      const hasUser = typeof config?.username === 'string' && config.username.trim() !== ''
-      const configuredPassword = typeof config?.password === 'string' && config.password.trim() !== ''
-      const envPassword = typeof env.DSH_CALENDAR_PASSWORD === 'string' && env.DSH_CALENDAR_PASSWORD.trim() !== ''
-
-      try {
-        const endpoint = resolved ?? resolveConfig({
-          ...config,
-          username: hasUser ? config!.username : '__health_check__',
-          password: configuredPassword ? config!.password : (envPassword ? env.DSH_CALENDAR_PASSWORD : '__health_check__'),
-        }, env)
-        checks.push({ name: '日历地址', ok: true, detail: '已解析为 ' + endpoint.caldavUrl })
+        const endpoint = buildCaldavUrl(config ?? {}, provider as CalendarProvider)
+        if (resolveAuthMethod(config) === 'oauth') validateOAuthUrl(endpoint, 'caldavUrl')
+        checks.push({ name: '日历地址', ok: true, detail: '已解析为 ' + endpoint })
       } catch (error) {
         checks.push({ name: '日历地址', ok: false, detail: error instanceof Error ? error.message : String(error) })
       }
 
-      checks.push({ name: '账号', ok: hasUser, detail: hasUser ? '已配置' : '未配置：请填 username（Google/iCloud 为账号邮箱）' })
-      checks.push({
-        name: '密码',
-        ok: configuredPassword || envPassword,
-        detail: configuredPassword ? '已在插件配置中提供' : envPassword ? '已通过环境变量 DSH_CALENDAR_PASSWORD 提供' : '未配置：请填 password 或环境变量 DSH_CALENDAR_PASSWORD（Google/iCloud 用应用专用密码）',
-      })
-      return { ok: resolved !== undefined, plugin: 'dsh-calendar', checks }
+      try {
+        if (resolveAuthMethod(config) === 'oauth') {
+          checks.push({ name: '认证方式', ok: true, detail: 'OAuth 2.0（无需 username/password）' })
+        } else {
+          const hasUser = typeof config?.username === 'string' && config.username.trim() !== ''
+          checks.push({ name: '账号', ok: hasUser, detail: hasUser ? '已配置 Basic 账号' : '未配置：请填 username（iCloud 为账号邮箱）' })
+        }
+      } catch (error) {
+        checks.push({ name: '认证方式', ok: false, detail: error instanceof Error ? error.message : String(error) })
+      }
+      try {
+        const credentials = resolveCredentials(config, env)
+        checks.push({ name: '认证凭据', ok: true, detail: credentials.oauth === undefined
+          ? '已配置 Basic 凭据；仅检查配置，未联网验证'
+          : '已配置 clientId、clientSecret、refreshToken 与 tokenUrl；仅检查配置，未联网验证' })
+      } catch (error) {
+        checks.push({ name: '认证凭据', ok: false, detail: error instanceof Error ? error.message : String(error) })
+      }
+      return { ok: checks.every((check) => check.ok === true), plugin: 'dsh-calendar', checks }
     },
     timeoutMs: TIMEOUT_MS,
   }
