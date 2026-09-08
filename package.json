@@ -1,6 +1,6 @@
 {
   "name": "dsh-calendar",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "DeepSeek Harness 日历插件：CalDAV 日程查询、创建、修改、删除与搜索，支持 Google OAuth 2.0、iCloud、Nextcloud、自定义服务及离线配置自检。",
   "type": "module",
   "main": "lib/index.js",

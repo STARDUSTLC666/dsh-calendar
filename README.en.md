@@ -65,6 +65,10 @@ export DSH_CALENDAR_REFRESH_TOKEN='your authorized refresh token'
 
 These credentials come from your own Google Cloud OAuth client and a user authorization, not an email app password. Follow the [Google CalDAV setup guide](https://developers.google.com/workspace/calendar/caldav/v2/guide) to enable the API and configure OAuth. Request `https://www.googleapis.com/auth/calendar` for calendar read/write and offline access (`access_type=offline`) to obtain a refresh token; see [Google's offline authorization documentation](https://developers.google.com/identity/protocols/oauth2/web-server#offline). The plugin does not provide a browser login UI or a separate login CLI; supply an already authorized refresh token.
 
+**Google CalDAV scope validation (2026-09-08):** for the same account and calendar, `calendar.readonly` allowed token refresh (200) and collection PROPFIND (207), but the event REPORT returned 403. With the `calendar` scope above, REPORT returned 207; a fresh verification process also refreshed the token and read successfully. Use this CalDAV scope configuration and verify an actual `calendar_list` request: successful token acquisition or collection discovery alone does not prove events are readable. This live test performed reads only; Google write operations were not tested.
+
+The `calendar` scope permits viewing, editing, sharing and deleting accessible calendars; review that access before granting it. See [Google's scope definitions](https://developers.google.com/workspace/calendar/api/auth). For an external OAuth app in **Testing**, a refresh token with Calendar scopes expires after 7 days. Long-term use needs reauthorization or an appropriate production configuration under Google's requirements; see [refresh token expiration](https://developers.google.com/identity/protocols/oauth2#expiration).
+
 Access tokens are cached in memory and checked before each DAV request, with refresh before expiry. Both token and DAV requests inherit the tool call's AbortSignal. A 401 invalidates the token for the next call; **writes are never replayed automatically**. OAuth requests do not follow redirects or send Bearer tokens to cross-origin object hrefs, so configure the final calendar collection URL. Runtime tokens are not written to configuration or logs. If another OAuth provider rotates refresh tokens, supply valid credentials again when restarting.
 
 ### iCloud example
@@ -111,7 +115,7 @@ The plugin assembles: `https://cloud.example.com/remote.php/dav/calendars/alice/
 
 ## Authentication troubleshooting
 
-Google: OAuth 2.0 only. On 401/403, check OAuth authorization, calendar scope and calendar permissions. On refresh failure, verify clientId/clientSecret/refreshToken and re-authorize if the grant was revoked or expired. **Generating another app password cannot fix Google CalDAV authentication.**
+Google: OAuth 2.0 only. On 401/403, check OAuth authorization, calendar scope and calendar permissions. If refresh and PROPFIND succeed but REPORT returns 403, check that the granted scope is the `calendar` scope above; successful discovery with `calendar.readonly` does not prove events are readable. On refresh failure, verify clientId/clientSecret/refreshToken, re-authorize revoked or expired grants, and check the 7-day Testing lifetime. **Generating another app password cannot fix Google CalDAV authentication.**
 
 iCloud: sign in to appleid.apple.com → Sign-In and Security → App-Specific Passwords, generate one and fill it into `password` or `DSH_CALENDAR_PASSWORD`. You cannot use your Apple ID password.
 
@@ -139,6 +143,7 @@ Input and output are uniformly ISO 8601. Timed events are output in UTC (e.g. `2
 
 ## Changelog
 
+- **0.5.1 (2026-09-08)**: document live Google OAuth/CalDAV read validation, the `calendar.readonly` versus `calendar` scope results and Testing refresh-token expiration. Runtime code is unchanged from 0.5.0.
 - **0.5.0 (2026-09-07)**: fix Google CalDAV #2 with OAuth configuration/environment credentials, request-time refresh, cancellation and proxy forwarding. Make health checks and error guidance authentication-aware; retain Basic authentication for other servers.
 - **0.4.0**: new `calendar_health` self-check (offline endpoint and credential configuration checks, not a connection test).
 - **0.3.2**:
