@@ -8,7 +8,9 @@ DSH community plugin: read/write calendar events via CalDAV. Provides 5 calendar
 
 ## Compatibility
 
-Plugin contracts and Web-profile co-loading verified against the official source-run `@deepseek-ai/dsh@0.1.3-alpha.1` baseline on 2026-09-07. OAuth tests use mocked token and DAV responses, not a real Google account. Built for the cordis patch-bundle plugin model (`cordis.patch.yml` + `dsh.bundle.patch`). No runtime imports of `@deepseek-ai/*` internals.
+On 2026-09-08, the npm release was installed with `dsh plugin --profile web add` into the locally installed official `@deepseek-ai/dsh@0.1.3-alpha.2`, running Node `24.16.0`. Validation covered profile composition, all 6 tool registrations and Web startup. Calling `calendar_list` through the host tool execution pipeline refreshed a real Google token (200), read via CalDAV REPORT (207) and produced model-facing content. This Google validation performed reads only; writes were not tested.
+
+Follows the official [plugin packaging and installation requirements](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/basic/publish.md): an ESM entry point, prebuilt `lib/`, `dsh.bundle.patch` and a `cordis.patch.yml` layer. The plugin explicitly injects `tools` and supplies JSON Schema parameters, canonical output and rendering, with no runtime imports of `@deepseek-ai/*` internals. Use Node 22.19 or later within 22.x, or Node 24 or later. Harness is evolving rapidly; the version above is the tested baseline.
 
 ## Installation
 
@@ -143,6 +145,7 @@ Input and output are uniformly ISO 8601. Timed events are output in UTC (e.g. `2
 
 ## Changelog
 
+- **0.5.2 (2026-09-08)**: document installation, loading and real Google tool execution in official Harness 0.1.3-alpha.2; update compatibility and Node requirements. Runtime code is unchanged from 0.5.0.
 - **0.5.1 (2026-09-08)**: document live Google OAuth/CalDAV read validation, the `calendar.readonly` versus `calendar` scope results and Testing refresh-token expiration. Runtime code is unchanged from 0.5.0.
 - **0.5.0 (2026-09-07)**: fix Google CalDAV #2 with OAuth configuration/environment credentials, request-time refresh, cancellation and proxy forwarding. Make health checks and error guidance authentication-aware; retain Basic authentication for other servers.
 - **0.4.0**: new `calendar_health` self-check (offline endpoint and credential configuration checks, not a connection test).
