@@ -13,7 +13,9 @@ DSH 社区插件：通过 CalDAV 读写日历事件。提供 5 个日历操作�
 
 ## 兼容性
 
-2026-09-08 已在本机安装的官方 `@deepseek-ai/dsh@0.1.3-alpha.2`、Node `24.16.0` 中，通过 `dsh plugin --profile web add` 安装 npm 发布包，验证组合配置、6 个工具注册及 Web 启动；经宿主工具执行流程调用 `calendar_list`，真实 Google 令牌刷新返回 200、CalDAV REPORT 返回 207，并生成模型可读的结果。本次仅验证 Google 读取，未执行写入。
+已在官方 `@deepseek-ai/dsh@0.1.5-rc.1`、Node `24.16.0` 上验证（2026-09-11）：18 个组件与 Modlens 同载，工具 schema、技能注册及离线只读调用检查通过。采用 `cordis.patch.yml` + `dsh.bundle.patch` 组合包模型。Node 要求与该版本 Harness 一致：22.19 及以上的 22.x，或 24 及以上。外部服务的实际业务操作需按各组件配置单独验证。
+
+2026-09-10，npm `dsh-calendar@0.5.2` 已通过该 Harness 的官方 CLI 安装和 6 个工具注册；经宿主执行 `calendar_list`，真实 Google 令牌刷新返回 200、CalDAV REPORT 返回 207，并生成模型可读结果。验证仅含 Google 读取，未执行写入；本次补丁不修改运行时代码。
 
 遵循官方[插件打包与安装要求](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/basic/publish.md)：ESM 入口、预构建 `lib/`、`dsh.bundle.patch` 和 `cordis.patch.yml` 配置层；显式注入 `tools`，提供 JSON Schema 参数、规范化输出和渲染函数，运行时不 import `@deepseek-ai/*` 内部模块。使用 Node 22.19 及以上的 22.x 或 Node 24 及以上版本；Harness 仍在快速迭代，上述版本是实测基线。
 
@@ -168,6 +170,7 @@ Nextcloud / 自定义 Basic 服务：检查账号、密码或服务要求的应�
 
 ## 版本记录
 
+- **0.5.3（2026-09-11）**：复验官方 Harness 0.1.5-rc.1，更新整套同载与真实服务验证记录；运行时代码未变。
 - **0.5.2（2026-09-08）**：补充官方 Harness 0.1.3-alpha.2 的安装、加载与真实 Google 工具调用验证，更新兼容性和 Node 版本要求；运行时代码与 0.5.0 相同。
 - **0.5.1（2026-09-08）**：补充真实 Google OAuth/CalDAV 读取验证、`calendar.readonly` 与 `calendar` 范围对比及 Testing 刷新令牌到期说明；运行时代码与 0.5.0 相同。
 - **0.5.0（2026-09-07）**：修复 Google CalDAV #2：新增 OAuth 凭据与环境变量配置、请求时刷新、取消与代理透传；健康检查区分 Basic/OAuth，修正误导的应用专用密码说明。保留其他服务的 Basic 认证。
