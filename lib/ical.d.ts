@@ -57,6 +57,10 @@ export declare function parseEventFromICal(data: string, href: string, etag?: st
  * 解析并（可选）展开一个 VEVENT：非重复事件原样返回（isOccurrence: false）；
  * 重复事件用 ICAL.RecurExpansion 在 [rangeStart, rangeEnd] 内展开，最多返回
  * maxOccurrences 个实例（isOccurrence: true + seriesStart）。
+ *
+ * 同一 VCALENDAR 里带 RECURRENCE-ID 的 VEVENT 是单次实例的覆盖（改期/改标题）：
+ * 展开时用覆盖 VEVENT 替换对应原实例；原实例被 EXDATE 排除或原时间在窗口外时，
+ * 只要覆盖后的实例落在窗口内仍单独返回，避免实例被静默丢弃。
  * @param data - iCal 文本。
  * @param href - CalDAV 对象 href，作为稳定 uid。
  * @param etag - 服务器 ETag。
@@ -69,3 +73,13 @@ export declare function expandEventFromICal(data: string, href: string, etag: st
 export declare function generateUid(): string;
 /** 把字段生成一段完整 iCal 文本（单个 VEVENT）。 */
 export declare function buildICalString(fields: EventFields): string;
+/**
+ * 在原 iCal 文本上做字段级覆盖：保留原 VCALENDAR / VEVENT 的全部属性
+ * （ATTENDEE、ORGANIZER、EXDATE、STATUS、CATEGORIES、VALARM 及未知属性等），
+ * 只替换 changes 里显式给出的字段；原文本缺少 RFC 5545 必需属性时补齐
+ * （VCALENDAR 的 VERSION/PRODID，VEVENT 的 UID/DTSTAMP）。
+ * 解析失败或没有 VEVENT 时返回 null，由调用方回退到整条重建。
+ * @param data - 原 iCal 文本（通常来自服务器的 calendar-data）。
+ * @param changes - 需要覆盖的字段；未提供的字段保留原值。
+ */
+export declare function updateICalString(data: string, changes: Partial<EventFields>): string | null;

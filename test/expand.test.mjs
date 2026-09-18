@@ -113,3 +113,68 @@ test('非重复事件保持单行且 isOccurrence=false', () => {
   assert.equal(events[0].isOccurrence, false)
   assert.equal(events[0].seriesStart, undefined)
 })
+
+test('RECURRENCE-ID 覆盖实例：用改期+改标题后的实例替换原实例，总数仍为 4', () => {
+  const raw = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//dsh-calendar//EN',
+    'BEGIN:VEVENT',
+    'UID:weekly@example.com',
+    'DTSTAMP:20250101T000000Z',
+    'SUMMARY:周会',
+    'DTSTART:20250203T090000Z',
+    'DTEND:20250203T100000Z',
+    'RRULE:FREQ=WEEKLY;COUNT=4',
+    'END:VEVENT',
+    'BEGIN:VEVENT',
+    'UID:weekly@example.com',
+    'DTSTAMP:20250102T000000Z',
+    'RECURRENCE-ID:20250210T090000Z',
+    'SUMMARY:周会（改期）',
+    'DTSTART:20250211T140000Z',
+    'DTEND:20250211T150000Z',
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ].join('\r\n')
+  const events = expandEventFromICal(raw, HREF, 'etag-1', '2025-02-01T00:00:00Z', '2025-03-01T00:00:00Z', 10)
+  assert.equal(events.length, 4)
+  const moved = events.find((event) => event.summary === '周会（改期）')
+  assert.ok(moved, '覆盖实例应作为一条实例出现，而不是被丢弃')
+  assert.equal(moved.start, '2025-02-11T14:00:00Z')
+  assert.equal(moved.end, '2025-02-11T15:00:00Z')
+  assert.ok(!events.some((event) => event.start === '2025-02-10T09:00:00Z'), '原时间不应再出现旧标题实例')
+  assert.deepEqual(events.filter((event) => event.isOccurrence !== true), [], '所有实例都应带 isOccurrence=true')
+})
+
+test('EXDATE + RECURRENCE-ID 同时存在：改期实例不能整条消失', () => {
+  const raw = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//dsh-calendar//EN',
+    'BEGIN:VEVENT',
+    'UID:weekly@example.com',
+    'DTSTAMP:20250101T000000Z',
+    'SUMMARY:周会',
+    'DTSTART:20250203T090000Z',
+    'DTEND:20250203T100000Z',
+    'RRULE:FREQ=WEEKLY;COUNT=4',
+    'EXDATE:20250210T090000Z',
+    'END:VEVENT',
+    'BEGIN:VEVENT',
+    'UID:weekly@example.com',
+    'DTSTAMP:20250102T000000Z',
+    'RECURRENCE-ID:20250210T090000Z',
+    'SUMMARY:周会（改期）',
+    'DTSTART:20250211T140000Z',
+    'DTEND:20250211T150000Z',
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ].join('\r\n')
+  const events = expandEventFromICal(raw, HREF, 'etag-1', '2025-02-01T00:00:00Z', '2025-03-01T00:00:00Z', 10)
+  assert.equal(events.length, 4, '原本 4 次周会：EXDATE 排除 1 次、覆盖实例补回 1 次，总数应仍为 4')
+  const moved = events.find((event) => event.summary === '周会（改期）')
+  assert.ok(moved, '被 EXDATE 与 RECURRENCE-ID 同时标记的实例仍应出现')
+  assert.equal(moved.start, '2025-02-11T14:00:00Z')
+  assert.equal(moved.end, '2025-02-11T15:00:00Z')
+})

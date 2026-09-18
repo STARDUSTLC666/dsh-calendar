@@ -14,6 +14,7 @@ import {
   expandEventFromICal,
   generateUid,
   parseEventFromICal,
+  updateICalString,
   type CalendarEvent,
   type EventFields,
 } from './ical.js'
@@ -253,7 +254,9 @@ export class CalendarService {
         ...(changes.rrule !== undefined ? { rrule: changes.rrule } : existing?.rrule !== undefined ? { rrule: existing.rrule } : {}),
       ...(existing?.icalUid !== undefined ? { icalUid: existing.icalUid } : {}),
     }
-    const iCalString = buildICalString(merged)
+    // 字段级覆盖：保留原 VCALENDAR/VEVENT 的 ATTENDEE、VALARM 等属性，只改显式给出的字段。
+    // 原 calendar-data 无法解析时回退到整条重建，保持旧的可用行为。
+    const iCalString = updateICalString(String(object.data ?? ''), changes) ?? buildICalString(merged)
     try {
       const client = await this.client()
       signal?.throwIfAborted()

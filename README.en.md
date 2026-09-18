@@ -134,7 +134,7 @@ If your CalDAV server is not directly reachable from your network (some regional
 - `calendar_health`: offline provider, endpoint and Basic/OAuth credential-completeness checks; never displays secrets or connects to the server.
 - `calendar_list`: list events in a time range (start/end, ISO 8601; defaults to the next 7 days). Recurring events are expanded by default (`expand` defaults to true, `maxOccurrences` defaults to 30, clamped to 1-200): each occurrence is a separate row with `isOccurrence: true` and `seriesStart`; non-recurring events keep `isOccurrence: false`. With `expand=false`, recurring events are returned as a single original entry with `rrule`. Results are stably sorted by start time.
 - `calendar_create`: create an event (summary/start/end required; description/location/allDay/rrule optional). Validates real calendar dates and `end >= start`.
-- `calendar_update`: edit an event by uid (summary/start/end/description/location/allDay/rrule optional; omitted fields keep their original values, including the recurrence rule).
+- `calendar_update`: edit an event by uid (summary/start/end/description/location/allDay/rrule optional; omitted fields keep their original values, including the recurrence rule and original properties such as ATTENDEE / ORGANIZER / VALARM).
 - `calendar_delete`: delete an event by uid
 - `calendar_search`: search events by keyword (client-side filter over title/description/location/UID, case-insensitive; `limit` defaults to 50, clamped to 1-200, and results are sorted by start time).
 
@@ -161,7 +161,7 @@ Input and output are uniformly ISO 8601. Timed events are output in UTC (e.g. `2
 ## Known limitations
 
 - Recurring event expansion: calendar_list expands RRULE by default via ICAL.RecurExpansion (`expand=true`), capped by `maxOccurrences`; calendar_search still returns the original series (not expanded).
-- No single-instance edit/delete: calendar_update / calendar_delete operate on the whole recurring series (by uid); you cannot modify or delete just one occurrence (no RECURRENCE-ID instance-level operations).
+- Single-instance reads vs edit/delete: calendar_list honors RECURRENCE-ID overrides when expanding (an occurrence separately rescheduled/retitled is returned with the override time and fields, including when the original instant is EXDATE-excluded); calendar_update / calendar_delete still operate on the whole recurring series (by uid) and cannot modify or delete just one occurrence.
 - OAuth credentials must be obtained beforehand: refresh-token authentication is supported, but there is no browser login UI / login CLI and runtime tokens are not written back to configuration.
 - Timezone rules: events with TZID (named timezone) are output converted to UTC (Z); all-day boundaries, DST, and other complex timezone rules are not handled finely.
 - No settings-page UI: this round is a node half-body; config only via cordis.patch.yml, no Web settings page.
