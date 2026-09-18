@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { expandEventFromICal } from '../lib/index.js'
+import { CalendarService, expandEventFromICal, resolveConfig } from '../lib/index.js'
 
 const HREF = 'https://cal.example.com/events/weekly.ics'
 
@@ -177,4 +177,37 @@ test('EXDATE + RECURRENCE-ID 同时存在：改期实例不能整条消失', () 
   assert.ok(moved, '被 EXDATE 与 RECURRENCE-ID 同时标记的实例仍应出现')
   assert.equal(moved.start, '2025-02-11T14:00:00Z')
   assert.equal(moved.end, '2025-02-11T15:00:00Z')
+})
+
+test('DTSTART 远早于窗口的 FREQ=HOURLY：超出迭代预算必须显式报错，而不是静默返回 0 条', () => {
+  const raw = vevent('hourly@example.com', [
+    'SUMMARY:每小时巡检',
+    'DTSTART:20100101T000000Z',
+    'DTEND:20100101T010000Z',
+    'RRULE:FREQ=HOURLY',
+  ])
+  assert.throws(
+    () => expandEventFromICal(raw, HREF, undefined, '2026-09-01T00:00:00Z', '2026-09-02T00:00:00Z', 30),
+    (error) => /迭代上限/.test(error.message) && /2010-01-01T00:00:00Z/.test(error.message) && /COUNT\/UNTIL/.test(error.message),
+  )
+})
+
+test('展开超限在 OAuth 配置下也保留明确提示，不被通用网络错误文案吞掉', async () => {
+  const config = resolveConfig({ provider: 'google', calendarId: 'u@gmail.com', clientId: 'id', clientSecret: 'secret', refreshToken: 'refresh' }, {})
+  const raw = vevent('hourly@example.com', [
+    'SUMMARY:每小时巡检',
+    'DTSTART:20100101T000000Z',
+    'DTEND:20100101T010000Z',
+    'RRULE:FREQ=HOURLY',
+  ])
+  const service = new CalendarService(config)
+  service.clientPromise = Promise.resolve({
+    async fetchCalendarObjects() {
+      return [{ url: 'https://apidata.googleusercontent.com/caldav/v2/u%40gmail.com/events/hourly.ics', data: raw }]
+    },
+  })
+  await assert.rejects(
+    service.list('2026-09-01T00:00:00Z', '2026-09-02T00:00:00Z'),
+    (error) => /迭代上限/.test(error.message),
+  )
 })

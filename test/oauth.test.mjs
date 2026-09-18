@@ -176,8 +176,13 @@ test('pre-aborted OAuth calls perform no token request', async (t) => {
 test('401 invalidates the token for the next call, without automatically replaying a write', async (t) => {
   let issued = 0
   let writes = 0
-  t.mock.method(globalThis, 'fetch', async (input) => {
+  t.mock.method(globalThis, 'fetch', async (input, init) => {
     if (String(input) === tokenUrl) return token('access-' + ++issued)
+    // create 成功后会回读确认 href：这里只统计真正重放的写请求（PUT）。
+    if (init?.method !== 'PUT') {
+      return new Response('<?xml version="1.0"?><D:multistatus xmlns:D="DAV:"></D:multistatus>',
+        { status: 207, headers: { 'content-type': 'application/xml' } })
+    }
     writes++
     return new Response(null, { status: writes === 1 ? 401 : 201 })
   })

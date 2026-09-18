@@ -38,6 +38,14 @@ export interface CalendarEvent {
   lastModified?: string
 }
 
+/** 展开重复事件超出迭代预算：显式报错，避免把「没走到窗口」静默当成「窗口内没有实例」。 */
+export class ExpansionLimitError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'ExpansionLimitError'
+  }
+}
+
 /** 新建 / 更新事件时需要的字段。 */
 export interface EventFields {
   summary: string
@@ -255,6 +263,7 @@ function buildOverrideEvent(base: CalendarEvent, vevent: ICAL.Component): Calend
  * @param rangeStart - 查询窗口起始（ISO 8601）。
  * @param rangeEnd - 查询窗口结束（ISO 8601）。
  * @param maxOccurrences - 每个事件最多展开的实例数（防死循环）。
+ * @throws {ExpansionLimitError} 迭代次数超出预算仍未能到达查询窗口时抛出。
  */
 export function expandEventFromICal(
   data: string,
@@ -302,13 +311,17 @@ export function expandEventFromICal(
   const expansion = new ICAL.RecurExpansion({ component: master, dtstart })
   const occurrences: CalendarEvent[] = []
   const consumedOverrides = new Set<string>()
+  const totalIterationCap = Math.max(100000, maxOccurrences * 1000)
+  let budgetExhausted = false
 
   try {
-    const totalIterationCap = Math.max(100000, maxOccurrences * 1000)
     let iterations = 0
     while (occurrences.length < maxOccurrences) {
       iterations += 1
-      if (iterations > totalIterationCap) break
+      if (iterations > totalIterationCap) {
+        budgetExhausted = true
+        break
+      }
       const next = expansion.next() as ICAL.Time | null | undefined
       if (next === null || next === undefined) break
       const occMs = next.toUnixTime() * 1000
@@ -327,6 +340,14 @@ export function expandEventFromICal(
     }
   } catch {
     // 规则无法满足或迭代异常时，返回已成功展开的部分实例。
+  }
+
+  if (budgetExhausted) {
+    throw new ExpansionLimitError(
+      '重复事件「' + (base.summary !== '' ? base.summary : (base.icalUid ?? href)) + '」展开超过迭代上限（' +
+      totalIterationCap + ' 次）：该系列从 ' + base.start + ' 开始，未能在预算内到达查询窗口。' +
+      '请缩小 start/end 时间范围，或为该 RRULE 添加 COUNT/UNTIL 限制。',
+    )
   }
 
   // EXDATE 已把原时间排除、或原时间在窗口外但覆盖后移入窗口：覆盖实例仍需单独返回。
@@ -349,8 +370,12 @@ export function generateUid(): string {
 /** 把字段生成一段完整 iCal 文本（单个 VEVENT）。 */
 export function buildICalString(fields: EventFields): string {
   const vcal = new ICAL.Component('vcalendar')
+  // RFC 5545 必需属性：服务器不一定替我们补，创建路径显式输出。
+  vcal.addPropertyWithValue('version', '2.0')
+  vcal.addPropertyWithValue('prodid', '-//dsh-calendar//EN')
   const vevent = new ICAL.Component('vevent')
   vevent.addPropertyWithValue('uid', fields.icalUid ?? generateUid())
+  vevent.addPropertyWithValue('dtstamp', ICAL.Time.fromJSDate(new Date(), true))
   vevent.addPropertyWithValue('summary', fields.summary)
 
   const start = parseTime(fields.start, fields.allDay === true || isDateOnly(fields.start))

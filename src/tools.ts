@@ -335,9 +335,11 @@ export function buildCalendarTools(config: CalendarConfig | undefined, env: Node
 
   const search = {
     name: 'calendar_search',
-    description: '按关键词搜索日历事件（客户端过滤：匹配标题、描述、地点与 iCal UID，不区分大小写）。query 必填，limit 可选（默认 50）。返回每个事件的稳定标识 uid。',
+    description: '按关键词搜索日历事件（客户端过滤：匹配标题、描述、地点与 iCal UID，不区分大小写）。只查询 start~end 窗口内的事件（start/end 缺省为当前时间前后各 1 年），query 必填，limit 可选（默认 50）。返回每个事件的稳定标识 uid。',
     parameters: compileParameters({
       query: { type: 'string', required: true, description: '搜索关键词（必填）。' },
+      start: { type: 'string', description: '查询窗口起始时间（ISO 8601，含时区偏移）。缺省为当前时间前 1 年。' },
+      end: { type: 'string', description: '查询窗口结束时间（ISO 8601，含时区偏移）。缺省为当前时间后 1 年。' },
       limit: { type: 'integer', description: '最多返回条数（可选，默认 50，自动 clamp 到 1-200）。' },
     }),
     output: {
@@ -362,7 +364,14 @@ export function buildCalendarTools(config: CalendarConfig | undefined, env: Node
       const input = asRecord(args)
       const query = requiredString(input, 'query', '搜索关键词')
       const limit = clampedInteger(input, 'limit', 50, 1, 200)
-      const all = await service().all(executionSignal(exec))
+      const now = new Date()
+      const yearMs = 365 * 24 * 3600 * 1000
+      const start = optionalString(input, 'start') ?? isoNoMillis(new Date(now.getTime() - yearMs).toISOString())
+      const end = optionalString(input, 'end') ?? isoNoMillis(new Date(now.getTime() + yearMs).toISOString())
+      assertIsoTime(start, 'start')
+      assertIsoTime(end, 'end')
+      assertTimeRange(start, end)
+      const all = await service().all(executionSignal(exec), { start, end })
       const matched = sortEvents(all).filter(buildSearchFilter(query)).slice(0, limit)
       return { query, count: matched.length, events: matched }
     },

@@ -12,6 +12,7 @@ import type { ResolvedConfig } from './config.js'
 import {
   buildICalString,
   expandEventFromICal,
+  ExpansionLimitError,
   generateUid,
   parseEventFromICal,
   updateICalString,
@@ -51,6 +52,8 @@ function authenticationError(config: ResolvedConfig, status: number): CalDAVErro
 /** 把底层错误翻译成与当前认证方式匹配的指引。 */
 function translateError(error: unknown, action: string, config: ResolvedConfig): CalDAVError {
   if (error instanceof CalDAVError) return error
+  // 展开超限是可操作的明确提示，不能被下面的 OAuth 通用文案覆盖。
+  if (error instanceof ExpansionLimitError) return new CalDAVError(error.message)
   if (error instanceof OAuthError) return new CalDAVError(error.message, error.status)
   const message = error instanceof Error ? error.message : String(error)
   const status = (error as { status?: number })?.status
@@ -125,14 +128,15 @@ export class CalendarService {
     }
   }
 
-  /** 列出全部事件（客户端过滤用）。 */
-  async all(signal?: AbortSignal): Promise<CalendarEvent[]> {
+  /** 列出全部（或 timeRange 窗口内）事件，供客户端过滤用。 */
+  async all(signal?: AbortSignal, timeRange?: { start: string; end: string }): Promise<CalendarEvent[]> {
     signal?.throwIfAborted()
     try {
       const client = await this.client()
       signal?.throwIfAborted()
       const objects = await client.fetchCalendarObjects({
         calendar: this.calendar(),
+        ...(timeRange !== undefined ? { timeRange } : {}),
         urlFilter: (url: string) => typeof url === 'string' && url.length > 0,
         ...(signal !== undefined ? { fetchOptions: { signal } } : {}),
       })
@@ -195,6 +199,8 @@ export class CalendarService {
     const icalUid = fields.icalUid ?? generateUid()
     const iCalString = buildICalString({ ...fields, icalUid })
     const filename = icalUid + '.ics'
+    // 本地 filename 只是 PUT 目标，服务器可以按自己的规则分配 href；先按本地猜测兜底。
+    let href = new URL(filename, this.collectionUrl).href
     try {
       const client = await this.client()
       signal?.throwIfAborted()
@@ -206,15 +212,30 @@ export class CalendarService {
       })
       signal?.throwIfAborted()
       assertOk(response, '新建事件', this.config)
+      href = await this.resolveCreatedHref(response, filename, signal)
     } catch (error) {
       signal?.throwIfAborted()
       if (error instanceof CalDAVError) throw error
       throw translateError(error, '新建事件', this.config)
     }
-    const href = new URL(filename, this.collectionUrl).href
     const event = parseEventFromICal(iCalString, href)
     if (event === null) throw new CalDAVError('新建事件失败：生成的 iCal 无法解析')
     return event
+  }
+
+  /** 解析 PUT 响应的 Location；取不到时回读一次确认，避免把本地猜测的 href 当成 uid。 */
+  private async resolveCreatedHref(response: Response, filename: string, signal?: AbortSignal): Promise<string> {
+    const location = response.headers.get('location')?.trim()
+    if (location !== undefined && location !== '') {
+      try {
+        return new URL(location, this.collectionUrl).href
+      } catch {
+        // Location 不是合法 URL 时退回回读确认。
+      }
+    }
+    const guessed = new URL(filename, this.collectionUrl).href
+    const confirmed = await this.findObject(guessed, signal)
+    return confirmed === undefined ? guessed : confirmed.url
   }
 
   /** 按 uid 更新事件；未提供的字段保留原值。 */

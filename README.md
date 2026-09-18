@@ -160,7 +160,7 @@ Nextcloud / 自定义 Basic 服务：检查账号、密码或服务要求的应�
 - `calendar_create`：新建事件（summary/start/end 必填，description/location/allDay/rrule 可选）。严格校验真实日历日期与 `end >= start`
 - `calendar_update`：按 uid 改事件（summary/start/end/description/location/allDay/rrule 可选，未提供保留原值；ATTENDEE、ORGANIZER、VALARM 等原始属性一并保留，重复规则不再丢失）
 - `calendar_delete`：按 uid 删事件
-- `calendar_search`：按关键词搜事件（客户端过滤标题/描述/地点/UID，不区分大小写；`limit` 默认 50、clamp 1-200，结果按开始时间排序）
+- `calendar_search`：按关键词搜事件（只查询 start~end 窗口内的事件，缺省为当前时间前后各 1 年；客户端过滤标题/描述/地点/UID，不区分大小写；`limit` 默认 50、clamp 1-200，结果按开始时间排序）
 
 事件稳定标识 `uid` 为 CalDAV href（完整对象 URL），`calendar_update` / `calendar_delete` 使用它。
 
@@ -187,7 +187,7 @@ Nextcloud / 自定义 Basic 服务：检查账号、密码或服务要求的应�
 - **网络可达性**：若无法直连，可用 `proxyUrl` 指定本机 HTTP 代理，或改用可直连的 CalDAV 端点。
 
 
-- 重复事件展开：calendar_list 默认用 ICAL.RecurExpansion 展开 RRULE（`expand=true`），受 `maxOccurrences` 封顶；calendar_search 仍返回原始系列（不展开）。
+- 重复事件展开：calendar_list 默认用 ICAL.RecurExpansion 展开 RRULE（`expand=true`），受 `maxOccurrences` 封顶，展开超出迭代预算时显式报错；calendar_search 只查 start~end 窗口（默认当前前后各 1 年），仍返回原始系列（不展开）。
 - 单次实例的读取与改/删：calendar_list 展开时识别 RECURRENCE-ID 覆盖实例（单独改期/改标题的实例按覆盖后的时间与字段返回，被 EXDATE 排除原时间的覆盖实例仍会返回）；calendar_update / calendar_delete 仍针对整个重复系列（按 uid 操作），无法只修改或删除某一次发生。
 - OAuth 凭据需要事先取得：支持刷新令牌认证，但不提供浏览器登录 UI / 登录 CLI，也不把运行时令牌写回配置文件。
 - 时区规则：带 TZID（命名时区）的事件输出会转成 UTC（Z）；全天边界、夏令时等复杂时区规则不做精细化处理。

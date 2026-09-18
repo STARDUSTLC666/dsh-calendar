@@ -33,6 +33,10 @@ export interface CalendarEvent {
     created?: string;
     lastModified?: string;
 }
+/** 展开重复事件超出迭代预算：显式报错，避免把「没走到窗口」静默当成「窗口内没有实例」。 */
+export declare class ExpansionLimitError extends Error {
+    constructor(message: string);
+}
 /** 新建 / 更新事件时需要的字段。 */
 export interface EventFields {
     summary: string;
@@ -67,6 +71,7 @@ export declare function parseEventFromICal(data: string, href: string, etag?: st
  * @param rangeStart - 查询窗口起始（ISO 8601）。
  * @param rangeEnd - 查询窗口结束（ISO 8601）。
  * @param maxOccurrences - 每个事件最多展开的实例数（防死循环）。
+ * @throws {ExpansionLimitError} 迭代次数超出预算仍未能到达查询窗口时抛出。
  */
 export declare function expandEventFromICal(data: string, href: string, etag: string | undefined, rangeStart: string, rangeEnd: string, maxOccurrences: number): CalendarEvent[];
 /** 生成随机 iCal UID（带 host 后缀，形如 UUID）。 */

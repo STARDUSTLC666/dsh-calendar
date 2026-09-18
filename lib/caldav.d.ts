@@ -24,8 +24,11 @@ export declare class CalendarService {
         expand?: boolean;
         maxOccurrences?: number;
     }, signal?: AbortSignal): Promise<CalendarEvent[]>;
-    /** 列出全部事件（客户端过滤用）。 */
-    all(signal?: AbortSignal): Promise<CalendarEvent[]>;
+    /** 列出全部（或 timeRange 窗口内）事件，供客户端过滤用。 */
+    all(signal?: AbortSignal, timeRange?: {
+        start: string;
+        end: string;
+    }): Promise<CalendarEvent[]>;
     private toEvents;
     /** 列出并展开：每个对象经 expandEventFromICal 展开为若干实例行。 */
     private toExpandedEvents;
@@ -33,6 +36,8 @@ export declare class CalendarService {
     private findObject;
     /** 新建事件，返回带 href/uid 的事件。 */
     create(fields: EventFields, signal?: AbortSignal): Promise<CalendarEvent>;
+    /** 解析 PUT 响应的 Location；取不到时回读一次确认，避免把本地猜测的 href 当成 uid。 */
+    private resolveCreatedHref;
     /** 按 uid 更新事件；未提供的字段保留原值。 */
     update(uid: string, changes: Partial<EventFields>, signal?: AbortSignal): Promise<CalendarEvent>;
     /** 按 uid 删除事件。 */

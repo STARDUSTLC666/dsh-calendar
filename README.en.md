@@ -136,7 +136,7 @@ If your CalDAV server is not directly reachable from your network (some regional
 - `calendar_create`: create an event (summary/start/end required; description/location/allDay/rrule optional). Validates real calendar dates and `end >= start`.
 - `calendar_update`: edit an event by uid (summary/start/end/description/location/allDay/rrule optional; omitted fields keep their original values, including the recurrence rule and original properties such as ATTENDEE / ORGANIZER / VALARM).
 - `calendar_delete`: delete an event by uid
-- `calendar_search`: search events by keyword (client-side filter over title/description/location/UID, case-insensitive; `limit` defaults to 50, clamped to 1-200, and results are sorted by start time).
+- `calendar_search`: search events by keyword within the `start`~`end` window (defaults to one year before/after now; client-side filter over title/description/location/UID, case-insensitive; `limit` defaults to 50, clamped to 1-200, and results are sorted by start time).
 
 The stable event identifier `uid` is the CalDAV href (full object URL); `calendar_update` / `calendar_delete` use it.
 
@@ -160,7 +160,7 @@ Input and output are uniformly ISO 8601. Timed events are output in UTC (e.g. `2
 
 ## Known limitations
 
-- Recurring event expansion: calendar_list expands RRULE by default via ICAL.RecurExpansion (`expand=true`), capped by `maxOccurrences`; calendar_search still returns the original series (not expanded).
+- Recurring event expansion: calendar_list expands RRULE by default via ICAL.RecurExpansion (`expand=true`), capped by `maxOccurrences`, and raises an explicit error when the iteration budget is exhausted; calendar_search only queries the `start`~`end` window (default one year before/after now) and still returns the original series (not expanded).
 - Single-instance reads vs edit/delete: calendar_list honors RECURRENCE-ID overrides when expanding (an occurrence separately rescheduled/retitled is returned with the override time and fields, including when the original instant is EXDATE-excluded); calendar_update / calendar_delete still operate on the whole recurring series (by uid) and cannot modify or delete just one occurrence.
 - OAuth credentials must be obtained beforehand: refresh-token authentication is supported, but there is no browser login UI / login CLI and runtime tokens are not written back to configuration.
 - Timezone rules: events with TZID (named timezone) are output converted to UTC (Z); all-day boundaries, DST, and other complex timezone rules are not handled finely.
