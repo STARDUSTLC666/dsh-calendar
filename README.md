@@ -170,17 +170,9 @@ Nextcloud / 自定义 Basic 服务：检查账号、密码或服务要求的应�
 
 ## 版本记录
 
-- **0.5.3（2026-09-11）**：复验官方 Harness 0.1.5-rc.1，更新整套同载与真实服务验证记录；运行时代码未变。
-- **0.5.2（2026-09-08）**：补充官方 Harness 0.1.3-alpha.2 的安装、加载与真实 Google 工具调用验证，更新兼容性和 Node 版本要求；运行时代码与 0.5.0 相同。
-- **0.5.1（2026-09-08）**：补充真实 Google OAuth/CalDAV 读取验证、`calendar.readonly` 与 `calendar` 范围对比及 Testing 刷新令牌到期说明；运行时代码与 0.5.0 相同。
-- **0.5.0（2026-09-07）**：修复 Google CalDAV #2：新增 OAuth 凭据与环境变量配置、请求时刷新、取消与代理透传；健康检查区分 Basic/OAuth，修正误导的应用专用密码说明。保留其他服务的 Basic 认证。
-- **0.4.0**：新增 `calendar_health` 自检（离线检查 CalDAV 端点与凭据配置，不验证连接）。
-- **0.3.2**：
-  - 修复 `calendar_update` 更新其他字段时丢失 `rrule` 的问题。
-  - 更新与新建都会校验 `end >= start`，并拒绝 `2025-02-30` 这类不存在的日期。
-  - `calendar_list` / `calendar_search` 输出按开始时间稳定排序；搜索 `limit` clamp 到 1-200。
-  - CalDAV 客户端创建失败后清空缓存，下一次调用可自动重试，不再永久复用 rejected promise。
-
+- **0.5.4（2026-09-18）**：修复 `calendar_update` 丢 ATTENDEE/VALARM 等原始属性、RECURRENCE-ID 覆盖实例被忽略、`calendar_create` 的 uid 不用服务器 Location、展开超限静默返回空；`calendar_search` 支持时间窗。测试 79 项。
+- **0.5.3（2026-09-11）**：复验官方 Harness 0.1.5-rc.1，更新同载与真实服务验证记录；运行时代码未变。
+- **0.5.2 及更早**：见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 已知限制
 

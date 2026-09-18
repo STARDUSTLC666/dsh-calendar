@@ -147,16 +147,9 @@ Input and output are uniformly ISO 8601. Timed events are output in UTC (e.g. `2
 
 ## Changelog
 
-- **0.5.3 (2026-09-11)**: revalidate official Harness 0.1.5-rc.1 and refresh suite co-load and live-service evidence; runtime code is unchanged.
-- **0.5.2 (2026-09-08)**: document installation, loading and real Google tool execution in official Harness 0.1.3-alpha.2; update compatibility and Node requirements. Runtime code is unchanged from 0.5.0.
-- **0.5.1 (2026-09-08)**: document live Google OAuth/CalDAV read validation, the `calendar.readonly` versus `calendar` scope results and Testing refresh-token expiration. Runtime code is unchanged from 0.5.0.
-- **0.5.0 (2026-09-07)**: fix Google CalDAV #2 with OAuth configuration/environment credentials, request-time refresh, cancellation and proxy forwarding. Make health checks and error guidance authentication-aware; retain Basic authentication for other servers.
-- **0.4.0**: new `calendar_health` self-check (offline endpoint and credential configuration checks, not a connection test).
-- **0.3.2**:
-  - Fix `calendar_update` dropping `rrule` while updating other fields.
-  - Validate `end >= start` and reject impossible dates such as `2025-02-30`.
-  - Sort `calendar_list` / `calendar_search` output by start time and clamp search `limit` to 1-200.
-  - Reset the cached CalDAV client after creation failure so the next tool call can retry.
+- **0.5.4 (2026-09-18)**: fixes for `calendar_update` dropping ATTENDEE/VALARM and other original properties, ignored RECURRENCE-ID overrides, `calendar_create` inventing a uid instead of using the server Location, and silent empty expansion results; `calendar_search` gained a time range. 79 tests.
+- **0.5.3 (2026-09-11)**: revalidated against official Harness 0.1.5-rc.1 and refreshed co-load / live-service verification; runtime code unchanged.
+- **0.5.2 and earlier**: see [CHANGELOG.md](CHANGELOG.md).
 
 ## Known limitations
 
