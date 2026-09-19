@@ -14,7 +14,7 @@
  * CalDAV 服务器要，服务器就是唯一真相。缓存的只有 service 实例（token 复用）。
  */
 import { resolveConfig, type CalendarConfig } from './config.js'
-import { draftToConfig, validateSettingsValue, type CalendarSettingsValue } from './settings.js'
+import { CalendarSettingsSchema, SETTINGS_NAMESPACE, draftToConfig, validateSettingsValue, type CalendarSettingsValue } from './settings.js'
 import { CalendarService } from './caldav.js'
 import { asRecord, assertIsoTime, assertTimeRange, isoNoMillis, optionalString, sortEvents } from './tools.js'
 import type { CalendarEvent } from './ical.js'
@@ -86,6 +86,12 @@ export interface CalendarSettingsBackendOptions {
   probeFactory?: (config: CalendarConfig) => Promise<{ count: number; sample: string[] }>
   env?: NodeJS.ProcessEnv
   settings?: CalendarSettingsFace
+  /** 宿主 ctx：用来懒接入 settings 服务（不赌子 fiber 的时序）。 */
+  ctx?: any
+  /** settings 值变化时回调（index.ts 用它把新配置喂给工具层）。 */
+  onSettings?: (value: Record<string, unknown>) => void
+  /** 注册命名空间时的 base 层（来自 cordis.patch.yml 的配置）。 */
+  settingsBase?: Partial<CalendarSettingsValue>
 }
 
 /** 把「已存值 + 草稿」合并成要落盘的一版：草稿里缺席的键保留原值。 */
@@ -127,12 +133,64 @@ export class CalendarSettingsBackend {
   }
 
   /**
+   * 懒接入宿主 settings。为什么不只用 ctx.inject(['settings'], cb)：那条路依赖子 fiber
+   * 的时序，插件被重复 apply、或命名空间已被兄弟实例注册时它会静默失效，面板就永远停在
+   * 「不能保存」。这里每个请求前试一次 ctx.get('settings')，拿到就接上，代价是一次属性读取。
+   *
+   * 命名空间已被注册（重复 apply 的第二个实例）不当作失败：直接搭在既有注册上 ——
+   * describe() 给出的描述符里就带着当前值，写则走 provider 的 replace，功能完全一样。
+   */
+  private ensureSettings(): void {
+    if (this.settings !== undefined) return
+    const ctx = this.options.ctx
+    if (ctx === undefined || ctx === null) return
+    let provider: any
+    try { provider = typeof ctx.get === 'function' ? ctx.get('settings') : undefined } catch (error) { provider = undefined }
+    if (provider === undefined || provider === null) {
+      try { provider = ctx.settings } catch (error) { provider = undefined }
+    }
+    if (provider === undefined || provider === null || typeof provider.register !== 'function') return
+    const describe = (): any[] => (typeof provider.describe === 'function' ? provider.describe() ?? [] : [])
+    const findRow = (): any => describe().find((row: any) => row !== undefined && row !== null && row.ns === SETTINGS_NAMESPACE)
+    let scope: any
+    try {
+      scope = provider.register(SETTINGS_NAMESPACE, CalendarSettingsSchema, {
+        base: this.options.settingsBase ?? {},
+        applies: 'live',
+        validate: (value: unknown) => validateSettingsValue(value as Partial<CalendarSettingsValue>),
+      })
+    } catch (error) {
+      // 「已经注册过」是最常见的一种：不报错，改搭既有注册。
+      scope = undefined
+    }
+    const read = (): Record<string, unknown> => {
+      if (scope !== undefined && typeof scope.get === 'function') {
+        const value = scope.get()
+        if (value !== undefined && value !== null) return value as Record<string, unknown>
+      }
+      const row = findRow()
+      const value = row === undefined ? undefined : (row.value ?? row.user)
+      return (value ?? {}) as Record<string, unknown>
+    }
+    this.attachSettings({
+      read,
+      descriptor: () => findRow(),
+      replace: async (value: Record<string, unknown>, revision: number): Promise<void> => {
+        await provider.replace(SETTINGS_NAMESPACE, value, revision)
+      },
+    })
+    try { this.options.onSettings?.(read()) } catch (error) { /* 回调失败不该让面板挂掉 */ }
+  }
+
+
+  /**
    * 当前生效配置：patch 行配置（或 getter 现取的那份）+ 面板写进 settings 的字段。
    *
    * 面板自己也要合并一遍，而不是只依赖传入的 getter —— 否则「面板显示的连接」
    * 与「工具实际用的连接」就成了两份来源，保存成功却看到未配置的怪象。
    */
   private configOf(): CalendarConfig {
+    this.ensureSettings()
     const source = this.options.config
     const base = (typeof source === 'function' ? source() : source) ?? {}
     const stored = this.settings?.read?.()
@@ -233,6 +291,8 @@ export class CalendarSettingsBackend {
 
   /** 路由入口。GET = 读状态，POST = 动作（list/create/update/delete）。 */
   async handle(req: any, res: any): Promise<void> {
+    // 每次请求前试一次：settings 服务晚到、或上一个实例刚卸载，都能在这一刻补上。
+    this.ensureSettings()
     const remote = String(req.socket?.remoteAddress ?? '')
     if (remote !== '127.0.0.1' && remote !== '::1' && remote !== '::ffff:127.0.0.1') {
       this.responseJson(res, 403, { ok: false, error: { code: 'forbidden', message: 'dsh-calendar settings route is localhost-only' } })
@@ -286,6 +346,7 @@ export class CalendarSettingsBackend {
         throw new Error('当前宿主的 settings 服务不可用：请在 profile 的 cordis.patch.yml 里配置 dsh-calendar 后重启')
       }
       await face.replace(stored, face.descriptor()?.revision ?? 0)
+      try { this.options.onSettings?.(stored) } catch (error) { /* 同上 */ }
       return { saved: true, ...(probe !== undefined ? { probe } : {}), connection: this.connection() }
     }
     if (action === 'list') {

@@ -14,6 +14,7 @@
  * CalDAV 服务器要，服务器就是唯一真相。缓存的只有 service 实例（token 复用）。
  */
 import { type CalendarConfig } from './config.js';
+import { type CalendarSettingsValue } from './settings.js';
 import type { CalendarEvent } from './ical.js';
 /** 面板与浏览器说话的同源路由。 */
 export declare const SETTINGS_ROUTE = "/_dsh/dsh-calendar/settings";
@@ -57,6 +58,12 @@ export interface CalendarSettingsBackendOptions {
     }>;
     env?: NodeJS.ProcessEnv;
     settings?: CalendarSettingsFace;
+    /** 宿主 ctx：用来懒接入 settings 服务（不赌子 fiber 的时序）。 */
+    ctx?: any;
+    /** settings 值变化时回调（index.ts 用它把新配置喂给工具层）。 */
+    onSettings?: (value: Record<string, unknown>) => void;
+    /** 注册命名空间时的 base 层（来自 cordis.patch.yml 的配置）。 */
+    settingsBase?: Partial<CalendarSettingsValue>;
 }
 /** 把「已存值 + 草稿」合并成要落盘的一版：草稿里缺席的键保留原值。 */
 export declare function mergeConnection(stored: Record<string, unknown>, draft: Record<string, unknown>): Record<string, unknown>;
@@ -74,6 +81,15 @@ export declare class CalendarSettingsBackend {
     constructor(options?: CalendarSettingsBackendOptions);
     /** settings 服务到位后接上（传 undefined 摘掉）—— 面板据此从只读变成可保存。 */
     attachSettings(face: CalendarSettingsFace | undefined): void;
+    /**
+     * 懒接入宿主 settings。为什么不只用 ctx.inject(['settings'], cb)：那条路依赖子 fiber
+     * 的时序，插件被重复 apply、或命名空间已被兄弟实例注册时它会静默失效，面板就永远停在
+     * 「不能保存」。这里每个请求前试一次 ctx.get('settings')，拿到就接上，代价是一次属性读取。
+     *
+     * 命名空间已被注册（重复 apply 的第二个实例）不当作失败：直接搭在既有注册上 ——
+     * describe() 给出的描述符里就带着当前值，写则走 provider 的 replace，功能完全一样。
+     */
+    private ensureSettings;
     /**
      * 当前生效配置：patch 行配置（或 getter 现取的那份）+ 面板写进 settings 的字段。
      *

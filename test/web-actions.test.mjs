@@ -372,3 +372,110 @@ test('面板里有连接设置表单，且密钥一律留空靠 placeholder 说�
   assert.match(source, /PROVIDER_FIELDS/, '每个服务商一套字段');
   assert.match(source, /type: secret \? "password" : "text"/, '密钥输入框是 password 类型');
 });
+
+// ───────────────────────────── 懒接入 settings（回归） ─────────────────────────────
+
+/** 模仿宿主 settings provider 的行为：注册返回 scope，describe 给出带值的描述符。 */
+function fakeProvider(options = {}) {
+  const state = { value: Object.assign({}, options.value), revision: 4, registered: [], replaced: [], describeCalls: 0 };
+  const provider = {
+    state,
+    register(ns, schema, registerOptions) {
+      if (options.alreadyRegistered === true) throw new Error('settings namespace "' + ns + '" is already registered');
+      state.registered.push({ ns, registerOptions });
+      return {
+        get: () => state.value,
+        watch: () => () => {},
+        update: async () => {},
+        replace: async (section) => { state.value = Object.assign({}, section); state.revision += 1 },
+      };
+    },
+    describe() {
+      state.describeCalls += 1;
+      return [{ ns: 'dsh-calendar', value: Object.assign({}, state.value), user: Object.assign({}, state.value), revision: state.revision, applies: 'live' }];
+    },
+    async replace(ns, section, revision) {
+      state.replaced.push({ ns, section: Object.assign({}, section), revision });
+      state.value = Object.assign({}, section);
+      state.revision += 1;
+    },
+  };
+  return provider;
+}
+
+test('懒接入：ctx.get(settings) 一到就能保存（不依赖子 fiber 时序）', async () => {
+  const provider = fakeProvider({});
+  const seen = [];
+  const backend = new CalendarSettingsBackend({
+    config: {},
+    ctx: { get: (name) => (name === 'settings' ? provider : undefined) },
+    settingsBase: { provider: 'custom' },
+    onSettings: (value) => seen.push(value),
+    probeFactory: async () => ({ count: 2, sample: ['评审会'] }),
+  });
+  // 第一个请求之前什么都没接上
+  const before = makeRes();
+  await backend.handle(makeReq({ body: { action: 'connection' } }), before);
+  assert.equal(before.state.body.value.settingsAvailable, true, '第一次请求就该把 settings 接上');
+  assert.equal(provider.state.registered.length, 1, '顺带把命名空间注册上');
+  assert.equal(provider.state.registered[0].ns, 'dsh-calendar');
+  assert.deepEqual(provider.state.registered[0].registerOptions.base, { provider: 'custom' }, 'base 来自 cordis.patch.yml');
+
+  const saved = makeRes();
+  await backend.handle(makeReq({
+    body: { action: 'saveConnection', provider: 'icloud', caldavUrl: 'https://caldav.icloud.com/1/calendars/home/', username: 'me@icloud.com', password: 'app-pass' },
+  }), saved);
+  assert.equal(saved.state.status, 200, JSON.stringify(saved.state.body));
+  assert.equal(provider.state.replaced.length, 1);
+  assert.equal(provider.state.replaced[0].revision, 4, '写入带上读到的 revision');
+  assert.equal(provider.state.replaced[0].section.provider, 'icloud');
+  assert.equal(seen.length >= 1, true, '保存后要把新值回调出去（工具层据此立刻生效）');
+});
+
+test('命名空间已被注册（重复 apply 的第二个实例）→ 搭上去继续用，而不是整块失效', async () => {
+  const provider = fakeProvider({
+    alreadyRegistered: true,
+    value: { provider: 'nextcloud', host: 'https://cloud.example', user: 'me', username: 'me', calendar: 'personal', password: 'stored' },
+  });
+  const backend = new CalendarSettingsBackend({
+    config: {},
+    ctx: { get: () => provider },
+    probeFactory: async () => ({ count: 1, sample: ['站会'] }),
+  });
+  const res = makeRes();
+  await backend.handle(makeReq({ body: { action: 'connection' } }), res);
+  assert.equal(res.state.status, 200);
+  assert.equal(res.state.body.value.settingsAvailable, true, 'register 抛异常不等于面板只读');
+  assert.equal(res.state.body.value.configured, true, '值从 describe() 的描述符里读出来');
+  assert.equal(res.state.body.value.provider, 'nextcloud');
+  assert.equal(res.state.body.value.hasPassword, true);
+  assert.equal(/stored/.test(res.state.raw), false, '描述符里的密码也不能回显');
+
+  const saved = makeRes();
+  await backend.handle(makeReq({ body: { action: 'saveConnection', provider: 'nextcloud', host: 'https://cloud.example', user: 'me', username: 'me', calendar: 'work' } }), saved);
+  assert.equal(saved.state.status, 200, JSON.stringify(saved.state.body));
+  assert.equal(provider.state.replaced[0].section.password, 'stored', '没填的密码沿用描述符里的那份');
+  assert.equal(provider.state.replaced[0].section.calendar, 'work');
+});
+
+test('拿不到 settings 服务时依旧只读，且不抛错', async () => {
+  const backend = new CalendarSettingsBackend({ config: {}, ctx: { get: () => undefined }, probeFactory: async () => ({ count: 0, sample: [] }) });
+  const res = makeRes();
+  await backend.handle(makeReq({ body: { action: 'connection' } }), res);
+  assert.equal(res.state.status, 200);
+  assert.equal(res.state.body.value.settingsAvailable, false);
+});
+
+test('连接设置旁边有提示与跳转（字段级小字 + 分步说明 + 外链）', async () => {
+  const fs = await import('node:fs');
+  const source = fs.readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8');
+  assert.match(source, /FIELD_HINT/, '每个字段的字段级提示表');
+  assert.match(source, /"hint\.caldavUrl\.icloud"/, 'iCloud 的 URL 提示');
+  assert.match(source, /"hint\.password\.icloud".*App 专用密码/, 'iCloud 的密码必须是 App 专用密码');
+  assert.match(source, /"steps\.google": \[/, 'Google 的分步说明');
+  assert.match(source, /developers\.google\.com\/oauthplayground/, 'OAuth Playground 跳转');
+  assert.match(source, /console\.cloud\.google\.com/, 'Google Cloud 凭据页跳转');
+  assert.match(source, /appleid\.apple\.com/, 'Apple ID 跳转');
+  assert.match(source, /nextcloud: \["host", "user", "username"/, 'Nextcloud 必须同时有 user 与 username（否则 resolveConfig 报未配置 username）');
+  assert.match(source, /target: "_blank", rel: "noreferrer"/, '外链新窗口打开且不带 referrer');
+});

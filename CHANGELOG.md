@@ -9,7 +9,10 @@
 - 未配置 CalDAV 时面板显示引导态与「查看示例」，不再只丢一条报错。
 - **新增面板内连接配置**：面板工具栏的「连接设置」支持 Google / iCloud / Nextcloud / 自建四种服务商。填完先「测试连接」（真去列未来 30 天日程），通过才允许保存；保存时服务端还会再测一次 —— 因此「保存成功」等价于「这套凭据刚才真的连上了」，一个连不上的地址不会被写进配置。密码 / clientSecret / refreshToken 不回填到前端（placeholder 显示「已保存，留空不改」），留空即沿用已存值。
 - 面板配置写入宿主 settings 命名空间 `dsh-calendar`（`src/settings.ts`）：**面板没填过的字段仍由 profile 的 `cordis.patch.yml` 兜底**，两份配置共存、老部署零迁移；宿主没有 settings 服务时面板自动退化为只读并说明原因。工具层改为「每次调用现取配置」（`CalendarConfigSource`），所以面板保存后无需重启。
-- 后端新增 `connection` / `testConnection` / `saveConnection` 三个动作；新增依赖 `schemastery`。测试 88 → 98 项。
+- 后端新增 `connection` / `testConnection` / `saveConnection` 三个动作；新增依赖 `schemastery`。
+- **修复**：宿主 settings 服务改为**懒接入**（每个请求前 `ctx.get('settings')`）。此前依赖 `ctx.inject(['settings'])` 子 fiber 的时序 —— 插件被重复 apply、或命名空间已被注册时它会静默失效，面板就永远停在「settings 服务不可用」。现在命名空间已被注册也不当作失败：值从 `describe()` 描述符读、写走 provider 的 `replace`，功能完全一致。
+- **修复**：Nextcloud 表单缺 `username`（认证账号）字段，照原表单填完会报「未配置 username」（`user` 是用来拼 URL 的，认证用的是 `username`）。
+- 连接设置表单补齐「怎么拿到这些值」：字段级小字提示 + 可展开的分步说明 + 外链（Google Cloud 凭据页 / OAuth Playground / Apple ID 设置），Nextcloud 的 `user` 与 `username` 也分别写了说明。测试 88 → 102 项。
 - CI 增加 `node --check lib/client.js`（网页端源码不走 tsc，只能语法自检）。测试 79 → 88 项。
 
 > 完整历史（含详细改动说明）。README 只保留最近几个版本的一句话摘要。
