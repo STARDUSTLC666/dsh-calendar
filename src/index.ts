@@ -65,7 +65,7 @@ export function attachSettings(ctx: CalendarPluginContext, cfg: CalendarConfig):
   }
   const usable = provider !== undefined && provider !== null && typeof provider.register === 'function' && typeof provider.replace === 'function'
   if (usable !== true) {
-    const reason = '宿主没有提供 settings 服务'
+    const reason = '插件未注入宿主 settings 服务'
     console.warn('dsh-calendar: ' + reason + '，连接配置改存插件自己的文件：' + connectionFile())
     return { face: fileSettingsFace(), reason }
   }

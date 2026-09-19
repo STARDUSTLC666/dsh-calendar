@@ -545,7 +545,7 @@ test('attachSettings：拿不到 settings 服务时退到兜底文件（面板�
   try {
     const attached = attachSettings({ get: () => undefined }, {});
     assert.equal(attached.face.kind, 'file');
-    assert.match(attached.reason, /没有提供 settings 服务/);
+    assert.match(attached.reason, /未注入宿主 settings 服务/);
     assert.match(warnings[0], /连接配置改存插件自己的文件/);
     // 走一次完整保存：应该落到文件里，并能在下一次读回来
     const backend = new CalendarSettingsBackend({

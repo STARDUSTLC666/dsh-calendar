@@ -16,6 +16,7 @@
 - **新增 `scripts/google-oauth.mjs`**：一条命令换 Google refresh token —— 起一次性本地回环回调、自动打开浏览器、收到 code 后换 token 并打印；README（中英）的 Google 段改为用它，`files` 增加 `scripts` 让 npm 包内也带这份脚本。测试 102 → 106 项（含本地假令牌端点的全流程测试）。
 - 该脚本随后加固：**clientId 自检**（拦下控制台列表里被截断显示的那串，避免拿到一张 Google 400 页）、**授权地址预检**（打开浏览器前先问一次 Google，400 就在终端把原因说清楚）、**PKCE（S256）**、以及回调端口的收尾（预检失败/超时/拒绝都不再留下监听）。测试 106 → 111 项。
 - **新增兜底存储**：宿主没有 settings 服务、或命名空间注册失败且无人注册时，连接配置改存插件自己的文件 `$DSH_HOME/data/dsh-calendar/connection.json`（0600，与 dsh-email 的 token 文件同源），面板里会写明「存在哪个文件」而不是笼统一句「不可用」；`/connection` 也会带上 `settingsKind`（settings｜file）与 `settingsReason`，便于排查。
+- 文案：兜底存储的说明降级为弹窗底部一行小字（不再是一块看起来像报错的灰条），并改正「密码存在 settings.yaml」的说法 —— 兜底生效时它其实存在 `connection.json`。
 - **修复**：settings 命名空间改为**插件加载时同步注册**。此前是在请求处理里懒注册，而宿主的 `register` 内部会 `ctx.effect(...)`（需要插件的活动作用域），在请求上下文里会失败；失败又被吞掉，于是表现成「面板看着能用，一保存就报 `settings namespace "dsh-calendar" is not registered`」。现在注册发生在 apply 阶段，真实失败会以 `dsh-calendar: …` 警告打到终端；插件被重复 apply 时第二个实例不再注册、直接搭既有注册的车。
 - **修复**：Windows 上打开浏览器改用 `rundll32 url.dll,FileProtocolHandler`。此前用 `cmd /c start <url>`，授权 URL 里的 `&` 被 cmd 当成命令分隔符，浏览器只收到第一段 —— Google 的表现是 `Required parameter is missing: response_type`（预检查不出来，因为脚本自己发的请求是完整的）。换 token 脚本改为**交互式**：直接敲 `node scripts/google-oauth.mjs`，它会依次问 clientId 与 clientSecret，并识别「把文档示例文字当值粘进来」这种情况。
 - CI 增加 `node --check lib/client.js`（网页端源码不走 tsc，只能语法自检）。测试 79 → 88 项。
