@@ -8,6 +8,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { CalendarSettingsBackend, SETTINGS_ROUTE, hostVerdict, mergeConnection, postVerdict } from '../lib/web.js';
 import { toCalendarConfig, toSettingsBase, validateSettingsValue } from '../lib/settings.js';
+import { attachSettings } from '../lib/index.js';
 
 /** 造一个最小 req：POST body 走异步迭代器（handle 里就是 for await 读的）。 */
 function makeReq(options = {}) {
@@ -403,7 +404,7 @@ function fakeProvider(options = {}) {
   return provider;
 }
 
-test('懒接入：ctx.get(settings) 一到就能保存（不依赖子 fiber 时序）', async () => {
+test('backend 能搭上既有注册：ctx.get(settings) 一到就能读能写', async () => {
   const provider = fakeProvider({});
   const seen = [];
   const backend = new CalendarSettingsBackend({
@@ -417,9 +418,7 @@ test('懒接入：ctx.get(settings) 一到就能保存（不依赖子 fiber 时�
   const before = makeRes();
   await backend.handle(makeReq({ body: { action: 'connection' } }), before);
   assert.equal(before.state.body.value.settingsAvailable, true, '第一次请求就该把 settings 接上');
-  assert.equal(provider.state.registered.length, 1, '顺带把命名空间注册上');
-  assert.equal(provider.state.registered[0].ns, 'dsh-calendar');
-  assert.deepEqual(provider.state.registered[0].registerOptions.base, { provider: 'custom' }, 'base 来自 cordis.patch.yml');
+  assert.equal(provider.state.registered.length, 0, '注册是 index.ts 在插件加载时做的（宿主的 register 需要活动作用域），backend 只负责搭车');
 
   const saved = makeRes();
   await backend.handle(makeReq({
@@ -478,4 +477,51 @@ test('连接设置旁边有提示与跳转（字段级小字 + 分步说明 + �
   assert.match(source, /appleid\.apple\.com/, 'Apple ID 跳转');
   assert.match(source, /nextcloud: \["host", "user", "username"/, 'Nextcloud 必须同时有 user 与 username（否则 resolveConfig 报未配置 username）');
   assert.match(source, /target: "_blank", rel: "noreferrer"/, '外链新窗口打开且不带 referrer');
+});
+
+// ───────────────────────────── 注册时机（插件加载时同步注册） ─────────────────────────────
+
+test('attachSettings：在插件加载阶段同步注册命名空间，base 来自 cordis.patch.yml', () => {
+  const provider = fakeProvider({});
+  const ctx = { get: (name) => (name === 'settings' ? provider : undefined) };
+  const face = attachSettings(ctx, { provider: 'icloud', username: 'me@icloud.com', password: 'p' });
+  assert.ok(face, '要拿到读写面');
+  assert.equal(provider.state.registered.length, 1, '注册恰好一次');
+  assert.equal(provider.state.registered[0].ns, 'dsh-calendar');
+  assert.deepEqual(provider.state.registered[0].registerOptions.base, { provider: 'icloud', username: 'me@icloud.com', password: 'p' });
+  assert.equal(provider.state.registered[0].registerOptions.applies, 'live');
+  assert.equal(typeof provider.state.registered[0].registerOptions.validate, 'function');
+  // 校验函数就是 settings 模块那一套
+  assert.throws(() => provider.state.registered[0].registerOptions.validate({ provider: 'nope' }), /未知的日历服务商/);
+  assert.deepEqual(face.read(), {}, '还没写过时读到空对象');
+  assert.equal(face.descriptor().revision, 4);
+});
+
+test('attachSettings：注册抛错（已被注册）时不炸，改为搭既有注册，并打出原因', () => {
+  const provider = fakeProvider({ alreadyRegistered: true, value: { provider: 'custom', caldavUrl: 'https://x/dav/', username: 'me', password: 'p' } });
+  const warnings = [];
+  const original = console.warn;
+  console.warn = (...args) => { warnings.push(args.join(' ')); };
+  try {
+    const face = attachSettings({ get: () => provider }, {});
+    assert.ok(face, '搭既有注册也要给出读写面');
+    assert.equal(face.read().provider, 'custom', '值从 describe() 描述符来');
+    assert.equal(warnings.length, 1);
+    assert.match(warnings[0], /settings 命名空间注册失败/);
+  } finally {
+    console.warn = original;
+  }
+});
+
+test('attachSettings：没有 settings 服务时返回 undefined（面板只读）并说明原因', () => {
+  const warnings = [];
+  const original = console.warn;
+  console.warn = (...args) => { warnings.push(args.join(' ')); };
+  try {
+    assert.equal(attachSettings({ get: () => undefined }, {}), undefined);
+    assert.equal(attachSettings({}, {}), undefined);
+    assert.match(warnings[0], /没有 settings 服务/);
+  } finally {
+    console.warn = original;
+  }
 });

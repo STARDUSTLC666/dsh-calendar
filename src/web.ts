@@ -74,6 +74,32 @@ export interface CalendarSettingsFace {
   replace(value: Record<string, unknown>, revision: number): Promise<void>
 }
 
+/**
+ * 由一个「宿主 settings provider + 可选 scope」拼出面板要的读写面。
+ *
+ * 注册**不在这里**：宿主的 register 内部会 `ctx.effect(...)`，必须发生在插件加载的同步阶段；
+ * 在请求处理里调用它会失败（此前就这样：看着「接上了」，真写的时候报 namespace is not registered）。
+ */
+export function settingsFaceOf(provider: any, scope: any, ns: string = SETTINGS_NAMESPACE): CalendarSettingsFace {
+  const findRow = (): any => (typeof provider.describe === 'function' ? provider.describe() ?? [] : [])
+    .find((row: any) => row !== undefined && row !== null && row.ns === ns)
+  return {
+    read: (): Record<string, unknown> => {
+      if (scope !== undefined && scope !== null && typeof scope.get === 'function') {
+        const value = scope.get()
+        if (value !== undefined && value !== null) return value as Record<string, unknown>
+      }
+      const row = findRow()
+      const value = row === undefined ? undefined : (row.value ?? row.user)
+      return (value ?? {}) as Record<string, unknown>
+    },
+    descriptor: () => findRow(),
+    replace: async (value: Record<string, unknown>, revision: number): Promise<void> => {
+      await provider.replace(ns, value, revision)
+    },
+  }
+}
+
 /** 面板要读写的连接字段。空串 = 保持不变，null = 明确清除。 */
 export const CONNECTION_KEYS = ['provider', 'caldavUrl', 'username', 'password', 'host', 'user', 'calendar', 'calendarId', 'authMethod', 'clientId', 'clientSecret', 'refreshToken', 'tokenUrl', 'proxyUrl'] as const
 
@@ -133,12 +159,9 @@ export class CalendarSettingsBackend {
   }
 
   /**
-   * 懒接入宿主 settings。为什么不只用 ctx.inject(['settings'], cb)：那条路依赖子 fiber
-   * 的时序，插件被重复 apply、或命名空间已被兄弟实例注册时它会静默失效，面板就永远停在
-   * 「不能保存」。这里每个请求前试一次 ctx.get('settings')，拿到就接上，代价是一次属性读取。
-   *
-   * 命名空间已被注册（重复 apply 的第二个实例）不当作失败：直接搭在既有注册上 ——
-   * describe() 给出的描述符里就带着当前值，写则走 provider 的 replace，功能完全一样。
+   * 兜底接入：注册由 index.ts 在插件加载时同步完成（那里能拿到活动作用域）。
+   * 这里只在「还没接上」时搭一次既有注册的车 —— 例如插件被重复 apply 时第二个实例，
+   * 它没资格注册，但可以照常读写（值从 describe() 描述符来，写走 provider.replace）。
    */
   private ensureSettings(): void {
     if (this.settings !== undefined) return
@@ -149,37 +172,11 @@ export class CalendarSettingsBackend {
     if (provider === undefined || provider === null) {
       try { provider = ctx.settings } catch (error) { provider = undefined }
     }
-    if (provider === undefined || provider === null || typeof provider.register !== 'function') return
-    const describe = (): any[] => (typeof provider.describe === 'function' ? provider.describe() ?? [] : [])
-    const findRow = (): any => describe().find((row: any) => row !== undefined && row !== null && row.ns === SETTINGS_NAMESPACE)
-    let scope: any
-    try {
-      scope = provider.register(SETTINGS_NAMESPACE, CalendarSettingsSchema, {
-        base: this.options.settingsBase ?? {},
-        applies: 'live',
-        validate: (value: unknown) => validateSettingsValue(value as Partial<CalendarSettingsValue>),
-      })
-    } catch (error) {
-      // 「已经注册过」是最常见的一种：不报错，改搭既有注册。
-      scope = undefined
-    }
-    const read = (): Record<string, unknown> => {
-      if (scope !== undefined && typeof scope.get === 'function') {
-        const value = scope.get()
-        if (value !== undefined && value !== null) return value as Record<string, unknown>
-      }
-      const row = findRow()
-      const value = row === undefined ? undefined : (row.value ?? row.user)
-      return (value ?? {}) as Record<string, unknown>
-    }
-    this.attachSettings({
-      read,
-      descriptor: () => findRow(),
-      replace: async (value: Record<string, unknown>, revision: number): Promise<void> => {
-        await provider.replace(SETTINGS_NAMESPACE, value, revision)
-      },
-    })
-    try { this.options.onSettings?.(read()) } catch (error) { /* 回调失败不该让面板挂掉 */ }
+    if (provider === undefined || provider === null || typeof provider.replace !== 'function') return
+    // 只有描述符里真的出现了我们这个命名空间，才说明有人注册过 —— 否则写也是白写。
+    const known = (typeof provider.describe === 'function' ? provider.describe() ?? [] : []).some((row: any) => row !== undefined && row !== null && row.ns === SETTINGS_NAMESPACE)
+    if (known !== true) return
+    this.attachSettings(settingsFaceOf(provider, undefined))
   }
 
 

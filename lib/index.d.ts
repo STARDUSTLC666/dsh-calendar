@@ -9,6 +9,7 @@
  */
 import { type CalendarConfig } from './config.js';
 import { type CalendarToolDefinition } from './tools.js';
+import { type CalendarSettingsFace } from './web.js';
 /** cordis 服务注入：apply 里要用 ctx.tools，必须显式声明注入，否则宿主会抛 cannot get property without inject。 */
 export declare const name = "calendar";
 export declare const inject: string[];
@@ -21,6 +22,14 @@ export interface CalendarPluginContext {
     /** 设置页面板需要挂路由；隔离环境（测试/headless）可以没有。 */
     inject?(services: string[], callback: (ctx: any) => void): void;
 }
+/**
+ * 同步注册 settings 命名空间并返回读写面。
+ *
+ * 时机是关键：宿主的 register 内部会 `ctx.effect(...)`，必须在插件加载的**同步阶段**调用 ——
+ * 在请求处理里注册会失败，而失败一旦被吞掉，就会在保存时才暴露成「namespace is not registered」。
+ * 拿不到服务 / 注册失败都只 warn：面板退化为只读，配置仍可写在 cordis.patch.yml。
+ */
+export declare function attachSettings(ctx: CalendarPluginContext, cfg: CalendarConfig): CalendarSettingsFace | undefined;
 /**
  * 插件入口：惰性解析配置并注册五个日历工具。
  * @param ctx - 宿主上下文（至少含 tools.register）。
