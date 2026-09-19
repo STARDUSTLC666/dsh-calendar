@@ -69,6 +69,8 @@ export interface CalendarServiceLike {
 
 /** 面板用于读写 settings 命名空间的最小面（index.ts 在 settings 服务到位后接上）。 */
 export interface CalendarSettingsFace {
+  /** 'settings' = 宿主命名空间；'file' = 插件自己的兜底文件。 */
+  kind?: 'settings' | 'file'
   read(): Record<string, unknown>
   descriptor(): { revision?: number; user?: Record<string, unknown> } | undefined
   replace(value: Record<string, unknown>, revision: number): Promise<void>
@@ -84,6 +86,7 @@ export function settingsFaceOf(provider: any, scope: any, ns: string = SETTINGS_
   const findRow = (): any => (typeof provider.describe === 'function' ? provider.describe() ?? [] : [])
     .find((row: any) => row !== undefined && row !== null && row.ns === ns)
   return {
+    kind: 'settings',
     read: (): Record<string, unknown> => {
       if (scope !== undefined && scope !== null && typeof scope.get === 'function') {
         const value = scope.get()
@@ -118,6 +121,8 @@ export interface CalendarSettingsBackendOptions {
   onSettings?: (value: Record<string, unknown>) => void
   /** 注册命名空间时的 base 层（来自 cordis.patch.yml 的配置）。 */
   settingsBase?: Partial<CalendarSettingsValue>
+  /** 为什么没接上宿主 settings（面板要把它显示出来，而不是一句「不可用」）。 */
+  settingsReason?: string
 }
 
 /** 把「已存值 + 草稿」合并成要落盘的一版：草稿里缺席的键保留原值。 */
@@ -234,6 +239,8 @@ export class CalendarSettingsBackend {
       configured,
       ...(reason !== undefined ? { reason } : {}),
       settingsAvailable: this.settings !== undefined,
+      ...(this.settings?.kind !== undefined ? { settingsKind: this.settings.kind } : {}),
+      ...(this.options.settingsReason !== undefined ? { settingsReason: this.options.settingsReason } : {}),
       revision: descriptor?.revision ?? 0,
       provider: text('provider'),
       caldavUrl: text('caldavUrl'),

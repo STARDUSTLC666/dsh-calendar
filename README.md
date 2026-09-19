@@ -33,7 +33,7 @@ dsh plugin --profile web add dsh-calendar
 
 打开面板右上角的「连接设置」，选服务商 → 填地址与账号 → 点**「测试连接」**（它会真的去列未来 30 天的日程）→ 通过后点「保存并启用」。工具的下一次调用立刻用上新配置，不用重启、不用编辑 YAML。
 
-面板写下的值存在本机 `settings.yaml` 的 `dsh-calendar` 命名空间里（密码是 secret 字段：不进日志、不进导出）。**YAML 仍然是基座**：面板没填过的字段由它兜底，所以已经用 `cordis.patch.yml` 配好的部署零迁移；纯 headless（没有设置页）的宿主依然只能走 YAML。
+面板写下的值优先存在本机 `settings.yaml` 的 `dsh-calendar` 命名空间里（密码是 secret 字段：不进日志、不进导出）；若宿主没有 settings 服务（或命名空间注册失败），自动改存插件自己的文件 `$DSH_HOME/data/dsh-calendar/connection.json`（0600），面板里会明确显示当前存在哪。**YAML 仍然是基座**：面板没填过的字段由它兜底，所以已经用 `cordis.patch.yml` 配好的部署零迁移；纯 headless（没有设置页）的宿主依然只能走 YAML。
 
 各服务商要点：
 

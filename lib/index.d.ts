@@ -29,7 +29,21 @@ export interface CalendarPluginContext {
  * 在请求处理里注册会失败，而失败一旦被吞掉，就会在保存时才暴露成「namespace is not registered」。
  * 拿不到服务 / 注册失败都只 warn：面板退化为只读，配置仍可写在 cordis.patch.yml。
  */
-export declare function attachSettings(ctx: CalendarPluginContext, cfg: CalendarConfig): CalendarSettingsFace | undefined;
+/** 兜底：把连接配置存进插件自己的文件（宿主 settings 不可用/注册失败时）。 */
+export declare function fileSettingsFace(file?: string): CalendarSettingsFace;
+/**
+ * 接上配置存储：首选宿主 settings 命名空间，不行就退到插件自己的文件。
+ *
+ * 三步走，每一步失败都往下退而不是抛：
+ *   1. 拿到 settings 服务 → 在**插件加载阶段**同步注册命名空间（宿主的 register 要活动作用域）；
+ *   2. 注册失败但 describe() 里已有我们这个命名空间 → 搭既有注册的车（重复 apply 的第二个实例）；
+ *   3. 服务不在、或注册失败且没人注册过 → 用兜底文件。
+ * 返回 reason 是为了让面板说清「为什么不是宿主设置」，而不是笼统一句「不可用」。
+ */
+export declare function attachSettings(ctx: CalendarPluginContext, cfg: CalendarConfig): {
+    face: CalendarSettingsFace;
+    reason?: string;
+};
 /**
  * 插件入口：惰性解析配置并注册五个日历工具。
  * @param ctx - 宿主上下文（至少含 tools.register）。
@@ -43,3 +57,4 @@ export * from './caldav.js';
 export * from './tools.js';
 export * from './web.js';
 export * from './settings.js';
+export * from './store.js';

@@ -37,7 +37,7 @@ Then restart the web service. To clean up fully, also remove the plugin entry fr
 
 Open「Connection」in the panel toolbar, pick a provider, fill in the address and account, hit **Test connection** (it really lists the next 30 days) and then **Save and enable**. The tools pick the new configuration up on their next call — no restart, no YAML editing.
 
-What the panel saves lives in your local `settings.yaml` under the `dsh-calendar` namespace (the password is a secret field: no logs, no exports). **The YAML remains the base layer**: any field the panel never touched still comes from it, so an existing `cordis.patch.yml` setup needs no migration; a headless host without a settings page still configures through YAML only.
+What the panel saves lives in your local `settings.yaml` under the `dsh-calendar` namespace (the password is a secret field: no logs, no exports). If the host has no settings service (or the namespace cannot be registered), the connection is stored in the plugin’s own file `$DSH_HOME/data/dsh-calendar/connection.json` (0600) instead, and the panel says which one is in use. **The YAML remains the base layer**: any field the panel never touched still comes from it, so an existing `cordis.patch.yml` setup needs no migration; a headless host without a settings page still configures through YAML only.
 
 Per-provider notes:
 

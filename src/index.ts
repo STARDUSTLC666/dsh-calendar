@@ -12,6 +12,7 @@ import { resolveConfig, type CalendarConfig } from './config.js'
 import { buildCalendarTools, type CalendarToolDefinition } from './tools.js'
 import { CalendarSettingsSchema, SETTINGS_NAMESPACE, toCalendarConfig, toSettingsBase, validateSettingsValue, type CalendarSettingsValue } from './settings.js'
 import { CalendarSettingsBackend, installCalendarSettingsWeb, settingsFaceOf, type CalendarSettingsFace } from './web.js'
+import { connectionFile, readConnectionFile, writeConnectionFile } from './store.js'
 
 /** cordis 服务注入：apply 里要用 ctx.tools，必须显式声明注入，否则宿主会抛 cannot get property without inject。 */
 export const name = 'calendar'
@@ -34,17 +35,42 @@ export interface CalendarPluginContext {
  * 在请求处理里注册会失败，而失败一旦被吞掉，就会在保存时才暴露成「namespace is not registered」。
  * 拿不到服务 / 注册失败都只 warn：面板退化为只读，配置仍可写在 cordis.patch.yml。
  */
-export function attachSettings(ctx: CalendarPluginContext, cfg: CalendarConfig): CalendarSettingsFace | undefined {
+/** 兜底：把连接配置存进插件自己的文件（宿主 settings 不可用/注册失败时）。 */
+export function fileSettingsFace(file: string = connectionFile()): CalendarSettingsFace {
+  return {
+    kind: 'file',
+    read: () => readConnectionFile(file).value,
+    descriptor: () => ({ revision: readConnectionFile(file).revision }),
+    replace: async (value: Record<string, unknown>): Promise<void> => {
+      const current = readConnectionFile(file)
+      writeConnectionFile({ revision: current.revision + 1, value }, file)
+    },
+  }
+}
+
+/**
+ * 接上配置存储：首选宿主 settings 命名空间，不行就退到插件自己的文件。
+ *
+ * 三步走，每一步失败都往下退而不是抛：
+ *   1. 拿到 settings 服务 → 在**插件加载阶段**同步注册命名空间（宿主的 register 要活动作用域）；
+ *   2. 注册失败但 describe() 里已有我们这个命名空间 → 搭既有注册的车（重复 apply 的第二个实例）；
+ *   3. 服务不在、或注册失败且没人注册过 → 用兜底文件。
+ * 返回 reason 是为了让面板说清「为什么不是宿主设置」，而不是笼统一句「不可用」。
+ */
+export function attachSettings(ctx: CalendarPluginContext, cfg: CalendarConfig): { face: CalendarSettingsFace; reason?: string } {
   let provider: any
   try { provider = typeof (ctx as any).get === 'function' ? (ctx as any).get('settings') : undefined } catch (error) { provider = undefined }
   if (provider === undefined || provider === null) {
     try { provider = (ctx as any).settings } catch (error) { provider = undefined }
   }
-  if (provider === undefined || provider === null || typeof provider.register !== 'function' || typeof provider.replace !== 'function') {
-    console.warn('dsh-calendar: 没有 settings 服务，面板只能只读（配置仍可写在 profile 的 cordis.patch.yml）')
-    return undefined
+  const usable = provider !== undefined && provider !== null && typeof provider.register === 'function' && typeof provider.replace === 'function'
+  if (usable !== true) {
+    const reason = '宿主没有提供 settings 服务'
+    console.warn('dsh-calendar: ' + reason + '，连接配置改存插件自己的文件：' + connectionFile())
+    return { face: fileSettingsFace(), reason }
   }
   let scope: any
+  let failure: string | undefined
   try {
     scope = provider.register(SETTINGS_NAMESPACE, CalendarSettingsSchema, {
       base: toSettingsBase(cfg),
@@ -52,10 +78,21 @@ export function attachSettings(ctx: CalendarPluginContext, cfg: CalendarConfig):
       validate: (value: unknown) => validateSettingsValue(value as Partial<CalendarSettingsValue>),
     })
   } catch (error) {
-    // 最常见的是「已被注册」（重复 apply 的第二个实例）：不注册，改搭既有注册的车。
-    console.warn('dsh-calendar: settings 命名空间注册失败，改为搭既有注册：' + (error instanceof Error ? error.message : String(error)))
+    failure = error instanceof Error ? error.message : String(error)
   }
-  return settingsFaceOf(provider, scope)
+  const known = (typeof provider.describe === 'function' ? provider.describe() ?? [] : []).some((row: any) => row !== undefined && row !== null && row.ns === SETTINGS_NAMESPACE)
+  if (failure !== undefined && known === true) {
+    // 已被注册（重复 apply 的第二个实例）：不注册，搭既有注册的车。
+    console.warn('dsh-calendar: settings 命名空间注册失败（' + failure + '），改为搭既有注册')
+    return { face: settingsFaceOf(provider, undefined) }
+  }
+  if (failure !== undefined) {
+    // 注册失败且没人注册过：写进去也会报 namespace is not registered，直接换兜底文件。
+    const reason = 'settings 命名空间注册失败：' + failure
+    console.warn('dsh-calendar: ' + reason + '，连接配置改存插件自己的文件：' + connectionFile())
+    return { face: fileSettingsFace(), reason }
+  }
+  return { face: settingsFaceOf(provider, scope) }
 }
 /**
  * 插件入口：惰性解析配置并注册五个日历工具。
@@ -72,8 +109,8 @@ export function apply(ctx: CalendarPluginContext, config?: CalendarConfig | null
 
   // 面板把连接配置写进 settings 之后，工具的下一次调用就该用新配置 —— 所以工具与面板
   // 拿到的是一个 getter，而不是启动时那一份静态对象。
-  const settingsFace = attachSettings(ctx, cfg)
-  const configOf = (): CalendarConfig => ({ ...cfg, ...toCalendarConfig(settingsFace?.read() as Partial<CalendarSettingsValue> | undefined, null) })
+  const attached = attachSettings(ctx, cfg)
+  const configOf = (): CalendarConfig => ({ ...cfg, ...toCalendarConfig(attached.face.read() as Partial<CalendarSettingsValue> | undefined, null) })
 
   const disposers: Array<() => void> = []
   for (const definition of buildCalendarTools(configOf)) {
@@ -85,8 +122,9 @@ export function apply(ctx: CalendarPluginContext, config?: CalendarConfig | null
   const backend = new CalendarSettingsBackend({
     config: configOf,
     ctx,
-    settings: settingsFace,
+    settings: attached.face,
     settingsBase: toSettingsBase(cfg),
+    ...(attached.reason !== undefined ? { settingsReason: attached.reason } : {}),
   })
   try {
     installCalendarSettingsWeb(ctx, backend)
@@ -109,3 +147,4 @@ export * from './caldav.js'
 export * from './tools.js'
 export * from './web.js'
 export * from './settings.js'
+export * from './store.js'

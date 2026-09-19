@@ -37,6 +37,8 @@ export interface CalendarServiceLike {
 }
 /** 面板用于读写 settings 命名空间的最小面（index.ts 在 settings 服务到位后接上）。 */
 export interface CalendarSettingsFace {
+    /** 'settings' = 宿主命名空间；'file' = 插件自己的兜底文件。 */
+    kind?: 'settings' | 'file';
     read(): Record<string, unknown>;
     descriptor(): {
         revision?: number;
@@ -71,6 +73,8 @@ export interface CalendarSettingsBackendOptions {
     onSettings?: (value: Record<string, unknown>) => void;
     /** 注册命名空间时的 base 层（来自 cordis.patch.yml 的配置）。 */
     settingsBase?: Partial<CalendarSettingsValue>;
+    /** 为什么没接上宿主 settings（面板要把它显示出来，而不是一句「不可用」）。 */
+    settingsReason?: string;
 }
 /** 把「已存值 + 草稿」合并成要落盘的一版：草稿里缺席的键保留原值。 */
 export declare function mergeConnection(stored: Record<string, unknown>, draft: Record<string, unknown>): Record<string, unknown>;

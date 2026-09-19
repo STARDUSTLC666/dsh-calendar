@@ -5,10 +5,14 @@
  * 也不打印任何凭据。
  */
 import test from 'node:test';
+import { join } from 'node:path'
+import { tmpdir } from 'node:os'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import assert from 'node:assert/strict';
 import { CalendarSettingsBackend, SETTINGS_ROUTE, hostVerdict, mergeConnection, postVerdict } from '../lib/web.js';
 import { toCalendarConfig, toSettingsBase, validateSettingsValue } from '../lib/settings.js';
 import { attachSettings } from '../lib/index.js';
+import { readConnectionFile, writeConnectionFile } from '../lib/store.js';
 
 /** 造一个最小 req：POST body 走异步迭代器（handle 里就是 for await 读的）。 */
 function makeReq(options = {}) {
@@ -484,8 +488,9 @@ test('连接设置旁边有提示与跳转（字段级小字 + 分步说明 + �
 test('attachSettings：在插件加载阶段同步注册命名空间，base 来自 cordis.patch.yml', () => {
   const provider = fakeProvider({});
   const ctx = { get: (name) => (name === 'settings' ? provider : undefined) };
-  const face = attachSettings(ctx, { provider: 'icloud', username: 'me@icloud.com', password: 'p' });
+  const { face } = attachSettings(ctx, { provider: 'icloud', username: 'me@icloud.com', password: 'p' });
   assert.ok(face, '要拿到读写面');
+  assert.equal(face.kind, 'settings', '有 settings 服务时走命名空间');
   assert.equal(provider.state.registered.length, 1, '注册恰好一次');
   assert.equal(provider.state.registered[0].ns, 'dsh-calendar');
   assert.deepEqual(provider.state.registered[0].registerOptions.base, { provider: 'icloud', username: 'me@icloud.com', password: 'p' });
@@ -503,8 +508,9 @@ test('attachSettings：注册抛错（已被注册）时不炸，改为搭既有
   const original = console.warn;
   console.warn = (...args) => { warnings.push(args.join(' ')); };
   try {
-    const face = attachSettings({ get: () => provider }, {});
+    const { face } = attachSettings({ get: () => provider }, {});
     assert.ok(face, '搭既有注册也要给出读写面');
+    assert.equal(face.kind, 'settings');
     assert.equal(face.read().provider, 'custom', '值从 describe() 描述符来');
     assert.equal(warnings.length, 1);
     assert.match(warnings[0], /settings 命名空间注册失败/);
@@ -513,15 +519,75 @@ test('attachSettings：注册抛错（已被注册）时不炸，改为搭既有
   }
 });
 
-test('attachSettings：没有 settings 服务时返回 undefined（面板只读）并说明原因', () => {
+// ───────────────────────────── 兜底存储（宿主 settings 不可用时） ─────────────────────────────
+
+test('兜底文件：读写往返、坏文件当空、revision 递增、目录自动建', async (t) => {
+  const home = mkdtempSync(join(tmpdir(), 'dsh-calendar-store-'));
+  t.after(() => rmSync(home, { recursive: true, force: true }));
+  const file = join(home, 'data', 'dsh-calendar', 'connection.json');
+  assert.deepEqual(readConnectionFile(file), { revision: 0, value: {} }, '不存在就是空配置');
+  writeConnectionFile({ revision: 1, value: { provider: 'google', refreshToken: 'rt' } }, file);
+  assert.deepEqual(readConnectionFile(file), { revision: 1, value: { provider: 'google', refreshToken: 'rt' } });
+  writeFileSync(file, '{ not json');
+  assert.deepEqual(readConnectionFile(file), { revision: 0, value: {} }, '坏文件不能把面板拖垮');
+  writeFileSync(file, JSON.stringify({ revision: 'x', value: [] }));
+  assert.deepEqual(readConnectionFile(file), { revision: 0, value: {} }, '形状不对也当空');
+});
+
+test('attachSettings：拿不到 settings 服务时退到兜底文件（面板照常能保存）', async (t) => {
+  const home = mkdtempSync(join(tmpdir(), 'dsh-calendar-fallback-'));
+  t.after(() => rmSync(home, { recursive: true, force: true }));
+  const originalHome = process.env.DSH_HOME;
+  process.env.DSH_HOME = home;
   const warnings = [];
-  const original = console.warn;
+  const originalWarn = console.warn;
   console.warn = (...args) => { warnings.push(args.join(' ')); };
   try {
-    assert.equal(attachSettings({ get: () => undefined }, {}), undefined);
-    assert.equal(attachSettings({}, {}), undefined);
-    assert.match(warnings[0], /没有 settings 服务/);
+    const attached = attachSettings({ get: () => undefined }, {});
+    assert.equal(attached.face.kind, 'file');
+    assert.match(attached.reason, /没有提供 settings 服务/);
+    assert.match(warnings[0], /连接配置改存插件自己的文件/);
+    // 走一次完整保存：应该落到文件里，并能在下一次读回来
+    const backend = new CalendarSettingsBackend({
+      config: {},
+      settings: attached.face,
+      probeFactory: async () => ({ count: 0, sample: [] }),
+    });
+    const saved = makeRes();
+    await backend.handle(makeReq({ body: { action: 'saveConnection', provider: 'custom', caldavUrl: 'https://x.example/dav/', username: 'me', password: 'p' } }), saved);
+    assert.equal(saved.state.status, 200, JSON.stringify(saved.state.body));
+    assert.equal(saved.state.body.value.connection.settingsKind, 'file');
+    const stored = readConnectionFile(join(home, 'data', 'dsh-calendar', 'connection.json'));
+    assert.equal(stored.value.username, 'me');
+    assert.equal(stored.value.caldavUrl, 'https://x.example/dav/');
+    assert.equal(stored.revision, 1, 'revision 递增，下一次写入据此');
+    // 读回来能直接当配置用
+    const again = attachSettings({ get: () => undefined }, {});
+    assert.equal(again.face.read().username, 'me');
   } finally {
-    console.warn = original;
+    console.warn = originalWarn;
+    if (originalHome === undefined) delete process.env.DSH_HOME; else process.env.DSH_HOME = originalHome;
+  }
+});
+
+test('attachSettings：注册失败且没人注册过 → 也退到兜底文件（不再写进一个不存在的命名空间）', async (t) => {
+  const home = mkdtempSync(join(tmpdir(), 'dsh-calendar-regfail-'));
+  t.after(() => rmSync(home, { recursive: true, force: true }));
+  const originalHome = process.env.DSH_HOME;
+  process.env.DSH_HOME = home;
+  const originalWarn = console.warn;
+  console.warn = () => {};
+  try {
+    const provider = {
+      register() { throw new Error('schema rejected') },
+      describe() { return [] },
+      async replace() { throw new Error('settings namespace "dsh-calendar" is not registered') },
+    };
+    const attached = attachSettings({ get: () => provider }, {});
+    assert.equal(attached.face.kind, 'file', '注册失败 + 没人注册 = 不能往那儿写');
+    assert.match(attached.reason, /settings 命名空间注册失败/);
+  } finally {
+    console.warn = originalWarn;
+    if (originalHome === undefined) delete process.env.DSH_HOME; else process.env.DSH_HOME = originalHome;
   }
 });
