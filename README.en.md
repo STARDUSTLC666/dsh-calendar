@@ -172,6 +172,7 @@ The stable event identifier `uid` is the CalDAV href (full object URL); `calenda
 Once installed, DSH grows a「Calendar」section in Settings; the chat page also gets a small 📅 button in the bottom-right that opens the same panel (non-modal, Esc closes).
 
 - **Three views**: month (6×7 grid, today highlighted, click a cell to create), week (24-hour time grid starting at 07:00, overlapping events side by side) and agenda (grouped by day). The panel **remembers the view you used last**.
+- **Drag to reschedule**: in the week view drag an event up/down to change the time, left/right to change the day (15-minute snapping), and drag its bottom edge to change the duration. A drop preview shows where it lands and turns yellow when it overlaps something (overlaps are allowed, it is only a warning). Keyboard works too: `↑/↓` 15 minutes, `Shift+↑/↓` an hour, `←/→` a day, `Esc` cancels mid-drag. Every move offers a 5-second undo and rolls back (then re-reads the server) if the request fails. **Recurring events and events longer than 24 hours cannot be dragged yet** — edit those in the details drawer.
 - **Click to edit**: open any event in the right-hand drawer — time, duration, a human-readable repeat rule (`FREQ=WEEKLY;COUNT=6` → "weekly (6 times)"), location, notes, one-click uid copy — then edit or delete (deletion asks twice).
 - **Create**: title, date, start/end, all-day, location, notes, repeat (daily/weekly/monthly/yearly, or a raw RRULE).
 - **Conflict notice**: before saving, overlapping events are listed and you are asked whether to continue.

@@ -95,6 +95,8 @@ test('完整流程：本地回调收到 code 后换成 token', async (t) => {
     port: 0,
     open: false,
     timeoutSeconds: 10,
+    // 预检也别真连 Google：给个「重定向」结果就够了（这条测试只关心回调→换 token）。
+    fetchImpl: async () => ({ status: 302, text: async () => '' }),
     tokenUrl: 'http://127.0.0.1:' + tokenServer.address().port + '/token',
   });
   try {

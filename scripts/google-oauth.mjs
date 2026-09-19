@@ -61,7 +61,10 @@ export function validateClientId(clientId) {
  */
 export async function checkAuthUrl(url, fetchImpl = fetch) {
   try {
-    const response = await fetchImpl(url, { redirect: 'manual', headers: { 'user-agent': 'dsh-calendar-oauth/1.0' } })
+    const init = { redirect: 'manual', headers: { 'user-agent': 'dsh-calendar-oauth/1.0' } }
+    // 预检只是「顺手问一句」，不能把流程拖住：网络慢/被墙就用超时当「没意见」。
+    if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') init.signal = AbortSignal.timeout(4000)
+    const response = await fetchImpl(url, init)
     if (response.status === 200 || response.status === 302 || response.status === 303) return undefined
     const body = await response.text().catch(() => '')
     const title = /<title>([^<]*)<\/title>/i.exec(body)
