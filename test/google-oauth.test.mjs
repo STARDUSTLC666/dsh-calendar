@@ -8,7 +8,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { createHash } from 'node:crypto';
-import { buildAuthUrl, checkAuthUrl, exchangeCode, parseArgs, pkcePair, runFlow, validateClientId, SCOPE_FULL, SCOPE_READONLY, AUTH_URL } from '../scripts/google-oauth.mjs';
+import { buildAuthUrl, checkAuthUrl, cleanValue, exchangeCode, parseArgs, pkcePair, runFlow, validateClientId, SCOPE_FULL, SCOPE_READONLY, AUTH_URL } from '../scripts/google-oauth.mjs';
 
 test('授权地址带 offline + consent，否则拿不到 refresh token', () => {
   const url = new URL(buildAuthUrl({ clientId: 'cid', redirectUri: 'http://127.0.0.1:1234/', scope: SCOPE_FULL }));
@@ -172,4 +172,16 @@ test('预检发现地址不合法时，runFlow 在打开浏览器之前就报错
     () => runFlow({ clientId: '123-abc.apps.googleusercontent.com', clientSecret: 's', scope: SCOPE_FULL, port: 0, open: false, timeoutSeconds: 5, fetchImpl: rejecting }),
     /Google 拒绝了授权地址/
   );
+});
+
+test('cleanValue：把 cmd 里连引号一起复制的值洗干净', () => {
+  assert.equal(cleanValue('  "1234-abc.apps.googleusercontent.com"  '), '1234-abc.apps.googleusercontent.com');
+  assert.equal(cleanValue("'GOCSPX-abc'"), 'GOCSPX-abc');
+  assert.equal(cleanValue(undefined), '');
+});
+
+test('把文档里的示例文字当成真值敲进来时，报错要点名', () => {
+  assert.throws(() => validateClientId('完整clientId'), /文档里的示例文字/);
+  assert.throws(() => validateClientId('你的clientId'), /文档里的示例文字/);
+  assert.throws(() => validateClientId('完整 clientId'), /文档里的示例文字/);
 });

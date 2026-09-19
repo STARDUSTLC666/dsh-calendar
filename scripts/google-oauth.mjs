@@ -33,8 +33,17 @@ export function pkcePair() {
  * 直接粘那一串 Google 只会回一张 400 页。这里提前把这类错误拦下来，
  * 顺便把首尾空格去掉。
  */
+/** 去掉粘贴时带上的引号与首尾空白（cmd 里连引号一起复制很常见）。 */
+export function cleanValue(value) {
+  return String(value ?? '').trim().replace(/^["']+/, '').replace(/["']+$/, '').trim()
+}
+
 export function validateClientId(clientId) {
-  const trimmed = String(clientId ?? '').trim()
+  const trimmed = cleanValue(clientId)
+  // 把文档里的示例文字当成真值敲进来，是最常见的一种「不是 bug 的报错」——直接点名。
+  if (/[\u4e00-\u9fff]/.test(trimmed) || /你的|完整|clientid/i.test(trimmed)) {
+    throw new Error('这串看起来是文档里的示例文字（' + trimmed + '），不是真的 clientId：请在 Google Cloud 控制台点客户端右侧的复制按钮，取那串以 .apps.googleusercontent.com 结尾的 ID')
+  }
   if (trimmed === '') throw new Error('clientId 为空：用 --client-id 传入，或设 DSH_CALENDAR_CLIENT_ID')
   if (trimmed.includes('…') || trimmed.includes('...')) {
     throw new Error('clientId 里带了省略号（' + trimmed.slice(0, 30) + '）：那是控制台列表的截断显示，请点右侧复制按钮取完整 ID')
@@ -195,27 +204,44 @@ export async function runFlow(options) {
   }
 }
 
-function main() {
+/** 交互式补全缺失的凭据：直接粘贴即可（不显示在屏幕上是不可能的，secret 也不敏感到这个程度）。 */
+async function fillMissing(options) {
+  if (options.help === true) return options
+  if (options.clientId !== '' && options.clientSecret !== '') return options
+  const readline = await import('node:readline/promises')
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
+  try {
+    if (options.clientId === '') {
+      console.log('')
+      console.log('先在 Google Cloud 控制台打开那个「桌面设备」客户端：https://console.cloud.google.com/apis/credentials')
+      console.log('把「客户端 ID」（以 .apps.googleusercontent.com 结尾的那串）整段粘进来，回车：')
+      options.clientId = validateClientId(await rl.question('clientId > '))
+    }
+    if (options.clientSecret === '') {
+      console.log('')
+      console.log('再点进那个客户端 → 左侧「概览」→「客户端密钥」，复制（一般以 GOCSPX- 开头）粘进来，回车：')
+      options.clientSecret = cleanValue(await rl.question('clientSecret > '))
+    }
+    return options
+  } finally {
+    rl.close()
+  }
+}
+
+async function main() {
   const options = parseArgs(process.argv.slice(2))
   if (options.help === true) {
     console.log('用法：node scripts/google-oauth.mjs --client-id <id> --client-secret <secret>')
     console.log('可选：--scope calendar|calendar.readonly  --port <n>  --no-open  --timeout <秒>')
     return
   }
-  try {
-    options.clientId = validateClientId(options.clientId)
-    options.clientSecret = String(options.clientSecret ?? '').trim()
-  } catch (error) {
-    console.error('❌ ' + (error instanceof Error ? error.message : String(error)))
-    process.exitCode = 2
-    return
-  }
-  if (options.clientId === '' || options.clientSecret === '') {
-    console.error('缺少 clientId / clientSecret：用 --client-id 与 --client-secret 传入，或设 DSH_CALENDAR_CLIENT_ID / DSH_CALENDAR_CLIENT_SECRET。')
-    process.exitCode = 2
-    return
-  }
-  runFlow(options).then((result) => {
+  // 命令行里给了就先用（并做自检）；没给就交互式问 —— 直接敲命令即可，不用记参数。
+  fillMissing(options).then((filled) => {
+    filled.clientId = validateClientId(filled.clientId)
+    filled.clientSecret = cleanValue(filled.clientSecret)
+    if (filled.clientSecret === '') throw new Error('clientSecret 为空：点进客户端 →「概览」→「客户端密钥」复制（一般以 GOCSPX- 开头）')
+    return runFlow(filled)
+  }).then((result) => {
     console.log('')
     console.log('✅ 拿到 refresh token：')
     console.log('   ' + result.refreshToken)
