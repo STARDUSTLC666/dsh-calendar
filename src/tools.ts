@@ -35,7 +35,7 @@ export interface CalendarToolDefinition {
 const EVENT_SCHEMA = { type: 'object', additionalProperties: true } as const
 const TIMEOUT_MS = 60000
 
-function asRecord(args: unknown): Record<string, unknown> {
+export function asRecord(args: unknown): Record<string, unknown> {
   return typeof args === 'object' && args !== null ? args as Record<string, unknown> : {}
 }
 
@@ -45,7 +45,7 @@ function executionSignal(exec: unknown): AbortSignal | undefined {
   return signal instanceof AbortSignal ? signal : undefined
 }
 
-function optionalString(args: Record<string, unknown>, key: string): string | undefined {
+export function optionalString(args: Record<string, unknown>, key: string): string | undefined {
   const value = args[key]
   return typeof value === 'string' && value.trim() !== '' ? value.trim() : undefined
 }
@@ -82,7 +82,7 @@ function clampedInteger(args: Record<string, unknown>, key: string, fallback: nu
 
 const DATE_ONLY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/
 
-function assertIsoTime(value: string, label: string): void {
+export function assertIsoTime(value: string, label: string): void {
   const dateOnly = DATE_ONLY_PATTERN.exec(value)
   if (dateOnly !== null) {
     const year = Number(dateOnly[1])
@@ -108,18 +108,18 @@ function toEpochMs(value: string): number {
   return new Date(value).getTime()
 }
 
-function assertTimeRange(start: string, end: string): void {
+export function assertTimeRange(start: string, end: string): void {
   if (toEpochMs(start) > toEpochMs(end)) {
     throw new Error('end 不能早于 start：' + end + ' < ' + start + '。请确认起止时间顺序。')
   }
 }
 
-function isoNoMillis(value: string): string {
+export function isoNoMillis(value: string): string {
   return value.replace(/\.\d{3}Z$/, 'Z')
 }
 
 /** 按开始时间升序稳定排序（CalDAV 服务端返回顺序不保证稳定）。 */
-function sortEvents(events: CalendarEvent[]): CalendarEvent[] {
+export function sortEvents(events: CalendarEvent[]): CalendarEvent[] {
   return events
     .map((event, index) => ({ event, index, startMs: toEpochMs(event.start) }))
     .sort((a, b) => a.startMs - b.startMs || a.index - b.index)

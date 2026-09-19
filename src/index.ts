@@ -10,6 +10,7 @@
 
 import { resolveConfig, type CalendarConfig } from './config.js'
 import { buildCalendarTools, type CalendarToolDefinition } from './tools.js'
+import { CalendarSettingsBackend, installCalendarSettingsWeb } from './web.js'
 
 /** cordis 服务注入：apply 里要用 ctx.tools，必须显式声明注入，否则宿主会抛 cannot get property without inject。 */
 export const name = 'calendar'
@@ -20,6 +21,8 @@ export const inject = ['tools']
 export interface CalendarPluginContext {
   tools: { register(definition: CalendarToolDefinition): () => void }
   on?(event: string, listener: () => void): () => void
+  /** 设置页面板需要挂路由；隔离环境（测试/headless）可以没有。 */
+  inject?(services: string[], callback: (ctx: any) => void): void
 }
 
 /**
@@ -39,6 +42,14 @@ export function apply(ctx: CalendarPluginContext, config?: CalendarConfig | null
   for (const definition of buildCalendarTools(cfg)) {
     disposers.push(ctx.tools.register(definition))
   }
+  // 设置页里的日历面板：路由注册失败（宿主无 webServer，例如 headless）不影响工具本身。
+  if (typeof ctx.inject === 'function') {
+    try {
+      installCalendarSettingsWeb(ctx, new CalendarSettingsBackend({ config: cfg }))
+    } catch (error) {
+      console.warn('dsh-calendar: 面板路由未挂载：' + (error instanceof Error ? error.message : String(error)))
+    }
+  }
   if (typeof ctx.on === 'function') {
     ctx.on('dispose', () => {
       for (const dispose of disposers) dispose()
@@ -52,3 +63,4 @@ export * from './config.js'
 export * from './ical.js'
 export * from './caldav.js'
 export * from './tools.js'
+export * from './web.js'

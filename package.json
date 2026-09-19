@@ -1,6 +1,6 @@
 {
   "name": "dsh-calendar",
-  "version": "0.5.4",
+  "version": "0.6.0",
   "description": "DSH 日历插件：CalDAV 日程查询、创建、修改、删除与搜索，支持 Google OAuth2、iCloud、Nextcloud 与自建服务。",
   "type": "module",
   "main": "lib/index.js",
@@ -10,6 +10,7 @@
       "types": "./lib/index.d.ts",
       "default": "./lib/index.js"
     },
+    "./client": "./lib/client.js",
     "./cordis.patch.yml": "./cordis.patch.yml",
     "./package.json": "./package.json"
   },
@@ -29,6 +30,12 @@
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-settings"
+      ],
+      "platform": "web"
     }
   },
   "keywords": [

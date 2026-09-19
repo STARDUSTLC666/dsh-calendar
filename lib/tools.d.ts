@@ -5,6 +5,7 @@
  * @module dsh-calendar/tools
  */
 import { type CalendarConfig } from './config.js';
+import { type CalendarEvent } from './ical.js';
 /** 模型可见的内容块。 */
 export interface ContentBlock {
     type: 'text';
@@ -26,5 +27,12 @@ export interface CalendarToolDefinition {
     execute(args: unknown, exec: unknown): Promise<unknown>;
     timeoutMs?: number;
 }
+export declare function asRecord(args: unknown): Record<string, unknown>;
+export declare function optionalString(args: Record<string, unknown>, key: string): string | undefined;
+export declare function assertIsoTime(value: string, label: string): void;
+export declare function assertTimeRange(start: string, end: string): void;
+export declare function isoNoMillis(value: string): string;
+/** 按开始时间升序稳定排序（CalDAV 服务端返回顺序不保证稳定）。 */
+export declare function sortEvents(events: CalendarEvent[]): CalendarEvent[];
 /** 构建六个工具定义；每个 execute 惰性解析配置，缺失时抛出中文指引。 */
 export declare function buildCalendarTools(config: CalendarConfig | undefined, env?: NodeJS.ProcessEnv): CalendarToolDefinition[];

@@ -18,4 +18,6 @@ jobs:
       # lib/ 是入库的发布产物：构建结果必须与提交内容一致，否则说明有人改了 lib 没改 src。
       - run: pnpm run build
       - run: git diff --exit-code -- lib
+      # lib/client.js 是手写的网页端源码（不走 tsc），只做语法自检。
+      - run: node --check lib/client.js
       - run: pnpm test

@@ -18,6 +18,8 @@ export interface CalendarPluginContext {
         register(definition: CalendarToolDefinition): () => void;
     };
     on?(event: string, listener: () => void): () => void;
+    /** 设置页面板需要挂路由；隔离环境（测试/headless）可以没有。 */
+    inject?(services: string[], callback: (ctx: any) => void): void;
 }
 /**
  * 插件入口：惰性解析配置并注册五个日历工具。
@@ -30,3 +32,4 @@ export * from './config.js';
 export * from './ical.js';
 export * from './caldav.js';
 export * from './tools.js';
+export * from './web.js';

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.0（2026-09-19）
+
+- **新增设置页日历面板**：月 / 周 / 议程三种视图；点日程开右侧详情（时间、时长、重复规则的人话、地点、备注、uid），可直接改标题时间、加重复、删除（二次确认）；新建支持全天 / 地点 / 备注 / RRULE；保存前做冲突检测。
+- **新增对话页悬浮入口**：右下角 📅 小按钮点开同一个面板（非模态、Esc 关闭）。自绘 root 使用平台 seed 模块表里的 `react-dom/client`，控件优先用官方 `ui-primitives`（Button / Input / Checkbox / Modal / writeClipboard），老宿主缺这些时自动退回自绘控件，面板不会整块消失。
+- **新增网页端后端** `/_dsh/dsh-calendar/settings`（status / list / create / update / delete）：与 dsh-email 设置路由同一套安全模型 —— 仅回环地址可达、Host 必须是 localhost 名（挡 DNS rebinding）、写操作要求 `application/json` 且校验 Origin / Sec-Fetch-Site、响应永不回显凭据。
+- 参数校验复用工具层同一套断言（`assertIsoTime` / `assertTimeRange`），校验失败不打扰 CalDAV 服务器；为此把 `asRecord` / `optionalString` / `assertIsoTime` / `assertTimeRange` / `isoNoMillis` / `sortEvents` 变成共享导出，避免两处语义漂移。
+- 未配置 CalDAV 时面板显示引导态与「查看示例」，不再只丢一条报错。
+- CI 增加 `node --check lib/client.js`（网页端源码不走 tsc，只能语法自检）。测试 79 → 88 项。
+
 > 完整历史（含详细改动说明）。README 只保留最近几个版本的一句话摘要。
 
 ## 中文版
