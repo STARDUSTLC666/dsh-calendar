@@ -110,7 +110,21 @@ export DSH_CALENDAR_CLIENT_SECRET='你的 OAuth 客户端密钥'
 export DSH_CALENDAR_REFRESH_TOKEN='你授权后取得的 refresh token'
 ```
 
-凭据必须来自你自己的 Google Cloud OAuth 客户端和一次用户授权，而不是邮箱应用专用密码。按 [Google CalDAV 官方设置说明](https://developers.google.com/workspace/calendar/caldav/v2/guide) 启用 API、配置 OAuth；申请日历读写范围 `https://www.googleapis.com/auth/calendar`，并请求离线访问（`access_type=offline`）以取得刷新令牌，参见 [Google 离线授权说明](https://developers.google.com/identity/protocols/oauth2/web-server#offline)。尚未提供浏览器一键登录或独立登录 CLI；已有 OAuth 配置的用户可直接填入刷新令牌。
+凭据必须来自你自己的 Google Cloud OAuth 客户端和一次用户授权，而不是邮箱应用专用密码。按 [Google CalDAV 官方设置说明](https://developers.google.com/workspace/calendar/caldav/v2/guide) 启用 API、配置 OAuth；申请日历读写范围 `https://www.googleapis.com/auth/calendar`，并请求离线访问（`access_type=offline`）以取得刷新令牌，参见 [Google 离线授权说明](https://developers.google.com/identity/protocols/oauth2/web-server#offline)。已有 OAuth 配置的用户可直接填入刷新令牌。
+
+**换 refresh token（一条命令）**：客户端类型选「桌面应用」，然后：
+
+```bash
+cd <插件目录>          # 源码仓库，或 node_modules/dsh-calendar
+node scripts/google-oauth.mjs --client-id 你的clientId --client-secret 你的clientSecret
+```
+
+脚本会起一个**一次性本地回调**（`http://127.0.0.1:<随机端口>/`）、打开浏览器让你授权、收到 code 后换成 refresh token 并打印出来 —— 不用手工拼 URL，也不用第三方 Playground。
+
+拿到后填进面板「连接设置」（provider 选 Google，calendarId 填你的 Gmail 地址）；想走 YAML 的话就用环境变量 `DSH_CALENDAR_CLIENT_ID` / `DSH_CALENDAR_CLIENT_SECRET` / `DSH_CALENDAR_REFRESH_TOKEN`。
+
+> 同意屏仍停在「测试」状态时 refresh token 只有 7 天有效：到「OAuth 同意屏幕」点一下「发布应用」即可长期有效（个人自用无需审核）。
+
 
 **Google CalDAV 范围实测（2026-09-08）**：同一账号与日历使用 `calendar.readonly` 时，令牌刷新返回 200、集合探测 PROPFIND 返回 207，但读取日程 REPORT 返回 403；改为上述 `calendar` 范围后，REPORT 返回 207，重启验证进程后再次刷新和读取也通过。因此，请按这里的 CalDAV 配置申请范围，并用 `calendar_list` 验证真实读取，不能只凭令牌获取成功或集合探测成功判断日程可读。本次真实测试仅执行读取，没有验证 Google 的写入操作。
 

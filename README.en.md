@@ -82,7 +82,19 @@ export DSH_CALENDAR_CLIENT_SECRET='your OAuth client secret'
 export DSH_CALENDAR_REFRESH_TOKEN='your authorized refresh token'
 ```
 
-These credentials come from your own Google Cloud OAuth client and a user authorization, not an email app password. Follow the [Google CalDAV setup guide](https://developers.google.com/workspace/calendar/caldav/v2/guide) to enable the API and configure OAuth. Request `https://www.googleapis.com/auth/calendar` for calendar read/write and offline access (`access_type=offline`) to obtain a refresh token; see [Google's offline authorization documentation](https://developers.google.com/identity/protocols/oauth2/web-server#offline). The plugin does not provide a browser login UI or a separate login CLI; supply an already authorized refresh token.
+These credentials come from your own Google Cloud OAuth client and a user authorization, not an email app password. Follow the [Google CalDAV setup guide](https://developers.google.com/workspace/calendar/caldav/v2/guide) to enable the API and configure OAuth. Request `https://www.googleapis.com/auth/calendar` for calendar read/write and offline access (`access_type=offline`) to obtain a refresh token; see [Google's offline authorization documentation](https://developers.google.com/identity/protocols/oauth2/web-server#offline). Supply an already authorized refresh token, or mint one with the helper below.
+**Getting a refresh token (one command)**: register the client as a **Desktop app**, then:
+
+```bash
+cd <plugin directory>   # the source checkout, or node_modules/dsh-calendar
+node scripts/google-oauth.mjs --client-id <your clientId> --client-secret <your clientSecret>
+```
+
+The script spins up a **one-shot local callback** (`http://127.0.0.1:<random port>/`), opens the browser for consent, exchanges the code and prints the refresh token — no hand-built URLs, no third-party playground.
+
+Paste it into the panel’s「Connection」form (provider Google, calendarId = your Gmail address), or use the `DSH_CALENDAR_CLIENT_ID` / `DSH_CALENDAR_CLIENT_SECRET` / `DSH_CALENDAR_REFRESH_TOKEN` environment variables.
+
+> While the OAuth consent screen is still in **Testing**, the refresh token lasts 7 days: hit **Publish app** on the OAuth consent screen to make it permanent (no review needed for personal use).
 
 **Google CalDAV scope validation (2026-09-08):** for the same account and calendar, `calendar.readonly` allowed token refresh (200) and collection PROPFIND (207), but the event REPORT returned 403. With the `calendar` scope above, REPORT returned 207; a fresh verification process also refreshed the token and read successfully. Use this CalDAV scope configuration and verify an actual `calendar_list` request: successful token acquisition or collection discovery alone does not prove events are readable. This live test performed reads only; Google write operations were not tested.
 
