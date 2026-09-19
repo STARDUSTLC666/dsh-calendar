@@ -594,7 +594,8 @@ test('attachSettings：注册失败且没人注册过 → 也退到兜底文件�
 
 test('月视图的格子不是 button —— 芯片是按钮，按钮不能套按钮', async () => {
   const fs = await import('node:fs');
-  const source = fs.readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8');
+  // 多行匹配前统一换行，否则 Windows 工作区的 \r\n 会让正则失效。
+  const source = fs.readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
   const start = source.indexOf('function MonthView');
   const end = source.indexOf('function WeekView');
   assert.ok(start > 0 && end > start, '要能定位到 MonthView');
