@@ -11,6 +11,7 @@
  * 可选：--scope calendar|calendar.readonly  --port <n>  --no-open  --timeout <秒>  --token-url <url>（仅测试）
  */
 import { createServer } from 'node:http'
+import { createHash, randomBytes } from 'node:crypto'
 import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
@@ -20,6 +21,48 @@ export const SCOPE_FULL = 'https://www.googleapis.com/auth/calendar'
 export const SCOPE_READONLY = 'https://www.googleapis.com/auth/calendar.readonly'
 
 /** 拼授权地址：access_type=offline + prompt=consent 才会每次都发 refresh token。 */
+/** PKCE：桌面客户端也支持，给授权码加一层绑定（S256）。 */
+export function pkcePair() {
+  const verifier = randomBytes(32).toString('base64url')
+  const challenge = createHash('sha256').update(verifier).digest('base64url')
+  return { verifier, challenge }
+}
+
+/**
+ * 自检 clientId：控制台列表里显示的是**截断**的（150465783795-65g8…），
+ * 直接粘那一串 Google 只会回一张 400 页。这里提前把这类错误拦下来，
+ * 顺便把首尾空格去掉。
+ */
+export function validateClientId(clientId) {
+  const trimmed = String(clientId ?? '').trim()
+  if (trimmed === '') throw new Error('clientId 为空：用 --client-id 传入，或设 DSH_CALENDAR_CLIENT_ID')
+  if (trimmed.includes('…') || trimmed.includes('...')) {
+    throw new Error('clientId 里带了省略号（' + trimmed.slice(0, 30) + '）：那是控制台列表的截断显示，请点右侧复制按钮取完整 ID')
+  }
+  if (!/^[0-9]+-[0-9a-z_]+\.apps\.googleusercontent\.com$/i.test(trimmed)) {
+    throw new Error('clientId 形状不对：应形如 123456789012-abc123.apps.googleusercontent.com，当前是 ' + trimmed.slice(0, 32) + '（长度 ' + trimmed.length + '）')
+  }
+  return trimmed
+}
+
+/**
+ * 预检授权地址：Google 对参数错误返回 400 + 错误页，对合法请求返回同意页（200/302）。
+ * 与其把人丢进浏览器看一张机器人 400 页，不如在终端把原因说清楚。
+ * 网络不通时返回 undefined（不因为预检失败就拦住整个流程）。
+ */
+export async function checkAuthUrl(url, fetchImpl = fetch) {
+  try {
+    const response = await fetchImpl(url, { redirect: 'manual', headers: { 'user-agent': 'dsh-calendar-oauth/1.0' } })
+    if (response.status === 200 || response.status === 302 || response.status === 303) return undefined
+    const body = await response.text().catch(() => '')
+    const title = /<title>([^<]*)<\/title>/i.exec(body)
+    const detail = title === null ? body.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200) : title[1].trim()
+    return 'HTTP ' + response.status + (detail === '' ? '' : '：' + detail)
+  } catch (error) {
+    return undefined
+  }
+}
+
 export function buildAuthUrl(options) {
   const params = new URLSearchParams({
     client_id: options.clientId,
@@ -29,6 +72,10 @@ export function buildAuthUrl(options) {
     access_type: 'offline',
     prompt: 'consent',
   })
+  if (typeof options.codeChallenge === 'string' && options.codeChallenge !== '') {
+    params.set('code_challenge', options.codeChallenge)
+    params.set('code_challenge_method', 'S256')
+  }
   return AUTH_URL + '?' + params.toString()
 }
 
@@ -41,6 +88,7 @@ export async function exchangeCode(options) {
     redirect_uri: options.redirectUri,
     grant_type: 'authorization_code',
   })
+  if (typeof options.codeVerifier === 'string' && options.codeVerifier !== '') body.set('code_verifier', options.codeVerifier)
   const response = await fetch(options.tokenUrl ?? TOKEN_URL, {
     method: 'POST',
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
@@ -120,20 +168,29 @@ export async function runFlow(options) {
   const address = server.address()
   const port = typeof address === 'object' && address !== null ? address.port : options.port
   const redirectUri = 'http://127.0.0.1:' + port + '/'
-  const authUrl = buildAuthUrl({ clientId: options.clientId, redirectUri, scope: options.scope })
-  console.log('')
-  console.log('1) 用你的 Google 账号打开下面这个链接授权：')
-  console.log('   ' + authUrl)
-  console.log('')
-  console.log('2) 等待回调中（最多 ' + options.timeoutSeconds + ' 秒）…')
-  if (options.open === true) openBrowser(authUrl)
-  const timer = setTimeout(() => rejectCode(new Error('等待超时：没有收到授权回调')), options.timeoutSeconds * 1000)
+  // 回调端口一旦起来就必须收掉：预检失败、用户拒绝、超时都要走同一个 finally，
+  // 否则进程会挂在一个没人管的监听上（测试里表现为「永远不结束」）。
+  let timer
   try {
+    const pkce = pkcePair()
+    const authUrl = buildAuthUrl({ clientId: options.clientId, redirectUri, scope: options.scope, codeChallenge: pkce.challenge })
+    // 打开浏览器之前先问一次 Google：地址本身不合法就别让人看 400 页。
+    const rejected = await checkAuthUrl(authUrl, options.fetchImpl)
+    if (rejected !== undefined) {
+      throw new Error('Google 拒绝了授权地址（' + rejected + '）。常见原因：clientId 是列表里的截断显示、客户端类型不是「桌面应用」、或 URL 在终端里被换行截断；也可能是该客户端所属项目没配 OAuth 同意屏。')
+    }
+    console.log('')
+    console.log('1) 用你的 Google 账号打开下面这个链接授权：')
+    console.log('   ' + authUrl)
+    console.log('')
+    console.log('2) 等待回调中（最多 ' + options.timeoutSeconds + ' 秒）…')
+    if (options.open === true) openBrowser(authUrl)
+    timer = setTimeout(() => rejectCode(new Error('等待超时：没有收到授权回调')), options.timeoutSeconds * 1000)
     const code = await codePromise
-    const payload = await exchangeCode({ code, clientId: options.clientId, clientSecret: options.clientSecret, redirectUri, tokenUrl: options.tokenUrl })
+    const payload = await exchangeCode({ code, clientId: options.clientId, clientSecret: options.clientSecret, redirectUri, codeVerifier: pkce.verifier, tokenUrl: options.tokenUrl })
     return { refreshToken: payload.refresh_token, scope: payload.scope, accessToken: payload.access_token }
   } finally {
-    clearTimeout(timer)
+    if (timer !== undefined) clearTimeout(timer)
     server.close()
   }
 }
@@ -143,6 +200,14 @@ function main() {
   if (options.help === true) {
     console.log('用法：node scripts/google-oauth.mjs --client-id <id> --client-secret <secret>')
     console.log('可选：--scope calendar|calendar.readonly  --port <n>  --no-open  --timeout <秒>')
+    return
+  }
+  try {
+    options.clientId = validateClientId(options.clientId)
+    options.clientSecret = String(options.clientSecret ?? '').trim()
+  } catch (error) {
+    console.error('❌ ' + (error instanceof Error ? error.message : String(error)))
+    process.exitCode = 2
     return
   }
   if (options.clientId === '' || options.clientSecret === '') {

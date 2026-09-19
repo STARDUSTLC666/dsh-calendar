@@ -7,7 +7,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
-import { buildAuthUrl, exchangeCode, parseArgs, runFlow, SCOPE_FULL, SCOPE_READONLY, AUTH_URL } from '../scripts/google-oauth.mjs';
+import { createHash } from 'node:crypto';
+import { buildAuthUrl, checkAuthUrl, exchangeCode, parseArgs, pkcePair, runFlow, validateClientId, SCOPE_FULL, SCOPE_READONLY, AUTH_URL } from '../scripts/google-oauth.mjs';
 
 test('授权地址带 offline + consent，否则拿不到 refresh token', () => {
   const url = new URL(buildAuthUrl({ clientId: 'cid', redirectUri: 'http://127.0.0.1:1234/', scope: SCOPE_FULL }));
@@ -118,4 +119,57 @@ test('完整流程：本地回调收到 code 后换成 token', async (t) => {
   } finally {
     console.log = original;
   }
+});
+
+// ───────────────────────────── 自检 / PKCE / 预检 ─────────────────────────────
+
+test('clientId 自检：截断显示、形状不对都能在终端里说清楚', () => {
+  assert.throws(() => validateClientId(''), /clientId 为空/);
+  assert.throws(() => validateClientId('150465783795-65g8…'), /省略号/);
+  assert.throws(() => validateClientId('150465783795-65g8abcdef'), /形状不对/);
+  assert.equal(validateClientId('  123456789012-abc123def.apps.googleusercontent.com  '), '123456789012-abc123def.apps.googleusercontent.com');
+});
+
+test('PKCE：challenge 是 verifier 的 S256，且两者都够长', () => {
+  const { verifier, challenge } = pkcePair();
+  assert.match(verifier, /^[A-Za-z0-9_-]{43,}$/);
+  const expected = createHash('sha256').update(verifier).digest('base64url');
+  assert.equal(challenge, expected);
+  const url = new URL(buildAuthUrl({ clientId: 'cid', redirectUri: 'http://127.0.0.1:1/', scope: SCOPE_FULL, codeChallenge: challenge }));
+  assert.equal(url.searchParams.get('code_challenge'), challenge);
+  assert.equal(url.searchParams.get('code_challenge_method'), 'S256');
+  assert.equal(new URL(buildAuthUrl({ clientId: 'cid', redirectUri: 'http://127.0.0.1:1/', scope: SCOPE_FULL })).searchParams.get('code_challenge'), null);
+});
+
+test('换 token 时带上 code_verifier（PKCE 的第二步）', async (t) => {
+  let seen = '';
+  const server = createServer((request, response) => {
+    request.on('data', (chunk) => { seen += chunk });
+    request.on('end', () => {
+      response.writeHead(200, { 'content-type': 'application/json' });
+      response.end(JSON.stringify({ refresh_token: 'rt-pkce' }));
+    });
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => server.close());
+  const payload = await exchangeCode({ code: 'c', clientId: 'i', clientSecret: 's', redirectUri: 'http://127.0.0.1:1/', codeVerifier: 'verifier-1', tokenUrl: 'http://127.0.0.1:' + server.address().port + '/token' });
+  assert.equal(payload.refresh_token, 'rt-pkce');
+  assert.equal(new URLSearchParams(seen).get('code_verifier'), 'verifier-1');
+});
+
+test('授权地址预检：400 返回可读原因，302/200 放行', async () => {
+  const bad = async () => ({ status: 400, text: async () => '<html><title>错误 400：invalid_request</title>…</html>' });
+  assert.match(await checkAuthUrl('https://accounts.google.com/o/oauth2/v2/auth?x=1', bad), /invalid_request/);
+  const redirect = async () => ({ status: 302, text: async () => '' });
+  assert.equal(await checkAuthUrl('https://accounts.google.com/x', redirect), undefined);
+  const network = async () => { throw new Error('offline') };
+  assert.equal(await checkAuthUrl('https://accounts.google.com/x', network), undefined, '网络不通不该拦住流程');
+});
+
+test('预检发现地址不合法时，runFlow 在打开浏览器之前就报错', async () => {
+  const rejecting = async () => ({ status: 400, text: async () => '<title>错误 400：invalid_request</title>' });
+  await assert.rejects(
+    () => runFlow({ clientId: '123-abc.apps.googleusercontent.com', clientSecret: 's', scope: SCOPE_FULL, port: 0, open: false, timeoutSeconds: 5, fetchImpl: rejecting }),
+    /Google 拒绝了授权地址/
+  );
 });
