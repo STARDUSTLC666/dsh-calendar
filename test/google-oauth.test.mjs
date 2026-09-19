@@ -8,7 +8,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { createHash } from 'node:crypto';
-import { buildAuthUrl, checkAuthUrl, cleanValue, exchangeCode, parseArgs, pkcePair, runFlow, validateClientId, SCOPE_FULL, SCOPE_READONLY, AUTH_URL } from '../scripts/google-oauth.mjs';
+import { buildAuthUrl, browserCommand, checkAuthUrl, cleanValue, exchangeCode, openBrowser, parseArgs, pkcePair, runFlow, validateClientId, SCOPE_FULL, SCOPE_READONLY, AUTH_URL } from '../scripts/google-oauth.mjs';
 
 test('授权地址带 offline + consent，否则拿不到 refresh token', () => {
   const url = new URL(buildAuthUrl({ clientId: 'cid', redirectUri: 'http://127.0.0.1:1234/', scope: SCOPE_FULL }));
@@ -184,4 +184,24 @@ test('把文档里的示例文字当成真值敲进来时，报错要点名', ()
   assert.throws(() => validateClientId('完整clientId'), /文档里的示例文字/);
   assert.throws(() => validateClientId('你的clientId'), /文档里的示例文字/);
   assert.throws(() => validateClientId('完整 clientId'), /文档里的示例文字/);
+});
+
+test('Windows 打开浏览器不能经过 cmd —— URL 里的 & 会被当命令分隔符吃掉', () => {
+  const url = buildAuthUrl({ clientId: '1-a.apps.googleusercontent.com', redirectUri: 'http://127.0.0.1:1234/', scope: SCOPE_FULL, codeChallenge: 'ch' });
+  const spec = browserCommand('win32', url);
+  assert.equal(spec.command, 'rundll32', '走 rundll32，不经 shell 解析');
+  assert.equal(spec.args[1], url, '整串 URL 原样交给浏览器');
+  assert.match(spec.args[1], /[?&]response_type=code/, 'response_type 必须在（被请求截断时 Google 只会说它 missing）');
+  assert.match(spec.args[1], /&redirect_uri=/);
+  assert.equal(/cmd/.test(spec.command), false, '绝不能再用 cmd /c start');
+  assert.equal(browserCommand('darwin', url).command, 'open');
+  assert.equal(browserCommand('linux', url).command, 'xdg-open');
+});
+
+test('openBrowser 把完整 URL 交给 spawn，失败只返回 false', () => {
+  const calls = [];
+  const spawnImpl = (command, args) => { calls.push({ command, args }); return { unref() {} }; };
+  assert.equal(openBrowser('https://x/y?a=1&b=2', spawnImpl, 'win32'), true);
+  assert.deepEqual(calls[0].args, ['url.dll,FileProtocolHandler', 'https://x/y?a=1&b=2']);
+  assert.equal(openBrowser('https://x', () => { throw new Error('no browser') }, 'win32'), false, '打不开不算流程失败');
 });

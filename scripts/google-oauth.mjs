@@ -137,13 +137,30 @@ export function parseArgs(argv, env = process.env) {
   return out
 }
 
-/** 打开浏览器：Windows 用 cmd start，macOS 用 open，其他用 xdg-open。 */
-function openBrowser(url) {
+/**
+ * 打开浏览器的命令。
+ *
+ * Windows 上**不要**用 `cmd /c start <url>`：授权 URL 里全是 `&`（client_id=…&redirect_uri=…
+ * &response_type=code…），cmd 会把 `&` 当成命令分隔符，浏览器只收到第一段 —— Google 那边
+ * 的表现就是 `Required parameter is missing: response_type`（这个坑真踩过：预检查不出来，
+ * 因为脚本自己发的请求是完整的，只有「交给浏览器」那一步被截断）。
+ * rundll32 直接吃整串参数，不经过 shell 解析。
+ */
+export function browserCommand(platform, url) {
+  if (platform === 'win32') return { command: 'rundll32', args: ['url.dll,FileProtocolHandler', url] }
+  if (platform === 'darwin') return { command: 'open', args: [url] }
+  return { command: 'xdg-open', args: [url] }
+}
+
+/** 打开浏览器；失败返回 false（调用方只把它当便利，不当作流程的必要环节）。 */
+export function openBrowser(url, spawnImpl = spawn, platform = process.platform) {
   try {
-    if (process.platform === 'win32') spawn('cmd', ['/c', 'start', '', url], { stdio: 'ignore', detached: true }).unref()
-    else if (process.platform === 'darwin') spawn('open', [url], { stdio: 'ignore', detached: true }).unref()
-    else spawn('xdg-open', [url], { stdio: 'ignore', detached: true }).unref()
-  } catch (error) { /* 打不开就靠用户自己复制链接 */ }
+    const spec = browserCommand(platform, url)
+    spawnImpl(spec.command, spec.args, { stdio: 'ignore', detached: true }).unref()
+    return true
+  } catch (error) {
+    return false
+  }
 }
 
 const PAGE_OK = '<meta charset="utf-8"><title>dsh-calendar</title><body style="font-family:system-ui;padding:40px">'
@@ -191,6 +208,8 @@ export async function runFlow(options) {
     console.log('')
     console.log('1) 用你的 Google 账号打开下面这个链接授权：')
     console.log('   ' + authUrl)
+    console.log('')
+    console.log('（浏览器没自动打开就复制上面整行 —— 从终端复制不会被 shell 解析，粘贴到地址栏即可）')
     console.log('')
     console.log('2) 等待回调中（最多 ' + options.timeoutSeconds + ' 秒）…')
     if (options.open === true) openBrowser(authUrl)

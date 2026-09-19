@@ -15,6 +15,7 @@
 - 连接设置表单补齐「怎么拿到这些值」：字段级小字提示 + 可展开的分步说明 + 外链（Google Cloud 凭据页 / OAuth Playground / Apple ID 设置），Nextcloud 的 `user` 与 `username` 也分别写了说明。测试 88 → 102 项。
 - **新增 `scripts/google-oauth.mjs`**：一条命令换 Google refresh token —— 起一次性本地回环回调、自动打开浏览器、收到 code 后换 token 并打印；README（中英）的 Google 段改为用它，`files` 增加 `scripts` 让 npm 包内也带这份脚本。测试 102 → 106 项（含本地假令牌端点的全流程测试）。
 - 该脚本随后加固：**clientId 自检**（拦下控制台列表里被截断显示的那串，避免拿到一张 Google 400 页）、**授权地址预检**（打开浏览器前先问一次 Google，400 就在终端把原因说清楚）、**PKCE（S256）**、以及回调端口的收尾（预检失败/超时/拒绝都不再留下监听）。测试 106 → 111 项。
+- **修复**：Windows 上打开浏览器改用 `rundll32 url.dll,FileProtocolHandler`。此前用 `cmd /c start <url>`，授权 URL 里的 `&` 被 cmd 当成命令分隔符，浏览器只收到第一段 —— Google 的表现是 `Required parameter is missing: response_type`（预检查不出来，因为脚本自己发的请求是完整的）。换 token 脚本改为**交互式**：直接敲 `node scripts/google-oauth.mjs`，它会依次问 clientId 与 clientSecret，并识别「把文档示例文字当值粘进来」这种情况。
 - CI 增加 `node --check lib/client.js`（网页端源码不走 tsc，只能语法自检）。测试 79 → 88 项。
 
 > 完整历史（含详细改动说明）。README 只保留最近几个版本的一句话摘要。
