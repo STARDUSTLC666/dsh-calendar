@@ -591,3 +591,15 @@ test('attachSettings：注册失败且没人注册过 → 也退到兜底文件�
     if (originalHome === undefined) delete process.env.DSH_HOME; else process.env.DSH_HOME = originalHome;
   }
 });
+
+test('月视图的格子不是 button —— 芯片是按钮，按钮不能套按钮', async () => {
+  const fs = await import('node:fs');
+  const source = fs.readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8');
+  const start = source.indexOf('function MonthView');
+  const end = source.indexOf('function WeekView');
+  assert.ok(start > 0 && end > start, '要能定位到 MonthView');
+  const monthView = source.slice(start, end);
+  assert.equal(/h\("button"/.test(monthView), false, '月视图里不该出现 button：格子是容器，芯片才是按钮（嵌套会被浏览器拆开，芯片跑出网格）');
+  assert.match(monthView, /h\("div", \{\n\s*key: key,\n\s*role: "button"/, '格子改用 div + role=button，键盘仍可操作');
+  assert.match(monthView, /onKeyDown/, '键盘要能触发新建');
+});
