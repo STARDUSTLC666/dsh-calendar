@@ -34,12 +34,32 @@ export interface CalendarServiceLike {
         href: string;
     }>;
 }
-export interface CalendarSettingsBackendOptions {
-    config?: CalendarConfig | null;
-    /** 测试用：替换真实 CalDAV 客户端。 */
-    serviceFactory?: () => CalendarServiceLike;
-    env?: NodeJS.ProcessEnv;
+/** 面板用于读写 settings 命名空间的最小面（index.ts 在 settings 服务到位后接上）。 */
+export interface CalendarSettingsFace {
+    read(): Record<string, unknown>;
+    descriptor(): {
+        revision?: number;
+        user?: Record<string, unknown>;
+    } | undefined;
+    replace(value: Record<string, unknown>, revision: number): Promise<void>;
 }
+/** 面板要读写的连接字段。空串 = 保持不变，null = 明确清除。 */
+export declare const CONNECTION_KEYS: readonly ["provider", "caldavUrl", "username", "password", "host", "user", "calendar", "calendarId", "authMethod", "clientId", "clientSecret", "refreshToken", "tokenUrl", "proxyUrl"];
+export interface CalendarSettingsBackendOptions {
+    /** 静态配置，或一个 getter（面板保存后工具应当立刻用上新配置）。 */
+    config?: CalendarConfig | null | (() => CalendarConfig);
+    /** 测试用：替换真实 CalDAV 客户端（收到的是当前/拟议配置）。 */
+    serviceFactory?: (config: CalendarConfig) => CalendarServiceLike;
+    /** 测试用：替换「保存前的连接测试」。 */
+    probeFactory?: (config: CalendarConfig) => Promise<{
+        count: number;
+        sample: string[];
+    }>;
+    env?: NodeJS.ProcessEnv;
+    settings?: CalendarSettingsFace;
+}
+/** 把「已存值 + 草稿」合并成要落盘的一版：草稿里缺席的键保留原值。 */
+export declare function mergeConnection(stored: Record<string, unknown>, draft: Record<string, unknown>): Record<string, unknown>;
 /**
  * 浏览器端后端：把面板的四个动作翻译成 CalDAV 调用。
  *
@@ -50,11 +70,33 @@ export declare class CalendarSettingsBackend {
     private readonly options;
     private cachedKey;
     private cachedService;
+    private settings;
     constructor(options?: CalendarSettingsBackendOptions);
+    /** settings 服务到位后接上（传 undefined 摘掉）—— 面板据此从只读变成可保存。 */
+    attachSettings(face: CalendarSettingsFace | undefined): void;
+    /**
+     * 当前生效配置：patch 行配置（或 getter 现取的那份）+ 面板写进 settings 的字段。
+     *
+     * 面板自己也要合并一遍，而不是只依赖传入的 getter —— 否则「面板显示的连接」
+     * 与「工具实际用的连接」就成了两份来源，保存成功却看到未配置的怪象。
+     */
+    private configOf;
     /** 惰性解析配置；凭据/端点变化即重建（闭包内比较，不落盘不记日志）。 */
     private service;
-    /** 配置状态：只回面板要用的非敏感字段。 */
+    /**
+     * 连接摘要：面板要的每一个非敏感字段都在这里，密钥只回「有没有」。
+     * 未配置时 configured:false + reason（resolveConfig 的中文指引），面板据此渲染引导态。
+     */
+    connection(): Record<string, unknown>;
+    /** 兼容旧动作名：status 就是连接摘要。 */
     status(): Record<string, unknown>;
+    /**
+     * 草稿 → 拟议配置：先与已存值合并（草稿缺席的键保留原值），再叠加到当前生效配置之上。
+     * 连接测试和保存都走这条路，所以「测试通过」与「保存后能用」看到的是同一份配置。
+     */
+    private proposed;
+    /** 真连一次：拿拟议配置列一下未来 30 天，能列出来就算通。 */
+    private probe;
     private responseJson;
     /** 路由入口。GET = 读状态，POST = 动作（list/create/update/delete）。 */
     handle(req: any, res: any): Promise<void>;

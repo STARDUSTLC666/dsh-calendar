@@ -14,6 +14,7 @@
  * CalDAV 服务器要，服务器就是唯一真相。缓存的只有 service 实例（token 复用）。
  */
 import { resolveConfig, type CalendarConfig } from './config.js'
+import { draftToConfig, validateSettingsValue, type CalendarSettingsValue } from './settings.js'
 import { CalendarService } from './caldav.js'
 import { asRecord, assertIsoTime, assertTimeRange, isoNoMillis, optionalString, sortEvents } from './tools.js'
 import type { CalendarEvent } from './ical.js'
@@ -66,11 +67,43 @@ export interface CalendarServiceLike {
   delete(uid: string, signal?: AbortSignal): Promise<{ uid: string; href: string }>
 }
 
+/** 面板用于读写 settings 命名空间的最小面（index.ts 在 settings 服务到位后接上）。 */
+export interface CalendarSettingsFace {
+  read(): Record<string, unknown>
+  descriptor(): { revision?: number; user?: Record<string, unknown> } | undefined
+  replace(value: Record<string, unknown>, revision: number): Promise<void>
+}
+
+/** 面板要读写的连接字段。空串 = 保持不变，null = 明确清除。 */
+export const CONNECTION_KEYS = ['provider', 'caldavUrl', 'username', 'password', 'host', 'user', 'calendar', 'calendarId', 'authMethod', 'clientId', 'clientSecret', 'refreshToken', 'tokenUrl', 'proxyUrl'] as const
+
 export interface CalendarSettingsBackendOptions {
-  config?: CalendarConfig | null
-  /** 测试用：替换真实 CalDAV 客户端。 */
-  serviceFactory?: () => CalendarServiceLike
+  /** 静态配置，或一个 getter（面板保存后工具应当立刻用上新配置）。 */
+  config?: CalendarConfig | null | (() => CalendarConfig)
+  /** 测试用：替换真实 CalDAV 客户端（收到的是当前/拟议配置）。 */
+  serviceFactory?: (config: CalendarConfig) => CalendarServiceLike
+  /** 测试用：替换「保存前的连接测试」。 */
+  probeFactory?: (config: CalendarConfig) => Promise<{ count: number; sample: string[] }>
   env?: NodeJS.ProcessEnv
+  settings?: CalendarSettingsFace
+}
+
+/** 把「已存值 + 草稿」合并成要落盘的一版：草稿里缺席的键保留原值。 */
+export function mergeConnection(stored: Record<string, unknown>, draft: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  for (const key of CONNECTION_KEYS) {
+    const value = stored[key]
+    if (typeof value === 'string' && value !== '') out[key] = value
+  }
+  for (const key of CONNECTION_KEYS) {
+    if (!(key in draft)) continue
+    const value = draft[key]
+    if (value === null) { delete out[key]; continue }
+    if (typeof value !== 'string') continue
+    if (value === '') continue
+    out[key] = value
+  }
+  return out
 }
 
 /**
@@ -82,13 +115,36 @@ export interface CalendarSettingsBackendOptions {
 export class CalendarSettingsBackend {
   private cachedKey: string | undefined
   private cachedService: CalendarServiceLike | undefined
+  private settings: CalendarSettingsFace | undefined
 
-  constructor(private readonly options: CalendarSettingsBackendOptions = {}) {}
+  constructor(private readonly options: CalendarSettingsBackendOptions = {}) {
+    this.settings = options.settings
+  }
+
+  /** settings 服务到位后接上（传 undefined 摘掉）—— 面板据此从只读变成可保存。 */
+  attachSettings(face: CalendarSettingsFace | undefined): void {
+    this.settings = face
+  }
+
+  /**
+   * 当前生效配置：patch 行配置（或 getter 现取的那份）+ 面板写进 settings 的字段。
+   *
+   * 面板自己也要合并一遍，而不是只依赖传入的 getter —— 否则「面板显示的连接」
+   * 与「工具实际用的连接」就成了两份来源，保存成功却看到未配置的怪象。
+   */
+  private configOf(): CalendarConfig {
+    const source = this.options.config
+    const base = (typeof source === 'function' ? source() : source) ?? {}
+    const stored = this.settings?.read?.()
+    if (stored === undefined || stored === null) return base
+    return { ...base, ...draftToConfig(stored as Partial<CalendarSettingsValue>) }
+  }
 
   /** 惰性解析配置；凭据/端点变化即重建（闭包内比较，不落盘不记日志）。 */
   private service(): CalendarServiceLike {
-    if (this.options.serviceFactory !== undefined) return this.options.serviceFactory()
-    const resolved = resolveConfig(this.options.config ?? undefined, this.options.env ?? process.env)
+    const current = this.configOf()
+    if (this.options.serviceFactory !== undefined) return this.options.serviceFactory(current)
+    const resolved = resolveConfig(current, this.options.env ?? process.env)
     const key = JSON.stringify(resolved)
     if (this.cachedService === undefined || this.cachedKey !== key) {
       this.cachedService = new CalendarService(resolved) as unknown as CalendarServiceLike
@@ -97,14 +153,74 @@ export class CalendarSettingsBackend {
     return this.cachedService
   }
 
-  /** 配置状态：只回面板要用的非敏感字段。 */
-  status(): Record<string, unknown> {
+  /**
+   * 连接摘要：面板要的每一个非敏感字段都在这里，密钥只回「有没有」。
+   * 未配置时 configured:false + reason（resolveConfig 的中文指引），面板据此渲染引导态。
+   */
+  connection(): Record<string, unknown> {
+    const stored = ((this.settings?.read?.() ?? {}) as Record<string, unknown>)
+    const effective = this.configOf()
+    const descriptor = this.settings?.descriptor?.()
+    let configured = false
+    let reason: string | undefined
     try {
-      const resolved = resolveConfig(this.options.config ?? undefined, this.options.env ?? process.env)
-      return { configured: true, provider: resolved.provider, caldavUrl: resolved.caldavUrl }
+      resolveConfig(effective, this.options.env ?? process.env)
+      configured = true
     } catch (error) {
-      return { configured: false, reason: error instanceof Error ? error.message : String(error) }
+      reason = error instanceof Error ? error.message : String(error)
     }
+    const text = (key: string): string => {
+      const value = stored[key]
+      if (typeof value === 'string' && value !== '') return value
+      const resolved = (effective as Record<string, unknown>)[key]
+      return typeof resolved === 'string' ? resolved : ''
+    }
+    return {
+      configured,
+      ...(reason !== undefined ? { reason } : {}),
+      settingsAvailable: this.settings !== undefined,
+      revision: descriptor?.revision ?? 0,
+      provider: text('provider'),
+      caldavUrl: text('caldavUrl'),
+      username: text('username'),
+      host: text('host'),
+      user: text('user'),
+      calendar: text('calendar'),
+      calendarId: text('calendarId'),
+      authMethod: text('authMethod'),
+      clientId: text('clientId'),
+      tokenUrl: text('tokenUrl'),
+      proxyUrl: text('proxyUrl'),
+      hasPassword: text('password') !== '' || (effective.password ?? '') !== '',
+      hasClientSecret: text('clientSecret') !== '' || (effective.clientSecret ?? '') !== '',
+      hasRefreshToken: text('refreshToken') !== '' || (effective.refreshToken ?? '') !== '',
+    }
+  }
+
+  /** 兼容旧动作名：status 就是连接摘要。 */
+  status(): Record<string, unknown> {
+    return this.connection()
+  }
+
+/**
+ * 草稿 → 拟议配置：先与已存值合并（草稿缺席的键保留原值），再叠加到当前生效配置之上。
+ * 连接测试和保存都走这条路，所以「测试通过」与「保存后能用」看到的是同一份配置。
+ */
+  private proposed(draft: Record<string, unknown>): { stored: Record<string, unknown>; config: CalendarConfig } {
+    const storedValue = ((this.settings?.read?.() ?? {}) as Record<string, unknown>)
+    const stored = mergeConnection(storedValue, draft)
+    return { stored, config: { ...this.configOf(), ...draftToConfig(stored as Partial<CalendarSettingsValue>) } }
+  }
+
+  /** 真连一次：拿拟议配置列一下未来 30 天，能列出来就算通。 */
+  private async probe(config: CalendarConfig): Promise<{ count: number; sample: string[] }> {
+    if (this.options.probeFactory !== undefined) return await this.options.probeFactory(config)
+    const service = this.options.serviceFactory !== undefined
+      ? this.options.serviceFactory(config)
+      : (new CalendarService(resolveConfig(config, this.options.env ?? process.env)) as unknown as CalendarServiceLike)
+    const now = new Date()
+    const events = await service.list(isoNoMillis(now.toISOString()), isoNoMillis(new Date(now.getTime() + 30 * 86400000).toISOString()), { expand: false, maxOccurrences: 5 })
+    return { count: events.length, sample: events.slice(0, 3).map((event) => event.summary) }
   }
 
   private responseJson(res: any, status: number, payload: unknown): void {
@@ -153,7 +269,25 @@ export class CalendarSettingsBackend {
   /** 动作分发。每个动作自己校验参数，错误信息面向用户（中文，面板直接显示）。 */
   private async dispatch(body: Record<string, unknown>): Promise<unknown> {
     const action = typeof body.action === 'string' ? body.action : ''
-    if (action === 'status') return this.status()
+    if (action === 'status' || action === 'connection') return this.connection()
+    if (action === 'testConnection') {
+      const { config } = this.proposed(connectionDraft(body))
+      const probe = await this.probe(config)
+      return { ok: true, ...probe, connection: this.connection() }
+    }
+    if (action === 'saveConnection') {
+      const { stored, config } = this.proposed(connectionDraft(body))
+      // 校验的是「落盘后的形状」：只有它同时覆盖了 YAML 兜底与面板新填的字段。
+      validateSettingsValue(stored as Partial<CalendarSettingsValue>)
+      // 默认先测再存：一个连不上的地址不该被写进 settings 再让人去猜哪里错了。
+      const probe = body.test === false ? undefined : await this.probe(config)
+      const face = this.settings
+      if (face === undefined) {
+        throw new Error('当前宿主的 settings 服务不可用：请在 profile 的 cordis.patch.yml 里配置 dsh-calendar 后重启')
+      }
+      await face.replace(stored, face.descriptor()?.revision ?? 0)
+      return { saved: true, ...(probe !== undefined ? { probe } : {}), connection: this.connection() }
+    }
     if (action === 'list') {
       const now = new Date()
       const start = optionalString(body, 'start') ?? isoNoMillis(now.toISOString())
@@ -200,6 +334,17 @@ async function readJsonBody(req: any): Promise<unknown> {
   } catch {
     throw new Error('请求体不是合法 JSON')
   }
+}
+
+/** 从请求体里挑出连接字段：只认 CONNECTION_KEYS，字符串原样、null 表示清除。 */
+function connectionDraft(body: Record<string, unknown>): Record<string, unknown> {
+  const draft: Record<string, unknown> = {}
+  for (const key of CONNECTION_KEYS) {
+    if (!(key in body)) continue
+    const value = body[key]
+    if (value === null || typeof value === 'string') draft[key] = value
+  }
+  return draft
 }
 
 function requireString(body: Record<string, unknown>, key: string, message: string): string {

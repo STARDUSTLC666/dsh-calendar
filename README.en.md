@@ -33,6 +33,21 @@ Then restart the web service. To clean up fully, also remove the plugin entry fr
 
 ## Configuration
 
+**Recommended: configure it in the panel (0.6.0+)**
+
+Open「Connection」in the panel toolbar, pick a provider, fill in the address and account, hit **Test connection** (it really lists the next 30 days) and then **Save and enable**. The tools pick the new configuration up on their next call — no restart, no YAML editing.
+
+What the panel saves lives in your local `settings.yaml` under the `dsh-calendar` namespace (the password is a secret field: no logs, no exports). **The YAML remains the base layer**: any field the panel never touched still comes from it, so an existing `cordis.patch.yml` setup needs no migration; a headless host without a settings page still configures through YAML only.
+
+Per-provider notes:
+
+- **iCloud**: `caldavUrl` looks like `https://caldav.icloud.com/<numeric id>/calendars/<calendar id>/`; use an [app-specific password](https://appleid.apple.com/)
+- **Nextcloud / self-hosted**: server URL + username + calendar name (self-hosted: the full collection URL, keep the trailing slash) and an app password
+- **Google**: OAuth only — Google rejects every Basic password, including app passwords; needs `clientId` / `clientSecret` / `refreshToken` / `calendarId`
+
+### Or: write YAML (advanced / headless)
+
+The fields below mirror the panel form one-to-one; whatever the panel never set comes from here.
 All configuration lives in your profile's cordis.patch.yml; override the `calendar` line by id (overriding replaces that line's config wholesale). Common fields:
 
 - `provider`: google | icloud | nextcloud | custom
@@ -148,7 +163,7 @@ Once installed, DSH grows a「Calendar」section in Settings; the chat page also
 - **Click to edit**: open any event in the right-hand drawer — time, duration, a human-readable repeat rule (`FREQ=WEEKLY;COUNT=6` → "weekly (6 times)"), location, notes, one-click uid copy — then edit or delete (deletion asks twice).
 - **Create**: title, date, start/end, all-day, location, notes, repeat (daily/weekly/monthly/yearly, or a raw RRULE).
 - **Conflict notice**: before saving, overlapping events are listed and you are asked whether to continue.
-- **Usable before configuring**: without a CalDAV account the panel shows setup guidance plus a clearly labelled sample; it never pretends to be your real calendar.
+- **Configurable from the panel itself**: without a CalDAV account the panel shows guidance whose「Connection」button opens the form (test first, then save); a clearly labelled sample is one click away and never pretends to be your real calendar.
 - **Theme and locale aware**: colours come from the host design tokens (`--dsw-*`), so light/dark themes follow automatically; copy follows Settings → General.
 - **Security**: the panel only talks to the plugin’s own `/_dsh/dsh-calendar/settings`, which is loopback-only and re-checks Host, Origin and Content-Type on writes; credentials are never echoed back.
 ## Time and timezone

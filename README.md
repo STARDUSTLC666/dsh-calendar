@@ -29,6 +29,21 @@ dsh plugin --profile web add dsh-calendar
 
 ## 配置
 
+**推荐：在面板里配（0.6.0+）**
+
+打开面板右上角的「连接设置」，选服务商 → 填地址与账号 → 点**「测试连接」**（它会真的去列未来 30 天的日程）→ 通过后点「保存并启用」。工具的下一次调用立刻用上新配置，不用重启、不用编辑 YAML。
+
+面板写下的值存在本机 `settings.yaml` 的 `dsh-calendar` 命名空间里（密码是 secret 字段：不进日志、不进导出）。**YAML 仍然是基座**：面板没填过的字段由它兜底，所以已经用 `cordis.patch.yml` 配好的部署零迁移；纯 headless（没有设置页）的宿主依然只能走 YAML。
+
+各服务商要点：
+
+- **iCloud**：`caldavUrl` 形如 `https://caldav.icloud.com/<数字ID>/calendars/<日历ID>/`，密码用 [App 专用密码](https://appleid.apple.com/)
+- **Nextcloud / 自建**：服务器地址 + 用户名 + 日历名（自建则给完整集合 URL，结尾的 `/` 别丢），密码用 App 密码
+- **Google**：必须 OAuth，Google 不接受任何 Basic 密码；需要 `clientId` / `clientSecret` / `refreshToken` / `calendarId`
+
+### 或者：写 YAML（高级 / headless）
+
+下面的字段与面板表单一一对应；面板没设过的字段以这里为准。
 所有配置都在你的 profile 的 cordis.patch.yml 里，按 id 覆盖 `calendar` 行（覆盖整行的 config）。通用字段：
 
 - `provider`：google | icloud | nextcloud | custom
@@ -172,7 +187,7 @@ Nextcloud / 自定义 Basic 服务：检查账号、密码或服务要求的应�
 - **点开就能改**：点任意日程打开右侧详情 —— 时间、时长、重复规则的人话（`FREQ=WEEKLY;COUNT=6` → 「每周（共 6 次）」）、地点、备注、uid 一键复制；接着「编辑」或「删除」（删除要二次确认）。
 - **新建**：标题、日期、开始/结束、全天、地点、备注、重复（每天/每周/每月/每年，或直接写 RRULE）。
 - **冲突提醒**：保存前若与已有日程重叠，会把重叠的几条列出来问你是否继续。
-- **没配置也能看**：未填 CalDAV 账号时显示引导 + 「查看示例」，示例数据有明确标注，不会冒充你的真实日历。
+- **没配置也能配**：未填 CalDAV 账号时显示引导，点「连接设置」就在面板里把账号填好（先测后存）；也可以点「查看示例」先看面板长什么样，示例数据有明确标注，不会冒充你的真实日历。
 - **跟随主题与语言**：配色全部走宿主设计令牌（`--dsw-*`），深浅色主题自动适配；文案跟随 Settings → General 的语言。
 - **安全**：面板只与插件自己的 `/_dsh/dsh-calendar/settings` 通信；该路由仅回环地址可达，写操作还要过 Host / Origin / Content-Type 三道校验，响应里永不回显账号密码。
 ## 时间与时区

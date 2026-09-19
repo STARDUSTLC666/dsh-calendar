@@ -33,3 +33,4 @@ export * from './ical.js';
 export * from './caldav.js';
 export * from './tools.js';
 export * from './web.js';
+export * from './settings.js';

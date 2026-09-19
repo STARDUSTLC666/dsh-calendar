@@ -6,7 +6,8 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { CalendarSettingsBackend, SETTINGS_ROUTE, hostVerdict, postVerdict } from '../lib/web.js';
+import { CalendarSettingsBackend, SETTINGS_ROUTE, hostVerdict, mergeConnection, postVerdict } from '../lib/web.js';
+import { toCalendarConfig, toSettingsBase, validateSettingsValue } from '../lib/settings.js';
 
 /** 造一个最小 req：POST body 走异步迭代器（handle 里就是 for await 读的）。 */
 function makeReq(options = {}) {
@@ -190,4 +191,184 @@ test('面板挂在宿主的 settings 槽位，并自带一个对话页悬浮按�
   assert.match(source, /dshc-fab/, '对话页右下角的小按钮');
   assert.match(source, /--dsw-alias-bg-layer-1/, '配色走宿主设计令牌，深浅色主题自动跟随');
   assert.match(source, /export(s)?\.inject = inject/, 'inject 必须导出，否则 cordis 不会调用 apply');
+});
+
+// ───────────────────────────── 连接设置（面板内配置） ─────────────────────────────
+
+/** 假的 settings 面：记录写入、给出 revision，行为与宿主的 replace 一致。 */
+function fakeSettings(initial = {}, revision = 7) {
+  const state = { value: Object.assign({}, initial), revision, writes: [] };
+  return {
+    state,
+    read: () => state.value,
+    descriptor: () => ({ revision: state.revision, user: state.value }),
+    replace: async (value, expected) => {
+      state.writes.push({ value: Object.assign({}, value), revision: expected });
+      state.value = Object.assign({}, value);
+    },
+  };
+}
+
+test('mergeConnection：草稿缺席＝保持、空串＝保持、null＝清除', () => {
+  const stored = { provider: 'icloud', username: 'me@icloud.com', password: 'old', caldavUrl: 'https://caldav.icloud.com/1/calendars/home/' };
+  assert.deepEqual(
+    mergeConnection(stored, { provider: 'custom' }),
+    { provider: 'custom', username: 'me@icloud.com', password: 'old', caldavUrl: 'https://caldav.icloud.com/1/calendars/home/' },
+    '只改 provider，其余原样保留'
+  );
+  assert.deepEqual(mergeConnection(stored, { password: '' }).password, 'old', '空串是「保持不变」，不是清除');
+  const cleared = mergeConnection(stored, { password: null });
+  assert.equal('password' in cleared, false, 'null 才是明确清除');
+});
+
+test('connection 摘要只回「有没有密钥」，绝不回显密钥本身', async () => {
+  const settings = fakeSettings({
+    provider: 'icloud',
+    caldavUrl: 'https://caldav.icloud.com/1/calendars/home/',
+    username: 'me@icloud.com',
+    password: 'super-secret-password',
+    clientSecret: 'super-secret-client',
+  });
+  const backend = new CalendarSettingsBackend({ config: {}, settings, probeFactory: async () => ({ count: 0, sample: [] }) });
+  const res = makeRes();
+  await backend.handle(makeReq({ body: { action: 'connection' } }), res);
+  assert.equal(res.state.status, 200);
+  const value = res.state.body.value;
+  assert.equal(value.configured, true, 'icloud + URL + 账号 + 密码就是一份能用的配置');
+  assert.equal(value.provider, 'icloud');
+  assert.equal(value.hasPassword, true);
+  assert.equal(value.hasClientSecret, true);
+  assert.equal(value.settingsAvailable, true);
+  assert.equal(value.revision, 7);
+  assert.equal(/super-secret/.test(res.state.raw), false, '响应里不能出现任何密钥');
+  assert.equal(Object.keys(value).some((key) => key === 'password' || key === 'clientSecret'), false, '字段名也不该叫 password/clientSecret');
+});
+
+test('saveConnection：先测后存，写进 settings 时带上 revision', async () => {
+  const settings = fakeSettings({
+    provider: 'custom',
+    caldavUrl: 'https://old.example/dav/',
+    username: 'old-user',
+    password: 'old-pass',
+  });
+  const probes = [];
+  const backend = new CalendarSettingsBackend({
+    config: {},
+    settings,
+    probeFactory: async (config) => { probes.push(config); return { count: 3, sample: ['评审会', '站会'] }; },
+  });
+  const res = makeRes();
+  await backend.handle(makeReq({
+    body: {
+      action: 'saveConnection',
+      provider: 'icloud',
+      caldavUrl: 'https://caldav.icloud.com/1/calendars/home/',
+      username: 'me@icloud.com',
+      password: 'app-pass',
+    },
+  }), res);
+  assert.equal(res.state.status, 200, JSON.stringify(res.state.body));
+  assert.equal(settings.state.writes.length, 1, '保存成功 = 恰好写一次');
+  const written = settings.state.writes[0];
+  assert.equal(written.revision, 7, '带上读到的 revision，冲突交给宿主判定');
+  assert.equal(written.value.provider, 'icloud');
+  assert.equal(written.value.password, 'app-pass');
+  assert.equal(probes.length, 1, '默认先测一次');
+  assert.equal(probes[0].caldavUrl, 'https://caldav.icloud.com/1/calendars/home/', '测的就是即将保存的那份配置');
+  assert.equal(res.state.body.value.saved, true);
+  assert.equal(res.state.body.value.probe.count, 3);
+  assert.equal(/app-pass/.test(res.state.raw), false, '响应不回显刚保存的密码');
+});
+
+test('保存时留空密钥＝沿用已存的那一份（面板不用把密码回填到前端）', async () => {
+  const settings = fakeSettings({
+    provider: 'custom',
+    caldavUrl: 'https://old.example/dav/',
+    username: 'me',
+    password: 'stored-pass',
+  });
+  const backend = new CalendarSettingsBackend({ config: {}, settings, probeFactory: async () => ({ count: 0, sample: [] }) });
+  const res = makeRes();
+  await backend.handle(makeReq({
+    body: { action: 'saveConnection', provider: 'custom', caldavUrl: 'https://new.example/dav/', username: 'me' },
+  }), res);
+  assert.equal(res.state.status, 200, JSON.stringify(res.state.body));
+  assert.equal(settings.state.writes[0].value.password, 'stored-pass', '没填就不动它');
+  assert.equal(settings.state.writes[0].value.caldavUrl, 'https://new.example/dav/');
+});
+
+test('连接测试失败 → 不落盘，并把服务器原话带回面板', async () => {
+  const settings = fakeSettings({ provider: 'custom', caldavUrl: 'https://old.example/dav/', username: 'me', password: 'p' });
+  const backend = new CalendarSettingsBackend({
+    config: {},
+    settings,
+    probeFactory: async () => { throw new Error('401 Unauthorized：账号或应用专用密码不对'); },
+  });
+  const res = makeRes();
+  await backend.handle(makeReq({ body: { action: 'saveConnection', provider: 'custom', caldavUrl: 'https://bad.example/dav/', username: 'me', password: 'x' } }), res);
+  assert.equal(res.state.status, 400);
+  assert.match(res.state.body.error.message, /401 Unauthorized/);
+  assert.equal(settings.state.writes.length, 0, '连不上就不该写进 settings');
+});
+
+test('testConnection 只试不存，并回报读到的条目数', async () => {
+  const settings = fakeSettings({}, 3);
+  const backend = new CalendarSettingsBackend({
+    config: {},
+    settings,
+    probeFactory: async () => ({ count: 5, sample: ['A', 'B', 'C'] }),
+  });
+  const res = makeRes();
+  await backend.handle(makeReq({ body: { action: 'testConnection', provider: 'custom', caldavUrl: 'https://x.example/dav/', username: 'me', password: 'p' } }), res);
+  assert.equal(res.state.status, 200);
+  assert.equal(res.state.body.value.ok, true);
+  assert.equal(res.state.body.value.count, 5);
+  assert.deepEqual(res.state.body.value.sample, ['A', 'B', 'C']);
+  assert.equal(settings.state.writes.length, 0, '测试连接不写盘');
+});
+
+test('没有 settings 服务时保存要明确拒绝（面板据此禁用按钮）', async () => {
+  const backend = new CalendarSettingsBackend({ config: {}, probeFactory: async () => ({ count: 0, sample: [] }) });
+  const res = makeRes();
+  await backend.handle(makeReq({ body: { action: 'saveConnection', provider: 'custom', caldavUrl: 'https://x.example/dav/', username: 'me', password: 'p' } }), res);
+  assert.equal(res.state.status, 400);
+  assert.match(res.state.body.error.message, /settings 服务不可用/);
+  const status = makeRes();
+  await backend.handle(makeReq({ body: { action: 'connection' } }), status);
+  assert.equal(status.state.body.value.settingsAvailable, false);
+});
+
+test('settings 投影：schema 默认值不覆盖 cordis.patch.yml 的配置', () => {
+  const base = toSettingsBase({ provider: 'icloud', caldavUrl: 'https://caldav.icloud.com/1/calendars/home/', username: 'me@icloud.com', password: 'p' });
+  assert.deepEqual(base, { provider: 'icloud', caldavUrl: 'https://caldav.icloud.com/1/calendars/home/', username: 'me@icloud.com', password: 'p' });
+  assert.deepEqual(toSettingsBase(undefined), {});
+  // 用户只改过 provider：其余字段必须缺席（缺席 = 交给 YAML 兜底）。
+  const partial = toCalendarConfig({ provider: 'custom', caldavUrl: '', username: '' }, { provider: 'custom' });
+  assert.deepEqual(partial, { provider: 'custom' });
+  // 草稿路径（null）= 全量投影，且空串仍然表示「没设置」。
+  const full = toCalendarConfig({ provider: 'custom', caldavUrl: 'https://x/dav/', username: '', password: '' }, null);
+  assert.deepEqual(full, { provider: 'custom', caldavUrl: 'https://x/dav/' });
+});
+
+test('写入校验：Google 必须 OAuth 且四件套齐全，地址必须是 http(s)', () => {
+  assert.throws(() => validateSettingsValue({ provider: 'nope' }), /未知的日历服务商/);
+  assert.throws(() => validateSettingsValue({ provider: 'google', authMethod: 'basic', calendarId: 'me@gmail.com' }), /不接受 Basic/);
+  assert.throws(() => validateSettingsValue({ provider: 'google' }), /日历 ID/);
+  assert.throws(() => validateSettingsValue({ provider: 'google', calendarId: 'me@gmail.com', clientId: 'c' }), /clientSecret/);
+  assert.throws(() => validateSettingsValue({ provider: 'custom', caldavUrl: 'ftp://x' }), /http:\/\/ 或 https:\/\//);
+  assert.throws(() => validateSettingsValue({ provider: 'nextcloud', host: 'https://c.example' }), /user/);
+  assert.throws(() => validateSettingsValue({ provider: 'icloud' }), /日历集合 URL/);
+  // 合法的一份不该抛
+  validateSettingsValue({ provider: 'icloud', caldavUrl: 'https://caldav.icloud.com/1/calendars/home/', username: 'me@icloud.com', password: 'p' });
+  validateSettingsValue(undefined);
+});
+
+test('面板里有连接设置表单，且密钥一律留空靠 placeholder 说明', async () => {
+  const fs = await import('node:fs');
+  const source = fs.readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8');
+  assert.match(source, /api\("saveConnection"/, '保存走 saveConnection');
+  assert.match(source, /api\("testConnection"/, '测试连接走 testConnection');
+  assert.match(source, /"conn\.keep"/, '已存的密钥用「已保存，留空不改」提示，不回填');
+  assert.match(source, /PROVIDER_FIELDS/, '每个服务商一套字段');
+  assert.match(source, /type: secret \? "password" : "text"/, '密钥输入框是 password 类型');
 });

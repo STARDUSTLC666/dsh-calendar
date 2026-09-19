@@ -143,11 +143,15 @@ function buildSearchFilter(query: string): (event: CalendarEvent) => boolean {
 }
 
 /** 构建六个工具定义；每个 execute 惰性解析配置，缺失时抛出中文指引。 */
-export function buildCalendarTools(config: CalendarConfig | undefined, env: NodeJS.ProcessEnv = process.env): CalendarToolDefinition[] {
+/** 配置来源：静态对象，或一个 getter（面板把新配置写进 settings 后，工具下一次调用就该用新的）。 */
+export type CalendarConfigSource = CalendarConfig | undefined | (() => CalendarConfig | undefined)
+
+export function buildCalendarTools(config: CalendarConfigSource, env: NodeJS.ProcessEnv = process.env): CalendarToolDefinition[] {
+  const configOf = (): CalendarConfig | undefined => (typeof config === 'function' ? config() : config)
   let cachedKey: string | undefined
   let cachedService: CalendarService | undefined
   const service = (): CalendarService => {
-    const resolved = resolveConfig(config, env)
+    const resolved = resolveConfig(configOf(), env)
     // 闭包内比较，不写日志或磁盘；凭据/端点变化时不复用旧 token。
     const key = JSON.stringify(resolved)
     if (cachedService === undefined || cachedKey !== key) {
@@ -398,31 +402,33 @@ export function buildCalendarTools(config: CalendarConfig | undefined, env: Node
     async execute(_args: unknown, exec: unknown): Promise<unknown> {
       executionSignal(exec)?.throwIfAborted()
       const checks: Array<Record<string, unknown>> = []
-      const rawProvider = (config as { provider?: unknown } | undefined)?.provider
+      // 每次自检都重新取配置：面板刚保存的地址应当立刻反映在这里。
+      const current = configOf()
+      const rawProvider = (current as { provider?: unknown } | undefined)?.provider
       const provider = rawProvider === undefined || rawProvider === null || rawProvider === '' ? 'custom' : String(rawProvider)
       const providerOk = (CALENDAR_PROVIDERS as readonly string[]).includes(provider)
       checks.push({ name: '服务商', ok: providerOk, detail: providerOk ? provider : '不支持 ' + provider + '；只支持 ' + CALENDAR_PROVIDERS.join(' / ') })
 
       try {
-        const endpoint = buildCaldavUrl(config ?? {}, provider as CalendarProvider)
-        if (resolveAuthMethod(config) === 'oauth') validateOAuthUrl(endpoint, 'caldavUrl')
+        const endpoint = buildCaldavUrl(current ?? {}, provider as CalendarProvider)
+        if (resolveAuthMethod(current) === 'oauth') validateOAuthUrl(endpoint, 'caldavUrl')
         checks.push({ name: '日历地址', ok: true, detail: '已解析为 ' + endpoint })
       } catch (error) {
         checks.push({ name: '日历地址', ok: false, detail: error instanceof Error ? error.message : String(error) })
       }
 
       try {
-        if (resolveAuthMethod(config) === 'oauth') {
+        if (resolveAuthMethod(current) === 'oauth') {
           checks.push({ name: '认证方式', ok: true, detail: 'OAuth 2.0（无需 username/password）' })
         } else {
-          const hasUser = typeof config?.username === 'string' && config.username.trim() !== ''
+          const hasUser = typeof current?.username === 'string' && current.username.trim() !== ''
           checks.push({ name: '账号', ok: hasUser, detail: hasUser ? '已配置 Basic 账号' : '未配置：请填 username（iCloud 为账号邮箱）' })
         }
       } catch (error) {
         checks.push({ name: '认证方式', ok: false, detail: error instanceof Error ? error.message : String(error) })
       }
       try {
-        const credentials = resolveCredentials(config, env)
+        const credentials = resolveCredentials(current, env)
         checks.push({ name: '认证凭据', ok: true, detail: credentials.oauth === undefined
           ? '已配置 Basic 凭据；仅检查配置，未联网验证'
           : '已配置 clientId、clientSecret、refreshToken 与 tokenUrl；仅检查配置，未联网验证' })
