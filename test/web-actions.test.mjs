@@ -604,3 +604,19 @@ test('月视图的格子不是 button —— 芯片是按钮，按钮不能套�
   assert.match(monthView, /h\("div", \{\n\s*key: key,\n\s*role: "button"/, '格子改用 div + role=button，键盘仍可操作');
   assert.match(monthView, /onKeyDown/, '键盘要能触发新建');
 });
+
+test('面板体验三件套：记住视图 / 周视图从 07:00 起 / 窄容器适配', async () => {
+  const fs = await import('node:fs');
+  const source = fs.readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+  // ① 记住上次视图
+  assert.match(source, /"dsh-calendar:view"/, '视图状态有独立的 localStorage key');
+  assert.match(source, /useState\(loadStoredView\)/, '初始值是读回来的，不是写死 month');
+  assert.match(source, /storeView\(name\)/, '切视图时写回去');
+  assert.match(source, /VIEWS\.indexOf\(stored\) === -1 \? "month" : stored/, '存了脏值要退回 month');
+  // ② 周视图默认 07:00
+  assert.match(source, /node\.scrollTop = 7 \* HOUR_PX/, '周视图默认滚到 07:00');
+  assert.match(source, /h\("div", \{ className: "dshc-week", ref: scroller \}/, '滚动容器挂了 ref');
+  // ③ 窄容器
+  assert.match(source, /container-type:inline-size/, '面板自身是容器查询的容器');
+  assert.match(source, /@container \(max-width: 620px\)\{\.dshc-title\{display:none\}\.dshc-chip \.t\{display:none\}/, '窄容器里藏掉时间前缀与重复标题');
+});
