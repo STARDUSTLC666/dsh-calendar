@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.2（2026-09-20）
+
+- **修主题色误用**：此前把宿主遮罩 token `--dsw-alias-bg-mask-3` 当淡色 hover/底纹用；DSH 0.1.6-alpha.2 里它实测亮/暗主题都是 `rgba(0,0,0,.48)`，导致周视图「今天」整列、月视图格子 hover、加载骨架屏、详情 tag 全部发深灰（浏览器视觉验收抓到，视觉上像一块无字灰板）。现改为 `color-mix`（label-primary 5%~7% / business-primary 7%），mask-3 只保留在 `.dshc-overlay` / `.dshc-modalwrap` 两处真正的遮罩上。
+- **修 Esc 关错层**：详情抽屉/新建表单打开时按 Esc 会连整个日历浮层面板一起关掉。现在 Esc 只关最上面一层，第二次才关面板；焦点在上层宿主 `PRIM.Modal` 里时让行给宿主；输入法组合状态（`isComposing`）不误关；设置页与对话页两个面板并存时一次也只关一层，并按实际打开顺序关。
+- **测试**：render 测试 7 → 15 条（新增抽屉/宿主 Modal 真假路径/宿主高层浮层让行/普通宿主元素兜底/层序/IME 等用例），全量 154 pass。该版经两位独立评审：首轮抓到「宿主 Portal 抢 Esc」「双面板一次连关两层」「IME 误关」，二轮抓到「宿主高层 Modal 盖上来时关错下面那层」，均已修。
+
 ## 0.8.1（2026-09-19）
 
 - **新增真 DOM 行为测试层**（`test/render.test.mjs`，devDependencies 里加 `react` / `react-dom` / `jsdom`，不进发布包）：用 jsdom + 真 React 渲染周视图，然后真派发 `pointerdown/move/up`、`click`、`keydown`。7 条覆盖：渲染不抛、点事件不会顺手弹「新建」、拖动只提交一次且按视口坐标换算、拖动中 Esc 零请求、卸载后不留监听器且之后的 pointerup 不提交、拖到边缘 rAF 持续滚动、重复日程被面板挡住。
