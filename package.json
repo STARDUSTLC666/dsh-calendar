@@ -1,6 +1,6 @@
 {
   "name": "dsh-calendar",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "DSH 日历插件：CalDAV 日程查询、创建、修改、删除与搜索，支持 Google OAuth2、iCloud、Nextcloud 与自建服务。",
   "type": "module",
   "main": "lib/index.js",
@@ -60,6 +60,9 @@
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
+    "jsdom": "^30.1.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
     "typescript": "^5.6.0"
   },
   "repository": {

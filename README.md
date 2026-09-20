@@ -230,6 +230,8 @@ Nextcloud / 自定义 Basic 服务：检查账号、密码或服务要求的应�
 
 ## 开发
 
+- **UI 行为测试**：`test/render.test.mjs` 用 jsdom + 真 React 渲染周视图并派发真实事件（点击 / 拖动 / Esc / 卸载 / 边缘滚动）。改前端交互时它会替你点一遍；`pnpm test` 会一起跑。
+
 ```bash
 pnpm install
 pnpm test   # 构建 + node --test

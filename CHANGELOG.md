@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.1（2026-09-19）
+
+- **新增真 DOM 行为测试层**（`test/render.test.mjs`，devDependencies 里加 `react` / `react-dom` / `jsdom`，不进发布包）：用 jsdom + 真 React 渲染周视图，然后真派发 `pointerdown/move/up`、`click`、`keydown`。7 条覆盖：渲染不抛、点事件不会顺手弹「新建」、拖动只提交一次且按视口坐标换算、拖动中 Esc 零请求、卸载后不留监听器且之后的 pointerup 不提交、拖到边缘 rAF 持续滚动、重复日程被面板挡住。
+- **它的第一批产出就是三个真问题**：
+  ① **同一批次内拖动不提交**：提交前的「有没有落点」判断读的是 React state（`ghost`），而 `pointermove` 与 `pointerup` 落在同一批次时 state 还没刷新 → 明明拖了却不落盘。改为在 `dragRef` 上记同步标记。
+  ② `requestAnimationFrame` / `cancelAnimationFrame` 按全局调用：浏览器里有，但模块作用域下应当显式走 `window.*`。
+  ③ 三处 React key 警告（日期头、事件块、幽灵块、日列的子节点用了数组却没给 key）——dev 模式控制台一直在吵。
+
 ## 0.8.0（2026-09-19）
 
 - **新增：周视图拖拽改期**。拖动事件块上下改时间、左右换天（15 分钟吸附）；拖块底部 6px 改时长；拖动中显示幽灵落点，与已有日程重叠时描成黄色（允许重叠，只是提醒）；拖到容器上下边缘自动滚动，长会议不用先滚再拖。
