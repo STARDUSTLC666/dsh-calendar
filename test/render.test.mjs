@@ -14,12 +14,12 @@ import { readFileSync } from 'node:fs';
 import { JSDOM } from 'jsdom';
 
 const SOURCE = readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
-const EXPOSE = 'module.exports.__internals = { __components: { WeekView, MonthView, CalendarPanel } };';
+const EXPOSE = 'module.exports.__internals = { __components: { WeekView, MonthView, CalendarPanel, Launcher }, __layer: { registerLayerEscape } };';
 if (!SOURCE.includes('return module.exports;')) throw new Error('client.js 装载契约变了，本测试的注入点要跟着改');
 const PATCHED = SOURCE.replace('return module.exports;', EXPOSE + '\nreturn module.exports;');
 
 /** 每个测试一套干净的 jsdom + 真 React；顺手给 window 的监听器记账。 */
-async function setup() {
+async function setup(options = {}) {
   const dom = new JSDOM('<!doctype html><html><body></body></html>', { pretendToBeVisual: true, url: 'http://localhost/' });
   const win = dom.window;
   const listenerLog = [];
@@ -40,19 +40,40 @@ async function setup() {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true;
   const react = await import('react');
   const reactDomClient = await import('react-dom/client');
+  const reactDom = await import('react-dom');
   let captured = null;
   win.__ModuleLoader__ = {
     load: (registration) => {
       captured = registration.factory((name) => {
         if (name === 'react') return react;
         if (name === 'react-dom/client') return reactDomClient;
+        if (name === '@deepseek-ai/dsh-client-ui-primitives' && options.primitives === true) {
+          return { Modal: makeFakeModal(react, reactDom) };
+        }
         if (name === 'react/jsx-runtime') return {};
         throw new Error('unexpected require: ' + name);
       });
     },
   };
   new Function('window', 'document', 'navigator', PATCHED)(win, win.document, win.navigator);
-  return { dom, win, react, reactDomClient, components: captured.__internals.__components, listenerLog, apiCalls };
+  return { dom, win, react, reactDomClient, components: captured.__internals.__components, layer: captured.__internals.__layer, listenerLog, apiCalls };
+}
+
+/** 模拟宿主 PRIM.Modal：portal 到 body，自带的 Esc 监听在 document 冒泡阶段（与 0.1.6-alpha.2 一致）。 */
+function makeFakeModal(react, reactDom) {
+  function FakeModal(props) {
+    if (props.open !== true) return null;
+    react.useEffect(() => {
+      const onKey = (event) => { if (event.key === 'Escape' && event.isComposing !== true) props.onClose(); };
+      document.addEventListener('keydown', onKey);
+      return () => document.removeEventListener('keydown', onKey);
+    }, [props.open, props.onClose]);
+    return reactDom.createPortal(
+      react.createElement('div', { className: 'fake-host-modal', role: 'dialog' }, [props.children, props.footer]),
+      document.body
+    );
+  }
+  return FakeModal;
 }
 
 /** 造一个 pointer 事件：jsdom 没有 PointerEvent，用 MouseEvent 补上我们的实现要读的字段。 */
@@ -243,4 +264,113 @@ test('重复日程：拖动被挡住（不做重锚系列起点的危险写入�
   assert.equal(moves.length, 1);
   const inner = SOURCE.slice(SOURCE.indexOf('const reschedule ='), SOURCE.indexOf('const undoMove'));
   assert.match(inner, /if \(isRecurring\(event\)\) \{ notify\(t\("move\.recurringUnsupported"\)\); return; \}/, '面板层必须拦住重复日程');
+});
+
+test('Esc 分层关闭：先关新建表单，面板还在；再按一次才关面板', async () => {
+  const { react, reactDomClient, components, win } = await setup();
+  const { container } = await render(react, reactDomClient, react.createElement(components.Launcher, {}));
+  await react.act(async () => { container.querySelector('.dshc-fab').dispatchEvent(new win.MouseEvent('click', { bubbles: true })); });
+  assert.notEqual(container.querySelector('.dshc-float'), null, '点浮标后日历面板要打开');
+  const newButton = [...container.querySelectorAll('button')].find((b) => /新建日程|New event/.test(b.textContent || ''));
+  assert.notEqual(newButton, undefined, '工具栏要有「新建日程」');
+  await react.act(async () => { newButton.dispatchEvent(new win.MouseEvent('click', { bubbles: true })); });
+  assert.notEqual(container.querySelector('.dshc-modalwrap'), null, '新建表单要打开（jsdom 无宿主 Modal，走自绘兜底）');
+  await react.act(async () => { win.document.body.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); });
+  assert.equal(container.querySelector('.dshc-modalwrap'), null, 'Esc 第一下先关表单');
+  assert.notEqual(container.querySelector('.dshc-float'), null, '不能顺手把日历面板关掉（回归：0.8.1 会一起关）');
+  await react.act(async () => { win.document.body.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); });
+  assert.equal(container.querySelector('.dshc-float'), null, '没有浮层时 Esc 仍然关面板');
+});
+
+test('回归：遮罩级 token 不再被当淡色底（today 列 / 格子 hover 曾整块发黑）', () => {
+  const mask3Lines = SOURCE.split('\n').filter((line) => line.includes('--dsw-alias-bg-mask-3'));
+  assert.equal(mask3Lines.length, 2, 'mask-3 只该留给遮罩（overlay + modalwrap），现在 ' + mask3Lines.length + ' 处');
+  assert.ok(mask3Lines.every((line) => /dshc-overlay|dshc-modalwrap/.test(line)), '除遮罩外不得再用 mask-3 当淡色底');
+  assert.match(SOURCE, /\.dshc-daycol\.today\{background:color-mix\(/);
+  assert.match(SOURCE, /\.dshc-cell:hover\{background:color-mix\(/);
+});
+
+test('Esc 分层关闭：详情抽屉也只关自己一层（不关面板、不抢宿主）', async () => {
+  const { react, reactDomClient, components, win } = await setup();
+  const start = new Date();
+  start.setHours(10, 0, 0, 0);
+  const end = new Date(start.getTime() + 60 * 60 * 1000);
+  const iso = (d) => d.toISOString().replace(/\.\d{3}Z$/, 'Z');
+  const todayEvent = sampleEvent({ uid: 'uid-today', summary: '今天的事', start: iso(start), end: iso(end) });
+  win.fetch = async (url, init) => {
+    const body = init && init.body ? JSON.parse(String(init.body)) : {};
+    const value = body.action === 'connection'
+      ? { configured: true, provider: 'custom', caldavUrl: 'https://example.test/dav', username: 'u' }
+      : { count: 1, start: '', end: '', events: [todayEvent] };
+    return { ok: true, status: 200, json: async () => ({ ok: true, value }) };
+  };
+  // 插件里的 api() 走的是模块作用域的 fetch（测试里即 globalThis.fetch），不是 jsdom 的 win.fetch。
+  globalThis.fetch = win.fetch;
+  const { container } = await render(react, reactDomClient, react.createElement(components.Launcher, {}));
+  await react.act(async () => { container.querySelector('.dshc-fab').dispatchEvent(new win.MouseEvent('click', { bubbles: true })); });
+  let chip = null;
+  for (let i = 0; i < 40 && chip === null; i++) {
+    await react.act(async () => { await new Promise((resolve) => setTimeout(resolve, 10)); });
+    chip = container.querySelector('.dshc-chip');
+  }
+  assert.notEqual(chip, null, '月视图要渲染出事件芯片');
+  await react.act(async () => { chip.dispatchEvent(new win.MouseEvent('click', { bubbles: true })); });
+  assert.notEqual(container.querySelector('.dshc-overlay'), null, '点芯片要打开详情抽屉');
+  await react.act(async () => { win.document.body.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); });
+  assert.equal(container.querySelector('.dshc-overlay'), null, 'Esc 先关详情抽屉');
+  assert.notEqual(container.querySelector('.dshc-float'), null, '面板要留着');
+  await react.act(async () => { win.document.body.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); });
+  assert.equal(container.querySelector('.dshc-float'), null, '没有浮层时 Esc 仍然关面板');
+});
+
+test('Esc 层栈：一次只关最上层 / 宿主 Portal 不抢 / IME 不关', async () => {
+  const { win, layer } = await setup();
+  const calls = [];
+  const rootA = win.document.createElement('div');
+  rootA.className = 'dshc-root';
+  win.document.body.appendChild(rootA);
+  const rootB = win.document.createElement('div');
+  rootB.className = 'dshc-root';
+  win.document.body.appendChild(rootB);
+  const offA = layer.registerLayerEscape(rootA, () => calls.push('A'));
+  const offB = layer.registerLayerEscape(rootB, () => calls.push('B'));
+  const esc = () => new win.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+
+  win.document.body.dispatchEvent(esc());
+  assert.deepEqual(calls, ['B'], 'body 上的 Esc 只关最近打开的层');
+
+  const insideA = win.document.createElement('button');
+  rootA.appendChild(insideA);
+  insideA.dispatchEvent(esc());
+  assert.deepEqual(calls, ['B', 'A'], '焦点在哪个面板就关哪个面板的层');
+
+  const hostPortal = win.document.createElement('div');
+  win.document.body.appendChild(hostPortal);
+  hostPortal.dispatchEvent(esc());
+  assert.deepEqual(calls, ['B', 'A'], '宿主 Portal 的 Esc 不抢');
+
+  const ime = esc();
+  Object.defineProperty(ime, 'isComposing', { value: true });
+  win.document.body.dispatchEvent(ime);
+  assert.deepEqual(calls, ['B', 'A'], '输入法组合中的 Esc 不关层');
+
+  offA();
+  offB();
+});
+
+test('宿主 PRIM.Modal 的 Esc 由宿主自己关，日历面板不被顺手关掉', async () => {
+  const { react, reactDomClient, components, win } = await setup({ primitives: true });
+  const { container } = await render(react, reactDomClient, react.createElement(components.Launcher, {}));
+  await react.act(async () => { container.querySelector('.dshc-fab').dispatchEvent(new win.MouseEvent('click', { bubbles: true })); });
+  const newButton = [...container.querySelectorAll('button')].find((b) => /新建日程|New event/.test(b.textContent || ''));
+  assert.notEqual(newButton, undefined, '工具栏要有「新建日程」');
+  await react.act(async () => { newButton.dispatchEvent(new win.MouseEvent('click', { bubbles: true })); });
+  const hostModal = win.document.querySelector('.fake-host-modal');
+  assert.notEqual(hostModal, null, '宿主 Modal 要 portal 到 body');
+  // Esc 的 target 在宿主 Portal 里：日历层栈必须让行，宿主自己的监听来关。
+  await react.act(async () => { hostModal.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); });
+  assert.equal(win.document.querySelector('.fake-host-modal'), null, '宿主 Modal 应该自己关掉');
+  assert.notEqual(container.querySelector('.dshc-float'), null, '日历面板不能被一起关掉');
+  await react.act(async () => { win.document.body.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); });
+  assert.equal(container.querySelector('.dshc-float'), null, '没有浮层时 Esc 仍然关面板');
 });
