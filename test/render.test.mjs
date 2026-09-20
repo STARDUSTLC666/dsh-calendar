@@ -32,6 +32,8 @@ async function setup(options = {}) {
     apiCalls.push({ url: String(url), body: init && init.body ? JSON.parse(String(init.body)) : null });
     return { ok: true, status: 200, json: async () => ({ ok: true, value: { count: 0, start: '', end: '', events: [] } }) };
   };
+  // 插件里的 api() 走模块作用域的 fetch（Node 下就是 globalThis.fetch），每个用例都换成自己的 stub。
+  globalThis.fetch = win.fetch;
   win.AbortSignal.timeout = () => undefined;
   globalThis.window = win;
   globalThis.document = win.document;
@@ -69,7 +71,7 @@ function makeFakeModal(react, reactDom) {
       return () => document.removeEventListener('keydown', onKey);
     }, [props.open, props.onClose]);
     return reactDom.createPortal(
-      react.createElement('div', { className: 'fake-host-modal', role: 'dialog' }, [props.children, props.footer]),
+      react.createElement('div', { className: 'fake-host-modal', role: 'dialog' }, [props.title, props.children, props.footer]),
       document.body
     );
   }
@@ -344,15 +346,22 @@ test('Esc 层栈：一次只关最上层 / 宿主 Portal 不抢 / IME 不关', a
   insideA.dispatchEvent(esc());
   assert.deepEqual(calls, ['B', 'A'], '焦点在哪个面板就关哪个面板的层');
 
-  const hostPortal = win.document.createElement('div');
-  win.document.body.appendChild(hostPortal);
-  hostPortal.dispatchEvent(esc());
-  assert.deepEqual(calls, ['B', 'A'], '宿主 Portal 的 Esc 不抢');
+  const hostDialog = win.document.createElement('div');
+  hostDialog.setAttribute('role', 'dialog');
+  win.document.body.appendChild(hostDialog);
+  hostDialog.dispatchEvent(esc());
+  assert.deepEqual(calls, ['B', 'A'], '宿主浮层里的 Esc 不抢（它是 role=dialog）');
+  hostDialog.remove();   // 宿主弹窗关掉后，Esc 才回到日历层
+
+  const hostPlain = win.document.createElement('button');
+  win.document.body.appendChild(hostPlain);
+  hostPlain.dispatchEvent(esc());
+  assert.deepEqual(calls, ['B', 'A', 'B'], '普通宿主元素上没有浮层：仍然兜底关日历的层');
 
   const ime = esc();
   Object.defineProperty(ime, 'isComposing', { value: true });
   win.document.body.dispatchEvent(ime);
-  assert.deepEqual(calls, ['B', 'A'], '输入法组合中的 Esc 不关层');
+  assert.deepEqual(calls, ['B', 'A', 'B'], '输入法组合中的 Esc 不关层');
 
   offA();
   offB();
@@ -373,4 +382,87 @@ test('宿主 PRIM.Modal 的 Esc 由宿主自己关，日历面板不被顺手关
   assert.notEqual(container.querySelector('.dshc-float'), null, '日历面板不能被一起关掉');
   await react.act(async () => { win.document.body.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); });
   assert.equal(container.querySelector('.dshc-float'), null, '没有浮层时 Esc 仍然关面板');
+});
+
+const todayEventFor = (summary, uid) => {
+  const start = new Date();
+  start.setHours(10, 0, 0, 0);
+  const end = new Date(start.getTime() + 60 * 60 * 1000);
+  const iso = (d) => d.toISOString().replace(/\.\d{3}Z$/, 'Z');
+  return sampleEvent({ uid, summary, start: iso(start), end: iso(end) });
+};
+
+/** 让 Launcher 面板里有一条今天的日程，并打开详情抽屉。 */
+async function openDrawerWithTodayEvent(react, reactDomClient, components, win, event) {
+  win.fetch = async (url, init) => {
+    const body = init && init.body ? JSON.parse(String(init.body)) : {};
+    const value = body.action === 'connection'
+      ? { configured: true, provider: 'custom', caldavUrl: 'https://example.test/dav', username: 'u' }
+      : { count: 1, start: '', end: '', events: [event] };
+    return { ok: true, status: 200, json: async () => ({ ok: true, value }) };
+  };
+  globalThis.fetch = win.fetch;
+  const { container } = await render(react, reactDomClient, react.createElement(components.Launcher, {}));
+  await react.act(async () => { container.querySelector('.dshc-fab').dispatchEvent(new win.MouseEvent('click', { bubbles: true })); });
+  let chip = null;
+  for (let i = 0; i < 40 && chip === null; i++) {
+    await react.act(async () => { await new Promise((resolve) => setTimeout(resolve, 10)); });
+    chip = container.querySelector('.dshc-chip');
+  }
+  assert.notEqual(chip, null, '月视图要渲染出事件芯片');
+  await react.act(async () => { chip.dispatchEvent(new win.MouseEvent('click', { bubbles: true })); });
+  assert.notEqual(container.querySelector('.dshc-overlay'), null, '点芯片要打开详情抽屉');
+  return { container, chip };
+}
+
+test('F1：宿主高层 Modal 盖在日历抽屉上（焦点还在日历里），Esc 先关宿主、再关抽屉', async () => {
+  const { react, reactDomClient, components, win } = await setup();
+  const { container } = await openDrawerWithTodayEvent(react, reactDomClient, components, win, todayEventFor('高位浮层', 'uid-f1'));
+  // 模拟另一个宿主 Modal 盖上来：它有 role=dialog，且自己监听 document 冒泡的 Esc。
+  const foreign = win.document.createElement('div');
+  foreign.setAttribute('role', 'dialog');
+  foreign.textContent = '宿主高层弹窗';
+  win.document.body.appendChild(foreign);
+  const closeForeign = (event) => { if (event.key === 'Escape') foreign.remove(); };
+  win.document.addEventListener('keydown', closeForeign);
+  await react.act(async () => { win.document.body.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); });
+  assert.equal(win.document.body.contains(foreign), false, 'Esc 要归上层宿主 Modal（它自己关）');
+  assert.notEqual(container.querySelector('.dshc-overlay'), null, '日历抽屉不能被抢关');
+  await react.act(async () => { win.document.body.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); });
+  assert.equal(container.querySelector('.dshc-overlay'), null, '宿主关掉后，Esc 回到日历层');
+  assert.notEqual(container.querySelector('.dshc-float'), null, '面板要留着');
+  win.document.removeEventListener('keydown', closeForeign);
+});
+
+test('F2：焦点在面板外的普通宿主元素上，Esc 仍然兜底关掉日历浮层', async () => {
+  const { react, reactDomClient, components, win } = await setup();
+  const { container } = await openDrawerWithTodayEvent(react, reactDomClient, components, win, todayEventFor('普通宿主焦点', 'uid-f2'));
+  const hostButton = win.document.createElement('button');
+  hostButton.textContent = '宿主按钮';
+  win.document.body.appendChild(hostButton);
+  hostButton.focus();
+  await react.act(async () => { hostButton.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); });
+  assert.equal(container.querySelector('.dshc-overlay'), null, '普通宿主元素上的 Esc 也要关掉日历浮层');
+  assert.notEqual(container.querySelector('.dshc-float'), null, '面板要留着');
+});
+
+test('F3：面板内两层同开，Esc 关最后打开的那层', async () => {
+  const { react, reactDomClient, components, win } = await setup({ primitives: true });
+  const { container } = await render(react, reactDomClient, react.createElement(components.Launcher, {}));
+  await react.act(async () => { container.querySelector('.dshc-fab').dispatchEvent(new win.MouseEvent('click', { bubbles: true })); });
+  const buttonByText = (text) => [...container.querySelectorAll('button')].find((b) => (b.textContent || '').indexOf(text) !== -1);
+  const newButton = buttonByText('新建日程');
+  assert.notEqual(newButton, undefined, '工具栏要有「新建日程」');
+  await react.act(async () => { newButton.dispatchEvent(new win.MouseEvent('click', { bubbles: true })); });
+  const connButton = buttonByText('连接设置');
+  assert.notEqual(connButton, undefined, '工具栏要有「连接设置」');
+  await react.act(async () => { connButton.dispatchEvent(new win.MouseEvent('click', { bubbles: true })); });
+  const modalTexts = () => [...win.document.querySelectorAll('.fake-host-modal')].map((m) => m.textContent || '');
+  assert.equal(modalTexts().length, 2, '两层都要在');
+  await react.act(async () => { win.document.body.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); });
+  assert.equal(modalTexts().length, 1, '第一次 Esc 只关一层');
+  assert.equal(/CalDAV 连接设置/.test(modalTexts()[0]), false, '先关的应该是后打开的连接设置');
+  await react.act(async () => { win.document.body.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); });
+  assert.equal(modalTexts().length, 0, '第二次 Esc 关掉剩下的新建表单');
+  assert.notEqual(container.querySelector('.dshc-float'), null, '面板不能被一起关掉');
 });
