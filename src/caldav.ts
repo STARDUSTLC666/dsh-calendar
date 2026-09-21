@@ -181,16 +181,33 @@ export class CalendarService {
   /** 按 uid（href）找到服务器对象（含 etag 与原始 data）。 */
   private async findObject(uid: string, signal?: AbortSignal): Promise<DAVCalendarObject | undefined> {
     signal?.throwIfAborted()
+    // 直接 multiget 已知 href；先限制到当前集合，不能把任意 URL 当作事件。
+    let target: string
+    try {
+      const collection = new URL(this.collectionUrl)
+      const object = new URL(uid.trim())
+      const relativePath = object.pathname.slice(collection.pathname.length)
+      const decodedPath = decodeURIComponent(relativePath)
+      if (object.origin !== collection.origin || object.username || object.password || object.hash
+        || !object.pathname.startsWith(collection.pathname) || !relativePath
+        || decodedPath.split(/[\\/]/).some(segment => segment === '.' || segment === '..')
+        || /%2f|%5c/i.test(relativePath)) throw new Error('invalid href')
+      target = normalizeUrl(object.href)
+    } catch {
+      throw new CalDAVError('uid 必须是当前日历中的事件地址：请用 calendar_list 或 calendar_search 重新获取。')
+    }
     const client = await this.client()
     signal?.throwIfAborted()
-    const target = normalizeUrl(uid)
     const objects = await client.fetchCalendarObjects({
       calendar: this.calendar(),
+      objectUrls: [target],
       urlFilter: (url: string) => normalizeUrl(url) === target,
       ...(signal !== undefined ? { fetchOptions: { signal } } : {}),
     })
     signal?.throwIfAborted()
-    return objects.find((object) => normalizeUrl(object.url) === target)
+    // 207 中单个 href 的 404 也可能被 tsdav 转成无 data 的对象，不能据此 PUT/DELETE。
+    return objects.find((object) => normalizeUrl(object.url) === target
+      && typeof object.data === 'string' && object.data.trim() !== '')
   }
 
   /** 新建事件，返回带 href/uid 的事件。 */

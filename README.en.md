@@ -4,13 +4,15 @@
 
 [![Awesome DSH Plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
 
-DSH community plugin: read/write calendar events via CalDAV. Provides 5 calendar tools (calendar_list / calendar_create / calendar_update / calendar_delete / calendar_search) plus the offline `calendar_health` configuration check. Google uses OAuth 2.0; iCloud / Nextcloud / custom servers retain Basic authentication by default. No settings-page UI; all configuration goes through the profile's cordis.patch.yml.
+DSH community plugin: read/write calendar events via CalDAV. Provides 5 calendar tools (calendar_list / calendar_create / calendar_update / calendar_delete / calendar_search) plus the offline `calendar_health` configuration check. Google uses OAuth 2.0; iCloud / Nextcloud / custom servers retain Basic authentication by default. Includes visual week/month views, drag and keyboard rescheduling, connection settings and connection tests. Profile cordis.patch.yml configuration is also supported. Updates and deletes fetch the known event directly, avoiding a collection-wide index request.
 
 ## Compatibility
 
+2026-09-21: the current release package was installed through the official CLI in an isolated profile and co-loaded with the other two most-downloaded plugins on source-built Harness `0.1.6-alpha.2`. All 18 plugin tools registered; calendar/email configuration checks, PPT theme listing and 17-row table generation passed. The host is based on the official alpha.2 release plus the tool-scheduler `Symbol.for` fix (`93badd88`). This run did not connect to live mail or calendar services.
+
 Verified with official `@deepseek-ai/dsh@0.1.5-rc.1` and Node `24.16.0` on 2026-09-11: all 18 components load alongside Modlens, with passing tool-schema, skill-registration and offline read-only invocation checks. Uses the `cordis.patch.yml` + `dsh.bundle.patch` bundle model. Node requirements match this Harness release: 22.19 or later within 22.x, or 24 or later. Live external-service workflows require separate configuration and validation.
 
-On 2026-09-10, npm `dsh-calendar@0.5.2` passed installation through this Harness release's official CLI and registration of all 6 tools. Host execution of `calendar_list` refreshed a real Google token (200), read via CalDAV REPORT (207) and rendered model-facing results. Only Google reads were tested; no writes were performed. This patch does not change runtime code.
+On 2026-09-10, npm `dsh-calendar@0.5.2` passed installation through this Harness release's official CLI and registration of all 6 tools. Host execution of `calendar_list` refreshed a real Google token (200), read via CalDAV REPORT (207) and rendered model-facing results. Only Google reads were tested; no writes were performed. This is a historical read-only verification record.
 
 Follows the official [plugin packaging and installation requirements](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/basic/publish.md): an ESM entry point, prebuilt `lib/`, `dsh.bundle.patch` and a `cordis.patch.yml` layer. The plugin explicitly injects `tools` and supplies JSON Schema parameters, canonical output and rendering, with no runtime imports of `@deepseek-ai/*` internals. Use Node 22.19 or later within 22.x, or Node 24 or later. Harness is evolving rapidly; the version above is the tested baseline.
 

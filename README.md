@@ -9,13 +9,15 @@
 [![Awesome DSH Plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
 
 
-DSH 社区插件：通过 CalDAV 读写日历事件。提供 5 个日历操作工具（calendar_list / calendar_create / calendar_update / calendar_delete / calendar_search）和 `calendar_health` 配置自检。Google 使用 OAuth 2.0；iCloud / Nextcloud / 自定义服务器默认保留 Basic 认证。不含设置页 UI，配置全部走 profile 的 cordis.patch.yml。
+DSH 社区插件：通过 CalDAV 读写日历事件。提供 5 个日历操作工具（calendar_list / calendar_create / calendar_update / calendar_delete / calendar_search）和 `calendar_health` 配置自检。Google 使用 OAuth 2.0；iCloud / Nextcloud / 自定义服务器默认保留 Basic 认证。提供可视化周/月日历、拖拽与键盘改期、连接设置和连通性测试；也支持通过 profile 的 cordis.patch.yml 配置。已知事件的更新与删除直接读取该事件，减少一次整集合索引请求。
 
 ## 兼容性
 
+2026-09-21：当前发布包经官方 CLI 安装到隔离 profile，在源码构建的 Harness `0.1.6-alpha.2` 上与另外两个下载量前三插件共同加载，18 个插件工具注册正常；日历/邮件配置自检、PPT 主题查询和 17 行表格生成通过。测试本体基于官方 alpha.2 发布提交，另含工具调度器 `Symbol.for` 修复（`93badd88`）。本轮未连接真实邮箱或日历服务。
+
 已在官方 `@deepseek-ai/dsh@0.1.5-rc.1`、Node `24.16.0` 上验证（2026-09-11）：18 个组件与 Modlens 同载，工具 schema、技能注册及离线只读调用检查通过。采用 `cordis.patch.yml` + `dsh.bundle.patch` 组合包模型。Node 要求与该版本 Harness 一致：22.19 及以上的 22.x，或 24 及以上。外部服务的实际业务操作需按各组件配置单独验证。
 
-2026-09-10，npm `dsh-calendar@0.5.2` 已通过该 Harness 的官方 CLI 安装和 6 个工具注册；经宿主执行 `calendar_list`，真实 Google 令牌刷新返回 200、CalDAV REPORT 返回 207，并生成模型可读结果。验证仅含 Google 读取，未执行写入；本次补丁不修改运行时代码。
+2026-09-10，npm `dsh-calendar@0.5.2` 已通过该 Harness 的官方 CLI 安装和 6 个工具注册；经宿主执行 `calendar_list`，真实 Google 令牌刷新返回 200、CalDAV REPORT 返回 207，并生成模型可读结果。验证仅含 Google 读取，未执行写入；这是历史只读验证记录。
 
 遵循官方[插件打包与安装要求](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/basic/publish.md)：ESM 入口、预构建 `lib/`、`dsh.bundle.patch` 和 `cordis.patch.yml` 配置层；显式注入 `tools`，提供 JSON Schema 参数、规范化输出和渲染函数，运行时不 import `@deepseek-ai/*` 内部模块。使用 Node 22.19 及以上的 22.x 或 Node 24 及以上版本；Harness 仍在快速迭代，上述版本是实测基线。
 
