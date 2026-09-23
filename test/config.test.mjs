@@ -40,7 +40,7 @@ test('显式 password 优先于环境变量', () => {
 test('缺 username 抛中文指引错误', () => {
   assert.throws(
     () => resolveConfig({ provider: 'custom', password: 'p', caldavUrl: 'https://x/' }, {}),
-    (error) => error instanceof ConfigError && /username/.test(error.message) && /cordis\.patch\.yml/.test(error.message),
+    (error) => error instanceof ConfigError && /账号/.test(error.message) && /连接设置/.test(error.message),
   )
 })
 

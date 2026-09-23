@@ -65,7 +65,7 @@ test('配置缺失时 execute 抛中文指引（插件仍已加载）', async ()
   const list = tools.find((tool) => tool.name === 'calendar_list')
   await assert.rejects(
     () => list.execute({}),
-    (error) => /username/.test(error.message) && /cordis\.patch\.yml/.test(error.message),
+    (error) => /账号/.test(error.message) && /连接设置/.test(error.message),
   )
 })
 

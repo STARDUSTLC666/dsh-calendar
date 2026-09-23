@@ -164,14 +164,12 @@ export function resolveCredentials(
 
   if (username === undefined) {
     throw new ConfigError(
-      'dsh-calendar 未配置 username：请在 profile 的 cordis.patch.yml 覆盖 calendar 行的 config，' +
-      '填上 CalDAV 账号（iCloud 为账号邮箱）后重启。',
+      '日历账号未填写：请在日历的“连接设置”中填写“账号”（iCloud 使用 Apple ID 邮箱），然后重新测试连接。',
     )
   }
   if (password === undefined) {
     throw new ConfigError(
-      'dsh-calendar 未配置密码：请设置环境变量 DSH_CALENDAR_PASSWORD，' +
-      '或在 profile 的 cordis.patch.yml 覆盖 calendar 行的 password（iCloud 请用应用专用密码）后重启。',
+      '日历密码未填写：请在“连接设置”中填写“密码 / 应用专用密码”，然后重新测试连接。iCloud 需要应用专用密码。',
     )
   }
 
