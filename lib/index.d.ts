@@ -10,6 +10,9 @@
 import { type CalendarConfig } from './config.js';
 import { type CalendarToolDefinition } from './tools.js';
 import { type CalendarSettingsFace } from './web.js';
+/** 宿主用 entry 的 Config 生成设置表单：0.1.7 起这就是「注册设置项」的方式。 */
+export declare const Config: import("@deepseek-ai/schemastery").default;
+export type Config = CalendarConfig;
 /** cordis 服务注入：apply 里要用 ctx.tools，必须显式声明注入，否则宿主会抛 cannot get property without inject。 */
 export declare const name = "calendar";
 export declare const inject: string[];
@@ -21,6 +24,20 @@ export interface CalendarPluginContext {
     on?(event: string, listener: () => void): () => void;
     /** 设置页面板需要挂路由；隔离环境（测试/headless）可以没有。 */
     inject?(services: string[], callback: (ctx: any) => void): void;
+    /** 0.1.7 的宿主表单按 entry id 寻址，id 从 fiber 上读。 */
+    fiber?: {
+        entry?: {
+            options?: {
+                id?: string;
+            };
+        };
+    };
+    /** settings 服务：能拿到就用，拿不到就退化（见 attachSettings）。 */
+    get?(service: string): any;
+    settings?: any;
+    logger?: {
+        warn?(message: string): void;
+    };
 }
 /**
  * 同步注册 settings 命名空间并返回读写面。
@@ -32,17 +49,23 @@ export interface CalendarPluginContext {
 /** 兜底：把连接配置存进插件自己的文件（宿主 settings 不可用/注册失败时）。 */
 export declare function fileSettingsFace(file?: string): CalendarSettingsFace;
 /**
- * 接上配置存储：首选宿主 settings 命名空间，不行就退到插件自己的文件。
+ * 接上配置存储：0.1.7 的宿主表单 → 老宿主的 settings 命名空间 → 插件自己的兜底文件。
  *
- * 三步走，每一步失败都往下退而不是抛：
- *   1. 拿到 settings 服务 → 在**插件加载阶段**同步注册命名空间（宿主的 register 要活动作用域）；
- *   2. 注册失败但 describe() 里已有我们这个命名空间 → 搭既有注册的车（重复 apply 的第二个实例）；
+ * 三代宿主三条路，每一条失败都往下退而不是抛：
+ *   1. **0.1.7 起**：设置项就是 entry 的 Config（`.volatile()` 字段），宿主自己投影成表单，
+ *      插件不再注册命名空间；读=投影活配置，写=按 entry id 逐字段 set/unset。
+ *   2. **0.1.6 及更早**：在插件加载的**同步阶段**调 `settings.register`（宿主的 register
+ *      内部会 `ctx.effect(...)`，在请求处理里注册会失败，而失败一旦被吞掉，就会在保存时
+ *      才暴露成「namespace is not registered」）；注册失败但 describe() 里已有我们这一段，
+ *      说明是重复 apply 的第二个实例，搭既有注册的车。
  *   3. 服务不在、或注册失败且没人注册过 → 用兜底文件。
  * 返回 reason 是为了让面板说清「为什么不是宿主设置」，而不是笼统一句「不可用」。
+ * @returns 读写面、它在 describe() 里的 ns，以及退化原因（没退化就没有）。
  */
 export declare function attachSettings(ctx: CalendarPluginContext, cfg: CalendarConfig): {
     face: CalendarSettingsFace;
     reason?: string;
+    ns: string;
 };
 /**
  * 插件入口：惰性解析配置并注册五个日历工具。
@@ -58,3 +81,5 @@ export * from './tools.js';
 export * from './web.js';
 export * from './settings.js';
 export * from './store.js';
+export * from './host-settings.js';
+export { liveConfig } from './host-config.js';

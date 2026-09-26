@@ -30,6 +30,9 @@ async function setup(options = {}) {
   const apiCalls = [];
   win.fetch = async (url, init) => {
     apiCalls.push({ url: String(url), body: init && init.body ? JSON.parse(String(init.body)) : null });
+    if (options.notConfigured === true && apiCalls.at(-1).body?.action === 'connection') {
+      return { ok: true, status: 200, json: async () => ({ ok: true, value: { configured: false } }) };
+    }
     return { ok: true, status: 200, json: async () => ({ ok: true, value: { count: 0, start: '', end: '', events: [] } }) };
   };
   // 插件里的 api() 走模块作用域的 fetch（Node 下就是 globalThis.fetch），每个用例都换成自己的 stub。
@@ -414,6 +417,24 @@ async function openDrawerWithTodayEvent(react, reactDomClient, components, win, 
   assert.notEqual(container.querySelector('.dshc-overlay'), null, '点芯片要打开详情抽屉');
   return { container, chip };
 }
+
+test('示例日历只读：详情可浏览，不能新建、编辑、删除或向真实账号提交改期', async t => {
+  const { react, reactDomClient, components, win, apiCalls } = await setup({ notConfigured: true });
+  const { container, root } = await render(react, reactDomClient, react.createElement(components.CalendarPanel, {}));
+  t.after(async () => { await react.act(async () => root.unmount()); win.close(); });
+  const button = (name) => [...container.querySelectorAll('button')].find(node => node.textContent.endsWith(name));
+  await react.act(async () => { button('查看示例').click(); });
+  assert.match(container.textContent, /示例.*只读/);
+  assert.equal(button('新建日程').disabled, true);
+  await react.act(async () => { button('产品评审会').click(); });
+  assert.equal(button('编辑').disabled, true);
+  assert.equal(button('删除').disabled, true);
+  await react.act(async () => { container.querySelector('[aria-label="close"]').click(); button('周').click(); });
+  const slot = [...container.querySelectorAll('.dshc-slot')].find(node => node.textContent.includes('产品评审会'));
+  await react.act(async () => { slot.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true })); });
+  assert.equal(apiCalls.some(call => ['create', 'update', 'delete'].includes(call.body?.action)), false);
+  assert.doesNotMatch(container.textContent, /键盘 ↑\/↓ 挪/);
+});
 
 test('F1：宿主高层 Modal 盖在日历抽屉上（焦点还在日历里），Esc 先关宿主、再关抽屉', async () => {
   const { react, reactDomClient, components, win } = await setup();

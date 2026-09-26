@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.9.0（2026-09-27）
+
+- 适配 Harness 0.1.7 设置表单与旧配置导入，正确声明设置服务依赖。示例日历改为只读，保留视图切换和详情查看，避免示例操作写入真实日历。
+
+- **适配 Harness 0.1.7 的设置接口**：宿主删掉了 `ctx.settings.register(...)`，改成「entry 的 `Config` 就是设置项」（`.volatile()` 字段由宿主投影成表单）。0.8.x 在 0.1.7 上会直接挂载失败（`ctx.settings.register is not a function`）；即使不失败，连接设置也只剩插件自己的 JSON 兜底文件，老用户在 `settings.yaml` 里存过的账号一律读不到（启动告警「日历账号未填写」）。
+- **新增 `src/host-config.ts`**：导出 entry 的 `Config` —— 14 个连接字段全部 `.volatile()`（设置页改完即生效，不必重启），`password` / `clientSecret` / `refreshToken` 标 `role('secret')`（不经设置接口回传，只回「有没有」），且**一律不给默认值**：表单默认值会盖掉 `cordis.patch.yml` 与 provider 预设。`liveConfig` 把宿主的活引用摊平成普通值，0.1.6 及更早的字面量配置走同一条路。
+- **新增 `src/host-settings.ts`**：两代宿主接口判定，加上老 `settings.yaml` 里 `dsh-calendar` 段的一次性搬迁。宿主自己也会导入老文件，但它按 **entry id** 找目标，而本插件的行 id 是 `calendar`，对不上就只留一条 warn、值搁在改名后的文件里 —— 所以由插件补这一步：只补当前配置里空缺的键（profile 已写过的值优先）、只搬一次（标记 `legacySettingsImported` 与值写在同一处）、不复制进同插件的自定义实例、读不到或写不进都不抛（原文件原样保留）。
+- **写入语义**：面板保存改用 `mutate` 的逐字段 set/unset。`replace` 会把「本次没提交」的 live 字段重置成下层继承值，顺手抹掉面板不认识的字段（例如上面那个搬迁标记），下次启动就会重搬一遍，用户明确删掉的凭据又回来了。宿主没有 `mutate` 时才退回 `replace`，并显式把标记带上。
+- 自带设置页向宿主登记 `configure({ auto: false })`，并声明 `tools` 与 `settings` 服务依赖，保证设置面板接入宿主存储。
+- **测试 163 → 172**：Config 形状（volatile / secret / 无默认值）、活引用摊平、两代宿主判定、mutate 与 replace 两条写路径、搬迁的一次性与「不串实例」、apply 在 0.1.7 宿主上不再抛错且面板路由照常挂载、面板保存全链路。
+
+## 0.8.4（2026-09-23）
+
+- **适配 Harness 0.1.7 的 Web 子路径部署**：面板请求改为跟随应用挂载路径。此前宿主被反向代理挂在子路径下时，设置与事件操作会打到站点根，一律 404。
+- 未配置账号/密码时的提示改为指向面板「连接设置」（不再要求用户去改 `cordis.patch.yml` 并重启）。
+- 新增子路径部署下的请求路径回归（`test/public-mount.test.mjs`）。
+
 ## 0.8.3（2026-09-21）
 
 - 已知事件的修改、删除及创建后回读改为直接 CalDAV multiget，省掉整集合索引查询；每次仍读取最新 ETag，保留条件写入。

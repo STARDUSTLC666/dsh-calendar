@@ -106,6 +106,46 @@ export function settingsFaceOf(provider: any, scope: any, ns: string = SETTINGS_
 /** 面板要读写的连接字段。空串 = 保持不变，null = 明确清除。 */
 export const CONNECTION_KEYS = ['provider', 'caldavUrl', 'username', 'password', 'host', 'user', 'calendar', 'calendarId', 'authMethod', 'clientId', 'clientSecret', 'refreshToken', 'tokenUrl', 'proxyUrl'] as const
 
+/**
+ * Harness 0.1.7 宿主的读写面：真相就是本 entry 的配置，不再有独立命名空间文档。
+ *
+ * 三处与 {@link settingsFaceOf} 不同，都是被新接口逼出来的：
+ *   - read 直接投影活配置（profile 里那一份），不必问 describe()；
+ *   - 写用 `mutate` 的逐字段 set/unset：面板的「清空」要真的清掉，而 `replace`
+ *     会把整段 live 字段重置成「下层继承值 + 本次提交」，顺手抹掉面板不认识的
+ *     字段（例如一次性搬迁标记 legacySettingsImported），下次启动就会重搬一遍，
+ *     用户明确删掉的凭据又回来了；
+ *   - 宿主没有 mutate 时才退回 replace，并用 preserve() 把那些字段带上。
+ * @param provider 宿主 settings 服务（0.1.7 形态）。
+ * @param entryId 本实例在 profile 里的 entry id（表单就以它为 ns）。
+ * @param read 读当前生效的连接字段（只带真的设过的键）。
+ * @param preserve replace 退路上要一并写回的其它 live 字段。
+ */
+export function hostFormsFaceOf(
+  provider: any,
+  entryId: string,
+  read: () => Record<string, unknown>,
+  preserve?: () => Record<string, unknown>,
+): CalendarSettingsFace {
+  const findRow = (): any => (typeof provider.describe === 'function' ? provider.describe() ?? [] : [])
+    .find((row: any) => row !== undefined && row !== null && row.ns === entryId)
+  return {
+    kind: 'settings',
+    read,
+    descriptor: () => findRow(),
+    replace: async (value: Record<string, unknown>, revision: number): Promise<void> => {
+      if (typeof provider.mutate === 'function') {
+        const ops = CONNECTION_KEYS.map(key => Object.hasOwn(value, key)
+          ? { op: 'set' as const, path: [key as string], value: value[key as string] }
+          : { op: 'unset' as const, path: [key as string] })
+        await provider.mutate(entryId, ops, revision)
+        return
+      }
+      await provider.replace(entryId, { ...value, ...(preserve?.() ?? {}) }, revision)
+    },
+  }
+}
+
 export interface CalendarSettingsBackendOptions {
   /** 静态配置，或一个 getter（面板保存后工具应当立刻用上新配置）。 */
   config?: CalendarConfig | null | (() => CalendarConfig)
@@ -123,6 +163,11 @@ export interface CalendarSettingsBackendOptions {
   settingsBase?: Partial<CalendarSettingsValue>
   /** 为什么没接上宿主 settings（面板要把它显示出来，而不是一句「不可用」）。 */
   settingsReason?: string
+  /**
+   * 表单在 describe() 里的 ns。老宿主是本插件的命名空间（`dsh-calendar`），
+   * 0.1.7 起是 entry id（默认 `calendar`）—— 懒接入这条退路要靠它才认得出自己那一行。
+   */
+  settingsNs?: string
 }
 
 /** 把「已存值 + 草稿」合并成要落盘的一版：草稿里缺席的键保留原值。 */
@@ -178,10 +223,11 @@ export class CalendarSettingsBackend {
       try { provider = ctx.settings } catch (error) { provider = undefined }
     }
     if (provider === undefined || provider === null || typeof provider.replace !== 'function') return
-    // 只有描述符里真的出现了我们这个命名空间，才说明有人注册过 —— 否则写也是白写。
-    const known = (typeof provider.describe === 'function' ? provider.describe() ?? [] : []).some((row: any) => row !== undefined && row !== null && row.ns === SETTINGS_NAMESPACE)
+    // 只有描述符里真的出现了我们这一行，才说明接得上 —— 否则写也是白写。
+    const ns = this.options.settingsNs ?? SETTINGS_NAMESPACE
+    const known = (typeof provider.describe === 'function' ? provider.describe() ?? [] : []).some((row: any) => row !== undefined && row !== null && row.ns === ns)
     if (known !== true) return
-    this.attachSettings(settingsFaceOf(provider, undefined))
+    this.attachSettings(settingsFaceOf(provider, undefined, ns))
   }
 
 

@@ -1,5 +1,11 @@
 # dsh-calendar
 
+## 0.9.0 update (2026-09-27)
+
+Adapts settings forms and legacy configuration import to Harness 0.1.7, with the settings service declared correctly. The sample calendar is read-only; viewing and navigation remain available without writing sample events to a real calendar.
+
+Validation host: Harness 0.1.7-rc.2 built from official sources, retaining the local tool-scheduler fix. Build and automated checks pass; interactive coverage and external-service limits are recorded in this release round.
+
 ![npm](https://img.shields.io/npm/v/dsh-calendar) ![downloads](https://img.shields.io/npm/dm/dsh-calendar) ![license](https://img.shields.io/github/license/STARDUSTLC666/dsh-calendar) ![stars](https://img.shields.io/github/stars/STARDUSTLC666/dsh-calendar?style=social)
 
 [![Awesome DSH Plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
@@ -7,6 +13,8 @@
 DSH community plugin: read/write calendar events via CalDAV. Provides 5 calendar tools (calendar_list / calendar_create / calendar_update / calendar_delete / calendar_search) plus the offline `calendar_health` configuration check. Google uses OAuth 2.0; iCloud / Nextcloud / custom servers retain Basic authentication by default. Includes visual week/month views, drag and keyboard rescheduling, connection settings and connection tests. Profile cordis.patch.yml configuration is also supported. Updates and deletes fetch the known event directly, avoiding a collection-wide index request.
 
 ## Compatibility
+
+Version **0.9.0** (2026-09-23) follows the settings interface introduced in Harness **0.1.7**: the host removed `ctx.settings.register`, so configuration now lives in the entry's own `Config`. Every connection field is declared `volatile` (panel edits apply live, no restart) and the three credentials carry the `secret` role (never returned to the browser, only whether they are set). On the first start after an upgrade the plugin moves the retired `dsh-calendar` section of `settings.yaml` into the profile — filling only absent keys, once, with values already written in the profile winning. Hosts on 0.1.5 / 0.1.6 keep the previous namespace registration unchanged. The verified host baseline is official-source **0.1.7-rc.1** with the local tool-scheduler fix; live CalDAV operations still require their own account validation.
 
 Version **0.8.4** (2026-09-23) supports the Web mount paths introduced in Harness **0.1.7**. The calendar panel keeps its requests under the application path when deployed through a reverse proxy, preserving normal settings and event operations. The current host baseline is official-source 0.1.7-alpha.2 with a local tool-scheduler fix; external CalDAV operations require their own account validation.
 

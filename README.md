@@ -2,6 +2,12 @@
 
 # dsh-calendar
 
+## 0.9.0 更新（2026-09-27）
+
+适配 Harness 0.1.7 设置表单与旧配置导入，正确声明设置服务依赖。示例日历改为只读，保留视图切换和详情查看，避免示例操作写入真实日历。
+
+验证宿主：官方源码构建的 Harness 0.1.7-rc.2（保留本地工具调度器修复）。构建与自动测试通过；实际操作和外部服务限制见本轮验收记录。
+
 > **agent 从此会排期**：CalDAV 读写日历，重复日程自动展开。
 
 ![npm version](https://img.shields.io/npm/v/dsh-calendar?label=npm&color=blue) ![npm downloads](https://img.shields.io/npm/dm/dsh-calendar) ![license](https://img.shields.io/npm/l/dsh-calendar) ![stars](https://img.shields.io/github/stars/STARDUSTLC666/dsh-calendar?style=social)
@@ -12,6 +18,8 @@
 DSH 社区插件：通过 CalDAV 读写日历事件。提供 5 个日历操作工具（calendar_list / calendar_create / calendar_update / calendar_delete / calendar_search）和 `calendar_health` 配置自检。Google 使用 OAuth 2.0；iCloud / Nextcloud / 自定义服务器默认保留 Basic 认证。提供可视化周/月日历、拖拽与键盘改期、连接设置和连通性测试；也支持通过 profile 的 cordis.patch.yml 配置。已知事件的更新与删除直接读取该事件，减少一次整集合索引请求。
 
 ## 兼容性
+
+**0.9.0（2026-09-23）**适配 Harness **0.1.7** 的设置接口：宿主移除了 `ctx.settings.register`，设置项改由 entry 的 `Config` 承载。连接字段全部声明为 `volatile`（面板改完即生效，无需重启），三个凭据按 `secret` 处理（不回传浏览器，只回「有没有」）；升级后首次启动会把老 `settings.yaml` 里的 `dsh-calendar` 段搬进 profile（只补空缺、只搬一次，profile 里已写过的值优先）。0.1.5 / 0.1.6 宿主仍走原来的命名空间注册，行为不变。当前验证宿主为官方源码构建的 **0.1.7-rc.1**（含本地工具调度器修复）；真实 CalDAV 业务仍需有效账号单独验证。
 
 **0.8.4（2026-09-23）**适配 Harness **0.1.7** 的 Web 子路径部署：日历面板的请求会跟随应用路径，修复经过反向代理访问时设置与事件操作失败的问题。当前验证宿主为官方源码构建的 0.1.7-alpha.2（含本地工具调度器修复）；真实 CalDAV 业务仍需有效账号单独验证。
 
