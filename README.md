@@ -2,7 +2,7 @@
 
 # dsh-calendar
 
-## 0.9.0 更新（2026-09-27）
+## 0.9.1 更新（2026-09-27）
 
 适配 Harness 0.1.7 设置表单与旧配置导入，正确声明设置服务依赖。示例日历改为只读，保留视图切换和详情查看，避免示例操作写入真实日历。
 
@@ -21,13 +21,7 @@ DSH 社区插件：通过 CalDAV 读写日历事件。提供 5 个日历操作�
 
 **0.9.0（2026-09-23）**适配 Harness **0.1.7** 的设置接口：宿主移除了 `ctx.settings.register`，设置项改由 entry 的 `Config` 承载。连接字段全部声明为 `volatile`（面板改完即生效，无需重启），三个凭据按 `secret` 处理（不回传浏览器，只回「有没有」）；升级后首次启动会把老 `settings.yaml` 里的 `dsh-calendar` 段搬进 profile（只补空缺、只搬一次，profile 里已写过的值优先）。0.1.5 / 0.1.6 宿主仍走原来的命名空间注册，行为不变。当前验证宿主为官方源码构建的 **0.1.7-rc.1**（含本地工具调度器修复）；真实 CalDAV 业务仍需有效账号单独验证。
 
-**0.8.4（2026-09-23）**适配 Harness **0.1.7** 的 Web 子路径部署：日历面板的请求会跟随应用路径，修复经过反向代理访问时设置与事件操作失败的问题。当前验证宿主为官方源码构建的 0.1.7-alpha.2（含本地工具调度器修复）；真实 CalDAV 业务仍需有效账号单独验证。
-
-2026-09-21：当前发布包经官方 CLI 安装到隔离 profile，在源码构建的 Harness `0.1.6-alpha.2` 上与另外两个下载量前三插件共同加载，18 个插件工具注册正常；日历/邮件配置自检、PPT 主题查询和 17 行表格生成通过。测试本体基于官方 alpha.2 发布提交，另含工具调度器 `Symbol.for` 修复（`93badd88`）。本轮未连接真实邮箱或日历服务。
-
-已在官方 `@deepseek-ai/dsh@0.1.5-rc.1`、Node `24.16.0` 上验证（2026-09-11）：18 个组件与 Modlens 同载，工具 schema、技能注册及离线只读调用检查通过。采用 `cordis.patch.yml` + `dsh.bundle.patch` 组合包模型。Node 要求与该版本 Harness 一致：22.19 及以上的 22.x，或 24 及以上。外部服务的实际业务操作需按各组件配置单独验证。
-
-2026-09-10，npm `dsh-calendar@0.5.2` 已通过该 Harness 的官方 CLI 安装和 6 个工具注册；经宿主执行 `calendar_list`，真实 Google 令牌刷新返回 200、CalDAV REPORT 返回 207，并生成模型可读结果。验证仅含 Google 读取，未执行写入；这是历史只读验证记录。
+**0.8.4（2026-09-23）**适配 Harness **0.1.7** 的 Web 子路径部署：日历面板的请求会跟随应用路径，修复经过反向代理访问时设置与事件操作失败的问题。真实 CalDAV 业务仍需有效账号单独验证。
 
 遵循官方[插件打包与安装要求](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/basic/publish.md)：ESM 入口、预构建 `lib/`、`dsh.bundle.patch` 和 `cordis.patch.yml` 配置层；显式注入 `tools`，提供 JSON Schema 参数、规范化输出和渲染函数，运行时不 import `@deepseek-ai/*` 内部模块。使用 Node 22.19 及以上的 22.x 或 Node 24 及以上版本；Harness 仍在快速迭代，上述版本是实测基线。
 

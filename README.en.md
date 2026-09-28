@@ -1,6 +1,6 @@
 # dsh-calendar
 
-## 0.9.0 update (2026-09-27)
+## 0.9.1 update (2026-09-27)
 
 Adapts settings forms and legacy configuration import to Harness 0.1.7, with the settings service declared correctly. The sample calendar is read-only; viewing and navigation remain available without writing sample events to a real calendar.
 
@@ -17,10 +17,6 @@ DSH community plugin: read/write calendar events via CalDAV. Provides 5 calendar
 Version **0.9.0** (2026-09-23) follows the settings interface introduced in Harness **0.1.7**: the host removed `ctx.settings.register`, so configuration now lives in the entry's own `Config`. Every connection field is declared `volatile` (panel edits apply live, no restart) and the three credentials carry the `secret` role (never returned to the browser, only whether they are set). On the first start after an upgrade the plugin moves the retired `dsh-calendar` section of `settings.yaml` into the profile — filling only absent keys, once, with values already written in the profile winning. Hosts on 0.1.5 / 0.1.6 keep the previous namespace registration unchanged. The verified host baseline is official-source **0.1.7-rc.1** with the local tool-scheduler fix; live CalDAV operations still require their own account validation.
 
 Version **0.8.4** (2026-09-23) supports the Web mount paths introduced in Harness **0.1.7**. The calendar panel keeps its requests under the application path when deployed through a reverse proxy, preserving normal settings and event operations. The current host baseline is official-source 0.1.7-alpha.2 with a local tool-scheduler fix; external CalDAV operations require their own account validation.
-
-2026-09-21: the current release package was installed through the official CLI in an isolated profile and co-loaded with the other two most-downloaded plugins on source-built Harness `0.1.6-alpha.2`. All 18 plugin tools registered; calendar/email configuration checks, PPT theme listing and 17-row table generation passed. The host is based on the official alpha.2 release plus the tool-scheduler `Symbol.for` fix (`93badd88`). This run did not connect to live mail or calendar services.
-
-Verified with official `@deepseek-ai/dsh@0.1.5-rc.1` and Node `24.16.0` on 2026-09-11: all 18 components load alongside Modlens, with passing tool-schema, skill-registration and offline read-only invocation checks. Uses the `cordis.patch.yml` + `dsh.bundle.patch` bundle model. Node requirements match this Harness release: 22.19 or later within 22.x, or 24 or later. Live external-service workflows require separate configuration and validation.
 
 On 2026-09-10, npm `dsh-calendar@0.5.2` passed installation through this Harness release's official CLI and registration of all 6 tools. Host execution of `calendar_list` refreshed a real Google token (200), read via CalDAV REPORT (207) and rendered model-facing results. Only Google reads were tested; no writes were performed. This is a historical read-only verification record.
 
