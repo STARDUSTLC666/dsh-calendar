@@ -4,7 +4,7 @@
 
 Adapts settings forms and legacy configuration import to Harness 0.1.7, with the settings service declared correctly. The sample calendar is read-only; viewing and navigation remain available without writing sample events to a real calendar.
 
-Validation host: Harness 0.1.7-rc.2 built from official sources, retaining the local tool-scheduler fix. Build and automated checks pass; interactive coverage and external-service limits are recorded in this release round.
+Validation host: Harness `0.2.0-rc.1` built from official sources (commit `407e65c8`) with Node `24.16.0` on 2026-09-28. All 173 plugin tests pass in an isolated environment; all 18 plugins mount together in one host registering 6 tools, with tool schemas and health-check contracts passing. No live ports or external services were exercised in this round.
 
 ![npm](https://img.shields.io/npm/v/dsh-calendar) ![downloads](https://img.shields.io/npm/dm/dsh-calendar) ![license](https://img.shields.io/github/license/STARDUSTLC666/dsh-calendar) ![stars](https://img.shields.io/github/stars/STARDUSTLC666/dsh-calendar?style=social)
 
