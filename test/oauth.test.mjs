@@ -94,9 +94,33 @@ test('failed refresh is actionable, does not leak response secrets or send DAV r
   })
   const service = new CalendarService(config())
   await assert.rejects(service.all(), error => error instanceof CalDAVError && /OAuth.*400/.test(error.message)
+    && /授权可能已失效/.test(error.message) && /invalid_grant/.test(error.message)
     && !/test-secret|test-refresh/.test(error.message))
   assert.equal(calls, 1)
   assert.equal((await service.all()).length, 1)
+})
+
+test('token endpoint error codes give distinct recovery guidance without echoing free text', async () => {
+  const cases = [
+    { status: 400, body: { error: 'invalid_grant', error_description: 'test-secret test-refresh' }, includes: ['授权可能已失效', '重新完成日历授权', 'invalid_grant'], excludes: ['clientSecret'] },
+    { status: 400, body: { error: 'invalid_client', error_description: 'test-secret test-refresh' }, includes: ['连接设置不正确', 'OAuth 应用配置', 'invalid_client'], excludes: ['重新完成日历授权'] },
+    { status: 400, body: { error: 'invalid_scope', error_description: 'test-secret test-refresh' }, includes: ['权限范围', '日历读写权限', 'invalid_scope'], excludes: ['OAuth 应用配置'] },
+    { status: 400, body: { error: 'some_provider_error', error_description: 'test-secret test-refresh' }, includes: ['服务拒绝', 'HTTP 400', 'some_provider_error'], excludes: ['授权可能已失效', '重新完成日历授权'] },
+    { status: 503, body: { error: 'server_error', error_description: 'test-secret test-refresh' }, includes: ['暂时不可用', '稍后重试', 'HTTP 503'], excludes: ['重新完成日历授权'] },
+    { status: 429, body: { error: 'rate_limited', error_description: 'test-secret test-refresh' }, includes: ['暂时不可用', '稍后重试', 'HTTP 429'], excludes: ['重新完成日历授权'] },
+    { status: 400, body: { error: 'invalid_grant', error_subtype: 'invalid_rapt', error_description: 'test-secret' }, includes: ['要求重新验证', 'invalid_rapt'], excludes: ['test-secret'] },
+  ]
+  for (const item of cases) {
+    const request = createOAuthFetch(credentials, async () => Response.json(item.body, { status: item.status }), calendarUrl)
+    await assert.rejects(request(calendarUrl), error => {
+      assert.ok(error instanceof OAuthError)
+      assert.equal(error.status, item.status)
+      for (const phrase of item.includes) assert.ok(error.message.includes(phrase), `${item.body.error}: missing ${phrase}`)
+      for (const phrase of item.excludes) assert.ok(!error.message.includes(phrase), `${item.body.error}: unexpected ${phrase}`)
+      assert.doesNotMatch(error.message, /test-secret|test-refresh|error_description/)
+      return true
+    })
+  }
 })
 
 test('malformed successful token responses fail closed', async () => {

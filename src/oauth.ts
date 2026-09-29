@@ -9,6 +9,45 @@ export class OAuthError extends Error {
   }
 }
 
+type OAuthFailure = { error?: string; error_subtype?: string }
+
+/** OAuth error fields are diagnostics, not display text: accept identifiers only, never descriptions. */
+function oauthErrorDetails(response: Response): Promise<OAuthFailure> {
+  return response.clone().json().then((body: unknown) => {
+    if (body === null || typeof body !== 'object' || Array.isArray(body)) return {}
+    const record = body as Record<string, unknown>
+    const identifier = (value: unknown): string | undefined =>
+      typeof value === 'string' && value.length <= 80 && /^[A-Za-z0-9_.-]+$/.test(value) ? value : undefined
+    return { error: identifier(record.error), error_subtype: identifier(record.error_subtype) }
+  }).catch(() => ({}))
+}
+
+function refreshFailureMessage(status: number, failure: OAuthFailure): string {
+  const code = failure.error?.toLowerCase()
+  const subtype = failure.error_subtype?.toLowerCase()
+  let guidance: string
+  if (status === 429 || status >= 500 || code === 'temporarily_unavailable' || code === 'server_error') {
+    guidance = '日历授权服务暂时不可用。请稍后重试；若使用代理，也请确认代理连接正常。'
+  } else if (code === 'invalid_grant' && subtype === 'invalid_rapt') {
+    guidance = 'Google 账号要求重新验证。请打开连接设置，重新完成日历授权后保存。'
+  } else if (code === 'invalid_grant') {
+    guidance = '日历授权可能已失效或与当前应用不匹配。请打开连接设置，重新完成日历授权后保存。'
+  } else if (code === 'invalid_client' || code === 'deleted_client' || code === 'unauthorized_client') {
+    guidance = '日历连接设置不正确，当前 OAuth 应用无法完成授权。请打开连接设置，核对 OAuth 应用配置后重试。'
+  } else if (code === 'invalid_scope') {
+    guidance = '日历授权未包含插件所需的权限范围。请在连接设置中使用日历读写权限重新授权。'
+  } else if (code === 'invalid_request' || code === 'unsupported_grant_type') {
+    guidance = '日历连接设置不正确，授权服务未接受当前请求。请打开连接设置，核对授权服务地址和 OAuth 应用配置。'
+  } else {
+    guidance = '日历授权服务拒绝了当前请求。请打开连接设置核对配置后重试。'
+  }
+  // 顺序固定为 OAuth 标识在前、HTTP 状态在后：测试与用户排障都按这个顺序读。
+  const diagnostic = [failure.error === undefined ? undefined : 'OAuth error: ' + failure.error,
+    failure.error_subtype === undefined ? undefined : 'subtype: ' + failure.error_subtype,
+    'HTTP ' + status].filter(Boolean).join('，')
+  return guidance + ' 诊断信息：' + diagnostic + '。'
+}
+
 /** tsdav 管理 token/expiry；此层补上失败校验、取消、代理与不泄露凭据的错误。 */
 export function createOAuthFetch(config: CalendarOAuthCredentials, transport: typeof fetch, calendarUrl: string): typeof fetch {
   const calendarOrigin = new URL(calendarUrl).origin
@@ -16,9 +55,8 @@ export function createOAuthFetch(config: CalendarOAuthCredentials, transport: ty
   const tokenFetch: typeof fetch = async (input, init) => {
     const response = await transport(input, { ...init, redirect: 'error' })
     if (!response.ok) {
-      // 不读取/回显响应正文：服务端可能原样回显 client secret 或 refresh token。
-      throw new OAuthError('OAuth 令牌刷新失败（HTTP ' + response.status +
-        '）：请检查 clientId、clientSecret、refreshToken；授权撤销或过期时请重新授权。', response.status)
+      // 只读取标准 OAuth 错误标识；绝不回显自由文本描述，避免泄露凭据或服务端数据。
+      throw new OAuthError(refreshFailureMessage(response.status, await oauthErrorDetails(response)), response.status)
     }
     let body: Record<string, unknown>
     try {

@@ -182,7 +182,7 @@ iCloud 需要完整日历集合 URL（含你的用户 ID 与日历 ID），在 i
 
 ## 认证失败排查
 
-Google：仅支持 OAuth 2.0。401/403 时检查 OAuth 授权、日历范围与日历访问权限；如果令牌刷新和 PROPFIND 成功而 REPORT 返回 403，核对实际授予的范围是否为上述 `calendar`，不要将 `calendar.readonly` 的集合探测成功当作日程读取成功。令牌刷新失败时核对 clientId/clientSecret/refreshToken，授权被撤销或过期时重新授权，并检查是否仍处于 Testing 的 7 天期限内。**重新生成应用专用密码不能解决 Google CalDAV 认证失败。**
+Google：仅支持 OAuth 2.0。401/403 时检查 OAuth 授权、日历范围与日历访问权限；如果令牌刷新和 PROPFIND 成功而 REPORT 返回 403，核对实际授予的范围是否为上述 `calendar`，不要将 `calendar.readonly` 的集合探测成功当作日程读取成功。刷新失败提示会按 Google 返回的 OAuth 错误代码区分下一步：`invalid_grant` 表示授权可能已失效或与当前应用不匹配，可从连接设置重新授权；`invalid_client` / `deleted_client` 指向 OAuth 应用配置；`invalid_scope` 指向授权权限范围；HTTP 429/5xx 指向服务暂时不可用，应稍后重试。其他错误保留 HTTP 状态码和安全的错误代码供排查，不会仅因 HTTP 400 就判断授权过期，也不会显示服务端自由文本。外部 OAuth 应用处于 Testing 状态时，包含日历权限的刷新令牌会在 7 天后过期；长期使用需处理重新授权或按 Google 要求配置生产状态，详见 [刷新令牌到期规则](https://developers.google.com/identity/protocols/oauth2#expiration)。**重新生成应用专用密码不能解决 Google CalDAV 认证失败。**
 
 iCloud：登录 appleid.apple.com → 登录与安全 → App 专用密码，生成后填到 `password` 或 `DSH_CALENDAR_PASSWORD`。不能用你的 Apple ID 密码。
 
