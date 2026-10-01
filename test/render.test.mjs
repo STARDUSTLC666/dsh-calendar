@@ -14,7 +14,7 @@ import { readFileSync } from 'node:fs';
 import { JSDOM } from 'jsdom';
 
 const SOURCE = readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
-const EXPOSE = 'module.exports.__internals = { __components: { WeekView, MonthView, CalendarPanel, Launcher }, __layer: { registerLayerEscape } };';
+const EXPOSE = 'module.exports.__internals = { __components: { WeekView, MonthView, CalendarPanel, Launcher, ConnectionForm }, __layer: { registerLayerEscape } };';
 if (!SOURCE.includes('return module.exports;')) throw new Error('client.js 装载契约变了，本测试的注入点要跟着改');
 const PATCHED = SOURCE.replace('return module.exports;', EXPOSE + '\nreturn module.exports;');
 
@@ -32,6 +32,9 @@ async function setup(options = {}) {
     apiCalls.push({ url: String(url), body: init && init.body ? JSON.parse(String(init.body)) : null });
     if (options.notConfigured === true && apiCalls.at(-1).body?.action === 'connection') {
       return { ok: true, status: 200, json: async () => ({ ok: true, value: { configured: false } }) };
+    }
+    if (options.connectionError !== undefined && apiCalls.at(-1).body?.action === 'testConnection') {
+      return { ok: true, status: 200, json: async () => ({ ok: false, error: { message: options.connectionError } }) };
     }
     return { ok: true, status: 200, json: async () => ({ ok: true, value: { count: 0, start: '', end: '', events: [] } }) };
   };
@@ -120,6 +123,40 @@ async function render(react, reactDomClient, element) {
   await react.act(async () => { root.render(element); });
   return { container, root };
 }
+
+test('从 Google 切到 iCloud 时测试与保存都改用 Basic，不继承 OAuth', async () => {
+  const { react, reactDomClient, components, win, apiCalls } = await setup();
+  const { root } = await render(react, reactDomClient, react.createElement(components.ConnectionForm, {
+    connection: { provider: 'google', authMethod: 'oauth', settingsAvailable: true, hasClientSecret: true, hasRefreshToken: true },
+    onClose() {}, onSaved() {},
+  }));
+  try {
+    const select = win.document.querySelector('select');
+    await react.act(async () => { select.value = 'icloud'; select.dispatchEvent(new win.Event('change', { bubbles: true })); });
+    for (const label of ['测试连接', '保存并启用']) {
+      const button = [...win.document.querySelectorAll('button')].find(node => node.textContent === label);
+      assert.ok(button, label);
+      await react.act(async () => button.click());
+      assert.equal(apiCalls.at(-1).body.authMethod, 'basic', `${label} 必须使用新服务商的认证方式`);
+      assert.equal(apiCalls.at(-1).body.provider, 'icloud');
+    }
+  } finally { await react.act(async () => root.unmount()); }
+});
+
+test('连接草稿改动后旧的测试结论立即失效', async () => {
+  const { react, reactDomClient, components, win } = await setup({ connectionError: '旧账号连接失败' });
+  const { root } = await render(react, reactDomClient, react.createElement(components.ConnectionForm, {
+    connection: { provider: 'custom', settingsAvailable: true }, onClose() {}, onSaved() {},
+  }));
+  try {
+    const button = [...win.document.querySelectorAll('button')].find(node => node.textContent === '测试连接');
+    await react.act(async () => button.click());
+    assert.match(win.document.body.textContent, /旧账号连接失败/);
+    const select = win.document.querySelector('select');
+    await react.act(async () => { select.value = 'google'; select.dispatchEvent(new win.Event('change', { bubbles: true })); });
+    assert.doesNotMatch(win.document.body.textContent, /旧账号连接失败/, '新草稿不能继续显示旧账号的失败结论');
+  } finally { await react.act(async () => root.unmount()); }
+});
 
 test('周视图能渲染出来（曾经因为 useEffect 依赖数组 TDZ 而每次渲染即崩）', async () => {
   const { react, reactDomClient, components } = await setup();

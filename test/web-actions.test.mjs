@@ -249,6 +249,36 @@ test('connection 摘要只回「有没有密钥」，绝不回显密钥本身', 
   assert.equal(Object.keys(value).some((key) => key === 'password' || key === 'clientSecret'), false, '字段名也不该叫 password/clientSecret');
 });
 
+test('连接摘要识别环境中的 Basic 密码，留空草稿仍保留环境凭据', async () => {
+  const backend = new CalendarSettingsBackend({
+    config: { provider: 'custom', caldavUrl: 'https://calendar.example/dav/', username: 'fixture' },
+    env: { DSH_CALENDAR_PASSWORD: 'fixture-env-password' },
+  });
+  const res = makeRes();
+  await backend.handle(makeReq({ body: { action: 'connection' } }), res);
+  assert.equal(res.state.body.value.configured, true);
+  assert.equal(res.state.body.value.hasPassword, true, '有效的环境密码也应显示已配置');
+  assert.equal(res.state.raw.includes('fixture-env-password'), false, '只回存在标记，不回传环境密钥');
+});
+
+test('连接摘要识别环境中的 OAuth 密钥并忽略纯空白值', async () => {
+  const backend = new CalendarSettingsBackend({
+    config: { provider: 'google', calendarId: 'fixture@gmail.com' },
+    env: { DSH_CALENDAR_CLIENT_ID: 'fixture.apps.googleusercontent.com', DSH_CALENDAR_CLIENT_SECRET: 'fixture-env-client', DSH_CALENDAR_REFRESH_TOKEN: 'fixture-env-refresh' },
+  });
+  const res = makeRes();
+  await backend.handle(makeReq({ body: { action: 'connection' } }), res);
+  assert.equal(res.state.body.value.configured, true);
+  assert.equal(res.state.body.value.hasClientSecret, true);
+  assert.equal(res.state.body.value.hasRefreshToken, true);
+  assert.equal(/fixture-env-client|fixture-env-refresh/.test(res.state.raw), false);
+  const blank = new CalendarSettingsBackend({ config: { password: ' ', clientSecret: '\t' }, env: { DSH_CALENDAR_PASSWORD: '\n', DSH_CALENDAR_REFRESH_TOKEN: '  ' } });
+  const value = blank.connection();
+  assert.equal(value.hasPassword, false);
+  assert.equal(value.hasClientSecret, false);
+  assert.equal(value.hasRefreshToken, false);
+});
+
 test('saveConnection：先测后存，写进 settings 时带上 revision', async () => {
   const settings = fakeSettings({
     provider: 'custom',

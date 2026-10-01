@@ -281,6 +281,9 @@ export class CalendarSettingsBackend {
       const resolved = (effective as Record<string, unknown>)[key]
       return typeof resolved === 'string' ? resolved : ''
     }
+    const env = this.options.env ?? process.env
+    const hasCredential = (key: string, envKey: string): boolean =>
+      text(key).trim() !== '' || (typeof env[envKey] === 'string' && env[envKey]!.trim() !== '')
     return {
       configured,
       ...(reason !== undefined ? { reason } : {}),
@@ -299,9 +302,9 @@ export class CalendarSettingsBackend {
       clientId: text('clientId'),
       tokenUrl: text('tokenUrl'),
       proxyUrl: text('proxyUrl'),
-      hasPassword: text('password') !== '' || (effective.password ?? '') !== '',
-      hasClientSecret: text('clientSecret') !== '' || (effective.clientSecret ?? '') !== '',
-      hasRefreshToken: text('refreshToken') !== '' || (effective.refreshToken ?? '') !== '',
+      hasPassword: hasCredential('password', 'DSH_CALENDAR_PASSWORD'),
+      hasClientSecret: hasCredential('clientSecret', 'DSH_CALENDAR_CLIENT_SECRET'),
+      hasRefreshToken: hasCredential('refreshToken', 'DSH_CALENDAR_REFRESH_TOKEN'),
     }
   }
 

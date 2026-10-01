@@ -1,10 +1,10 @@
 # dsh-calendar
 
-## 0.9.1 update (2026-09-27)
+## 0.9.3 update (2026-10-01)
 
-Adapts settings forms and legacy configuration import to Harness 0.1.7, with the settings service declared correctly. The sample calendar is read-only; viewing and navigation remain available without writing sample events to a real calendar.
+Switching from Google to iCloud, Nextcloud or a custom server uses the new provider's authentication method for connection tests and saves. Environment credentials display a configured indicator without exposing their values. Editing the form clears the previous connection result.
 
-Validation host: Harness `0.2.0-rc.1` built from official sources (commit `407e65c8`) with Node `24.16.0` on 2026-09-28. All 173 plugin tests pass in an isolated environment; all 18 plugins mount together in one host registering 6 tools, with tool schemas and health-check contracts passing. No live ports or external services were exercised in this round.
+Validation host: Harness `0.2.0-rc.2` built from official sources (commit `639ed01539`) on 2026-10-01. All 178 Windows tests, the 18-plugin co-load and six calendar tool contracts pass. Browser checks use an isolated profile and a local CalDAV fixture: provider switching, connection testing, saving, event editing, month/week/agenda views and a 900px-wide window. Successful production Google/iCloud account flows still require separate validation.
 
 ![npm](https://img.shields.io/npm/v/dsh-calendar) ![downloads](https://img.shields.io/npm/dm/dsh-calendar) ![license](https://img.shields.io/github/license/STARDUSTLC666/dsh-calendar) ![stars](https://img.shields.io/github/stars/STARDUSTLC666/dsh-calendar?style=social)
 
@@ -14,9 +14,9 @@ DSH community plugin: read/write calendar events via CalDAV. Provides 5 calendar
 
 ## Compatibility
 
-Version **0.9.0** (2026-09-23) follows the settings interface introduced in Harness **0.1.7**: the host removed `ctx.settings.register`, so configuration now lives in the entry's own `Config`. Every connection field is declared `volatile` (panel edits apply live, no restart) and the three credentials carry the `secret` role (never returned to the browser, only whether they are set). On the first start after an upgrade the plugin moves the retired `dsh-calendar` section of `settings.yaml` into the profile — filling only absent keys, once, with values already written in the profile winning. Hosts on 0.1.5 / 0.1.6 keep the previous namespace registration unchanged. The verified host baseline is official-source **0.1.7-rc.1** with the local tool-scheduler fix; live CalDAV operations still require their own account validation.
+Version **0.9.0** (2026-09-23) follows the settings interface introduced in Harness **0.1.7**: the host removed `ctx.settings.register`, so configuration now lives in the entry's own `Config`. Every connection field is declared `volatile` (panel edits apply live, no restart) and the three credentials carry the `secret` role (never returned to the browser, only whether they are set). On the first start after an upgrade the plugin moves the retired `dsh-calendar` section of `settings.yaml` into the profile — filling only absent keys, once, with values already written in the profile winning. Hosts on 0.1.5 / 0.1.6 keep the previous namespace registration unchanged. The verified host baseline is official-source **0.2.0-rc.2**; live CalDAV operations still require their own account validation.
 
-Version **0.8.4** (2026-09-23) supports the Web mount paths introduced in Harness **0.1.7**. The calendar panel keeps its requests under the application path when deployed through a reverse proxy, preserving normal settings and event operations. The current host baseline is official-source 0.1.7-alpha.2 with a local tool-scheduler fix; external CalDAV operations require their own account validation.
+Version **0.8.4** (2026-09-23) supports the Web mount paths introduced in Harness **0.1.7**. The calendar panel keeps its requests under the application path when deployed through a reverse proxy, preserving normal settings and event operations.
 
 On 2026-09-10, npm `dsh-calendar@0.5.2` passed installation through this Harness release's official CLI and registration of all 6 tools. Host execution of `calendar_list` refreshed a real Google token (200), read via CalDAV REPORT (207) and rendered model-facing results. Only Google reads were tested; no writes were performed. This is a historical read-only verification record.
 
@@ -204,7 +204,6 @@ Input and output are uniformly ISO 8601. Timed events are output in UTC (e.g. `2
 - Single-instance reads vs edit/delete: calendar_list honors RECURRENCE-ID overrides when expanding (an occurrence separately rescheduled/retitled is returned with the override time and fields, including when the original instant is EXDATE-excluded); calendar_update / calendar_delete still operate on the whole recurring series (by uid) and cannot modify or delete just one occurrence.
 - OAuth credentials must be obtained beforehand: refresh-token authentication is supported, but there is no browser login UI / login CLI and runtime tokens are not written back to configuration.
 - Timezone rules: events with TZID (named timezone) are output converted to UTC (Z); all-day boundaries, DST, and other complex timezone rules are not handled finely.
-- No settings-page UI: this round is a node half-body; config only via cordis.patch.yml, no Web settings page.
 - Calendar discovery: iCloud requires manually filling the full calendar collection URL; no principal auto-discovery or multi-calendar selection.
 - Cancellation/timeout: tools use `timeoutMs` (60 seconds) and forward the host AbortSignal into token refresh and DAV network requests. Concurrent calls cancel independently.
 
