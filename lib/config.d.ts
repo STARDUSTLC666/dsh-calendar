@@ -44,8 +44,8 @@ export interface CalendarConfig {
     calendar?: string;
     /**
      * HTTP 代理地址，如 http://127.0.0.1:7890。
-     * 中国用户访问 Google / iCloud 需经代理：填你本地代理客户端的端口即可，
-     * 插件会把所有 CalDAV 请求路由到该代理，不影响其他插件。
+     * 当前网络无法直连时可填本地代理客户端的端口；可直连时留空即可。
+     * 插件只把本插件的请求路由到该代理，不影响其他插件。
      */
     proxyUrl?: string;
 }

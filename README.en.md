@@ -1,5 +1,12 @@
 # dsh-calendar
 
+## 0.9.4 update (2026-10-02)
+
+- Upgrade Undici to 8.11.2 and eliminate the production dependency audit findings.
+- Test CalDAV REPORT method, body and authorization preservation through a real local HTTP proxy, plus cancellation while reading a response.
+- Proxy configuration is optional: no VPN is needed when the calendar server is reachable directly.
+- All 180 tests pass on Windows. The official DSH 0.2.0-rc.2 web settings page was used to test a local CalDAV connection, agenda display and configuration saving. Production Google/iCloud accounts need separate acceptance.
+
 ## 0.9.3 update (2026-10-01)
 
 Switching from Google to iCloud, Nextcloud or a custom server uses the new provider's authentication method for connection tests and saves. Environment credentials display a configured indicator without exposing their values. Editing the form clears the previous connection result.

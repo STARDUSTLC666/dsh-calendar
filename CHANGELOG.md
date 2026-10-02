@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.4（2026-10-02）
+
+- Upgrade Undici to 8.11.2; production dependency audit reports 0 findings.
+- Add local HTTP proxy integration tests for CalDAV REPORT method/body/auth preservation and cancellation during response streaming.
+- Clarify that proxy use depends on server reachability, rather than requiring a VPN by provider name.
+- Windows: 180 tests passed. Browser acceptance covers local CalDAV agenda, connection testing and configuration saving in official DSH 0.2.0-rc.2.
+
 ## 0.9.3（2026-10-01）
 
 - 修复 Google 切换到 iCloud、Nextcloud 或自建 CalDAV 时仍继承 OAuth 认证方式的问题；测试连接和保存使用新服务商的认证方式，原服务商的已有凭据继续保留。
