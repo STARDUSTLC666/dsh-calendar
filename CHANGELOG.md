@@ -1,29 +1,34 @@
-# Changelog
+# 更新记录
 
-## 0.9.4（2026-10-02）
+[返回简介](README.md) · [使用说明](docs/USAGE.md) · [验证记录](docs/VALIDATION.md)
+
+[历史英文记录](docs/CHANGELOG.en.md)
+
+## 0.9.4 (2026-10-02)
 
 - Upgrade Undici to 8.11.2; production dependency audit reports 0 findings.
 - Add local HTTP proxy integration tests for CalDAV REPORT method/body/auth preservation and cancellation during response streaming.
 - Clarify that proxy use depends on server reachability, rather than requiring a VPN by provider name.
 - Windows: 180 tests passed. Browser acceptance covers local CalDAV agenda, connection testing and configuration saving in official DSH 0.2.0-rc.2.
 
-## 0.9.3（2026-10-01）
+## 0.9.3 (2026-10-01)
 
 - 修复 Google 切换到 iCloud、Nextcloud 或自建 CalDAV 时仍继承 OAuth 认证方式的问题；测试连接和保存使用新服务商的认证方式，原服务商的已有凭据继续保留。
 - 连接摘要识别环境变量中的密码、client secret 和 refresh token，输入框仅提示“已配置”，不回传或复制环境密钥；纯空白值不算已配置。
 - 修改连接草稿后清除过时的测试结论，避免把旧账号的失败或成功显示成新草稿的结果。
 - 4 项新回归先复现后修复，178 项 Windows 测试通过；验证宿主为官方源码构建的 Harness 0.2.0-rc.2。
 
-## 0.9.2（2026-09-29）
+## 0.9.2 (2026-09-29)
 
 - 修复：OAuth 刷新失败改为**按错误码给出可操作指引**（授权失效 / 应用配置错误 / 权限范围不足 / 限流或服务端错误 / 需重新验证），并在诊断信息里带上 OAuth 标识与 HTTP 状态。
 - 安全：错误信息**只接受标准错误标识符**（长度与字符集受限），绝不回显 `error_description` 等自由文本，避免把 client secret 或 refresh token 带进日志与界面。
-## 0.9.1（2026-09-28）
+
+## 0.9.1 (2026-09-28)
 
 - 兼容验证更新到 Harness 0.2.0-rc.1：173 项测试与 18 插件共同加载检查通过（96 工具 / 35 技能注册）。
 - 运行时代码未变；同步中英文兼容性声明。
 
-## 0.9.0（2026-09-27）
+## 0.9.0 (2026-09-27)
 
 - 适配 Harness 0.1.7 设置表单与旧配置导入，正确声明设置服务依赖。示例日历改为只读，保留视图切换和详情查看，避免示例操作写入真实日历。
 
@@ -34,25 +39,25 @@
 - 自带设置页向宿主登记 `configure({ auto: false })`，并声明 `tools` 与 `settings` 服务依赖，保证设置面板接入宿主存储。
 - **测试 163 → 172**：Config 形状（volatile / secret / 无默认值）、活引用摊平、两代宿主判定、mutate 与 replace 两条写路径、搬迁的一次性与「不串实例」、apply 在 0.1.7 宿主上不再抛错且面板路由照常挂载、面板保存全链路。
 
-## 0.8.4（2026-09-23）
+## 0.8.4 (2026-09-23)
 
 - **适配 Harness 0.1.7 的 Web 子路径部署**：面板请求改为跟随应用挂载路径。此前宿主被反向代理挂在子路径下时，设置与事件操作会打到站点根，一律 404。
 - 未配置账号/密码时的提示改为指向面板「连接设置」（不再要求用户去改 `cordis.patch.yml` 并重启）。
 - 新增子路径部署下的请求路径回归（`test/public-mount.test.mjs`）。
 
-## 0.8.3（2026-09-21）
+## 0.8.3 (2026-09-21)
 
 - 已知事件的修改、删除及创建后回读改为直接 CalDAV multiget，省掉整集合索引查询；每次仍读取最新 ETag，保留条件写入。
 - 限定事件地址属于当前日历；无 calendar-data 的响应不会触发写入或删除。
 - 新增真实 tsdav 请求回归，覆盖请求次数、ETag、取消与缺失事件；全量 161 项测试通过。更新中英文介绍，补齐已有的可视化面板与连接设置说明。
 
-## 0.8.2（2026-09-20）
+## 0.8.2 (2026-09-20)
 
 - **修主题色误用**：此前把宿主遮罩 token `--dsw-alias-bg-mask-3` 当淡色 hover/底纹用；DSH 0.1.6-alpha.2 里它实测亮/暗主题都是 `rgba(0,0,0,.48)`，导致周视图「今天」整列、月视图格子 hover、加载骨架屏、详情 tag 全部发深灰（浏览器视觉验收抓到，视觉上像一块无字灰板）。现改为 `color-mix`（label-primary 5%~7% / business-primary 7%），mask-3 只保留在 `.dshc-overlay` / `.dshc-modalwrap` 两处真正的遮罩上。
 - **修 Esc 关错层**：详情抽屉/新建表单打开时按 Esc 会连整个日历浮层面板一起关掉。现在 Esc 只关最上面一层，第二次才关面板；焦点在上层宿主 `PRIM.Modal` 里时让行给宿主；输入法组合状态（`isComposing`）不误关；设置页与对话页两个面板并存时一次也只关一层，并按实际打开顺序关。
 - **测试**：render 测试 7 → 15 条（新增抽屉/宿主 Modal 真假路径/宿主高层浮层让行/普通宿主元素兜底/层序/IME 等用例），全量 154 pass。该版经两位独立评审：首轮抓到「宿主 Portal 抢 Esc」「双面板一次连关两层」「IME 误关」，二轮抓到「宿主高层 Modal 盖上来时关错下面那层」，均已修。
 
-## 0.8.1（2026-09-19）
+## 0.8.1 (2026-09-20)
 
 - **新增真 DOM 行为测试层**（`test/render.test.mjs`，devDependencies 里加 `react` / `react-dom` / `jsdom`，不进发布包）：用 jsdom + 真 React 渲染周视图，然后真派发 `pointerdown/move/up`、`click`、`keydown`。7 条覆盖：渲染不抛、点事件不会顺手弹「新建」、拖动只提交一次且按视口坐标换算、拖动中 Esc 零请求、卸载后不留监听器且之后的 pointerup 不提交、拖到边缘 rAF 持续滚动、重复日程被面板挡住。
 - **它的第一批产出就是三个真问题**：
@@ -60,7 +65,7 @@
   ② `requestAnimationFrame` / `cancelAnimationFrame` 按全局调用：浏览器里有，但模块作用域下应当显式走 `window.*`。
   ③ 三处 React key 警告（日期头、事件块、幽灵块、日列的子节点用了数组却没给 key）——dev 模式控制台一直在吵。
 
-## 0.8.0（2026-09-19）
+## 0.8.0 (2026-09-19)
 
 - **新增：周视图拖拽改期**。拖动事件块上下改时间、左右换天（15 分钟吸附）；拖块底部 6px 改时长；拖动中显示幽灵落点，与已有日程重叠时描成黄色（允许重叠，只是提醒）；拖到容器上下边缘自动滚动，长会议不用先滚再拖。
 - **新增：键盘改期**。Tab 聚焦后 ↑/↓ 挪 15 分钟、Shift+↑/↓ 挪 1 小时、←/→ 挪一天、Enter 打开详情、拖动中 Esc 取消 —— 没有鼠标也能完成一次改期。
@@ -73,14 +78,14 @@
 - **修一个渲染即崩的 P0**：焦点恢复的 `useEffect` 依赖数组引用了声明在后面的 `data`，TDZ 直接抛错、整个面板打不开（纯函数测试测不到，评审渲染才发现）。
 - 明确取舍：拖动越过午夜**滚到次日**（与 Google 日历一致，也让幽灵块按 `slot.dayKey` 的日列渲染自洽），而不是硬钳在当天最后一刻。
 
-## 0.7.0（2026-09-19）
+## 0.7.0 (2026-09-19)
 
 - **新增**：面板**记住上次用的视图**（月/周/议程，存 localStorage；隐私模式写不进去就退回「月」），下次打开不再固定跳回月视图。
 - **新增**：周视图**默认落在 07:00**（半夜那几格基本没人看，但需要时还能往上滚，不裁剪任何事件）。
 - **适配窄容器**：面板在设置页里比对话页浮层窄得多，现在用容器查询自适应 —— 窄的时候隐藏芯片里的时间前缀（让日程标题露出来）、隐藏重复的面板标题、收紧工具栏间距。
 - **修复**：月视图的格子由 `<button>` 改为 `<div role="button" tabIndex=0>`。按钮不能嵌套按钮（芯片本身是按钮），一旦同格有多条日程，浏览器会把外层按钮提前闭合、把芯片挤成网格的兄弟节点；现在结构合法，键盘 Enter/空格仍可新建，并加了回归测试（月视图里不允许出现 `button`）。
 
-## 0.6.0（2026-09-19）
+## 0.6.0 (2026-09-19)
 
 - **新增设置页日历面板**：月 / 周 / 议程三种视图；点日程开右侧详情（时间、时长、重复规则的人话、地点、备注、uid），可直接改标题时间、加重复、删除（二次确认）；新建支持全天 / 地点 / 备注 / RRULE；保存前做冲突检测。
 - **新增对话页悬浮入口**：右下角 📅 小按钮点开同一个面板（非模态、Esc 关闭）。自绘 root 使用平台 seed 模块表里的 `react-dom/client`，控件优先用官方 `ui-primitives`（Button / Input / Checkbox / Modal / writeClipboard），老宿主缺这些时自动退回自绘控件，面板不会整块消失。
@@ -101,32 +106,37 @@
 - **修复**：Windows 上打开浏览器改用 `rundll32 url.dll,FileProtocolHandler`。此前用 `cmd /c start <url>`，授权 URL 里的 `&` 被 cmd 当成命令分隔符，浏览器只收到第一段 —— Google 的表现是 `Required parameter is missing: response_type`（预检查不出来，因为脚本自己发的请求是完整的）。换 token 脚本改为**交互式**：直接敲 `node scripts/google-oauth.mjs`，它会依次问 clientId 与 clientSecret，并识别「把文档示例文字当值粘进来」这种情况。
 - CI 增加 `node --check lib/client.js`（网页端源码不走 tsc，只能语法自检）。测试 79 → 88 项。
 
-> 完整历史（含详细改动说明）。README 只保留最近几个版本的一句话摘要。
+## 0.5.4 (2026-09-19)
 
-## 中文版
+- **修复**：①`calendar_update` 重建 VEVENT 会静默丢掉原事件的 ATTENDEE / ORGANIZER / EXDATE / STATUS / CATEGORIES / VALARM（改一次标题就删掉邀请人和提醒），现在改为在原始 VCALENDAR 上做字段级覆盖，并补齐 RFC 5545 必需的 VERSION / PRODID / UID / DTSTAMP；②RECURRENCE-ID 覆盖实例被忽略（被单独改期的实例按原时间+旧标题返回，或被 EXDATE 排掉后整条消失），现在建覆盖映射并在展开时替换对应实例；③`calendar_create` 返回本地拼的 uid 而忽略服务器 `Location`，导致 create 后 update 找不到事件（现在优先取 Location，缺失时回读确认），且 create 的 PUT body 补上 VERSION / PRODID / DTSTAMP。**优化**：重复事件展开预算耗尽时不再静默返回 0 条（DTSTART 在 2010 的每小时系列实测 680ms 且返回空），改为显式报错并提示缩小时间范围或补 COUNT/UNTIL；`calendar_search` 支持 `start` / `end` 并走 timeRange 查询（缺省用有界窗口），不再先整本下载再过滤。测试 68 → 79 项。
 
-- **0.5.4（2026-09-18）**：**修复**：①`calendar_update` 重建 VEVENT 会静默丢掉原事件的 ATTENDEE / ORGANIZER / EXDATE / STATUS / CATEGORIES / VALARM（改一次标题就删掉邀请人和提醒），现在改为在原始 VCALENDAR 上做字段级覆盖，并补齐 RFC 5545 必需的 VERSION / PRODID / UID / DTSTAMP；②RECURRENCE-ID 覆盖实例被忽略（被单独改期的实例按原时间+旧标题返回，或被 EXDATE 排掉后整条消失），现在建覆盖映射并在展开时替换对应实例；③`calendar_create` 返回本地拼的 uid 而忽略服务器 `Location`，导致 create 后 update 找不到事件（现在优先取 Location，缺失时回读确认），且 create 的 PUT body 补上 VERSION / PRODID / DTSTAMP。**优化**：重复事件展开预算耗尽时不再静默返回 0 条（DTSTART 在 2010 的每小时系列实测 680ms 且返回空），改为显式报错并提示缩小时间范围或补 COUNT/UNTIL；`calendar_search` 支持 `start` / `end` 并走 timeRange 查询（缺省用有界窗口），不再先整本下载再过滤。测试 68 → 79 项。
-- **0.5.3（2026-09-11）**：复验官方 Harness 0.1.5-rc.1，更新整套同载与真实服务验证记录；运行时代码未变。
-- **0.5.2（2026-09-08）**：补充官方 Harness 0.1.3-alpha.2 的安装、加载与真实 Google 工具调用验证，更新兼容性和 Node 版本要求；运行时代码与 0.5.0 相同。
-- **0.5.1（2026-09-08）**：补充真实 Google OAuth/CalDAV 读取验证、`calendar.readonly` 与 `calendar` 范围对比及 Testing 刷新令牌到期说明；运行时代码与 0.5.0 相同。
-- **0.5.0（2026-09-07）**：修复 Google CalDAV #2：新增 OAuth 凭据与环境变量配置、请求时刷新、取消与代理透传；健康检查区分 Basic/OAuth，修正误导的应用专用密码说明。保留其他服务的 Basic 认证。
-- **0.4.0**：新增 `calendar_health` 自检（离线检查 CalDAV 端点与凭据配置，不验证连接）。
-- **0.3.2**：
-  - 修复 `calendar_update` 更新其他字段时丢失 `rrule` 的问题。
+## 0.5.3 (2026-09-12)
+
+- 复验官方 Harness 0.1.5-rc.1，更新整套同载与真实服务验证记录；运行时代码未变。
+
+## 0.5.2 (2026-09-08)
+
+- 补充官方 Harness 0.1.3-alpha.2 的安装、加载与真实 Google 工具调用验证，更新兼容性和 Node 版本要求；运行时代码与 0.5.0 相同。
+
+## 0.5.1 (2026-09-08)
+
+- 补充真实 Google OAuth/CalDAV 读取验证、`calendar.readonly` 与 `calendar` 范围对比及 Testing 刷新令牌到期说明；运行时代码与 0.5.0 相同。
+
+## 0.5.0 (2026-09-07)
+
+- 修复 Google CalDAV #2：新增 OAuth 凭据与环境变量配置、请求时刷新、取消与代理透传；健康检查区分 Basic/OAuth，修正误导的应用专用密码说明。保留其他服务的 Basic 认证。
+
+## 0.4.0 (2026-08-26)
+
+- 新增 `calendar_health` 自检（离线检查 CalDAV 端点与凭据配置，不验证连接）。
+
+## 0.3.2 (2026-08-15)
+
+- 修复 `calendar_update` 更新其他字段时丢失 `rrule` 的问题。
   - 更新与新建都会校验 `end >= start`，并拒绝 `2025-02-30` 这类不存在的日期。
   - `calendar_list` / `calendar_search` 输出按开始时间稳定排序；搜索 `limit` clamp 到 1-200。
   - CalDAV 客户端创建失败后清空缓存，下一次调用可自动重试，不再永久复用 rejected promise。
 
-## English
+## 更早的改动
 
-- **0.5.4 (2026-09-18)**: **Fixes**: (1) `calendar_update` rebuilt the VEVENT and silently dropped ATTENDEE / ORGANIZER / EXDATE / STATUS / CATEGORIES / VALARM — renaming an event deleted its guests and reminders; the update now does field-level replacement on the original VCALENDAR and fills in the RFC 5545 essentials (VERSION / PRODID / UID / DTSTAMP). (2) RECURRENCE-ID overrides were ignored: a moved instance came back with its old time and title, or disappeared entirely when an EXDATE removed the original slot; overrides are now mapped and substituted during expansion. (3) `calendar_create` returned a locally invented uid instead of the server `Location`, so a follow-up update could not find the event (Location is now preferred, with a read-back check when absent), and the create body now carries VERSION / PRODID / DTSTAMP. **Improvements**: an exhausted expansion budget no longer returns an empty result silently (an hourly series starting in 2010 took 680ms and returned nothing) but raises a clear error suggesting a narrower range or COUNT/UNTIL; `calendar_search` accepts `start`/`end` and queries by timeRange instead of downloading the whole calendar first. Tests 68 → 79.
-- **0.5.3 (2026-09-11)**: revalidate official Harness 0.1.5-rc.1 and refresh suite co-load and live-service evidence; runtime code is unchanged.
-- **0.5.2 (2026-09-08)**: document installation, loading and real Google tool execution in official Harness 0.1.3-alpha.2; update compatibility and Node requirements. Runtime code is unchanged from 0.5.0.
-- **0.5.1 (2026-09-08)**: document live Google OAuth/CalDAV read validation, the `calendar.readonly` versus `calendar` scope results and Testing refresh-token expiration. Runtime code is unchanged from 0.5.0.
-- **0.5.0 (2026-09-07)**: fix Google CalDAV #2 with OAuth configuration/environment credentials, request-time refresh, cancellation and proxy forwarding. Make health checks and error guidance authentication-aware; retain Basic authentication for other servers.
-- **0.4.0**: new `calendar_health` self-check (offline endpoint and credential configuration checks, not a connection test).
-- **0.3.2**:
-  - Fix `calendar_update` dropping `rrule` while updating other fields.
-  - Validate `end >= start` and reject impossible dates such as `2025-02-30`.
-  - Sort `calendar_list` / `calendar_search` output by start time and clamp search `limit` to 1-200.
-  - Reset the cached CalDAV client after creation failure so the next tool call can retry.
+完整历史可查阅 [GitHub 提交记录](https://github.com/STARDUSTLC666/dsh-calendar/commits/main)。
