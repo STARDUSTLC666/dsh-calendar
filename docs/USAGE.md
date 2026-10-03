@@ -16,7 +16,9 @@ dsh plugin --profile web add dsh-calendar
 
 打开面板右上角的「连接设置」，选服务商 → 填地址与账号 → 点**「测试连接」**（它会真的去列未来 30 天的日程）→ 通过后点「保存并启用」。工具的下一次调用立刻用上新配置，不用重启、不用编辑 YAML。
 
-面板写下的值优先存在本机 `settings.yaml` 的 `dsh-calendar` 命名空间里（密码是 secret 字段：不进日志、不进导出）；若宿主没有 settings 服务（或命名空间注册失败），自动改存插件自己的文件 `$DSH_HOME/data/dsh-calendar/connection.json`（0600），面板里会明确显示当前存在哪。**YAML 仍然是基座**：面板没填过的字段由它兜底，所以已经用 `cordis.patch.yml` 配好的部署零迁移；纯 headless（没有设置页）的宿主依然只能走 YAML。
+Harness 0.1.7 及以上通过宿主设置服务写入 profile 中的 `calendar` 配置行，修改立即生效；更早版本使用 `settings.yaml` 的 `dsh-calendar` 命名空间。密码、client secret 和 refresh token 只显示是否已配置，不回填到浏览器。若宿主设置服务不可用，则存入 `$DSH_HOME/data/dsh-calendar/connection.json`，面板会说明存储位置。已有配置与环境变量继续作为缺省值；无需重新填写原来的凭据。
+
+这里需要的是日历服务凭据，DSH 的模型 API 密钥不能用于日历登录。Google 使用 OAuth，iCloud 使用应用专用密码；查看面板和导入文件本身不依赖模型调用。
 
 各服务商要点：
 
@@ -38,6 +40,19 @@ dsh plugin --profile web add dsh-calendar
 - `proxyUrl`：可选 HTTP 代理地址（如 http://127.0.0.1:7890）；令牌刷新和 CalDAV 请求共用该代理。可直连时无需填写。
 - `calendarId`：google 专用，日历 ID（通常是你的邮箱）
 - `host` / `user` / `calendar`：nextcloud 专用
+
+## 导入 ICS 日程
+
+1. 在「设置 → 日历」连接好目标日历，点击「导入 ICS」。
+2. 选择 `.ics` 文件，或粘贴完整 `VCALENDAR` 内容。如果时间没有 `TZID` 或 UTC 标记，主动选择解释时区（中国常用 `Asia/Shanghai`）。文件已有时区会保留，不会被这个选项覆盖。
+3. 点击「预览与检查」。核对标题、时间、重复例外、已有 UID 与首场重叠提示；此步骤只读取目标日历，不写入。
+4. 勾选需要的日程，或选择下一批，再点击「确认导入」。每批最多 20 个日程系列。失败项保留重试入口，已成功的项目不会重复写入。
+
+同一 UID 的主日程与 `RECURRENCE-ID` 例外作为一个资源导入，保留 `RRULE`、`EXDATE`、日期形式的 `RDATE` 和 `VTIMEZONE`。目标日历中已经存在的 UID 会跳过，不覆盖其内容。预览保留 15 分钟；切换账号、日历地址或凭据后必须重新预览。停止本批时，请重新预览核对已完成的写入。
+
+导入的是私人副本：不导入 `ATTENDEE`、`ORGANIZER`，不会发送会议邀请；仅保留 `DISPLAY` 屏幕提醒。VTODO、VJOURNAL 等非日程组件会标明并跳过。重叠提示仅检查系列首场，不能证明所有重复实例都没有冲突。
+
+单个文件最多 256 KiB、100 个 UID 系列（含例外最多 1000 个 VEVENT）；目标日历最多 5000 个对象、16 MiB。超限或服务器存在无法解析的日程时，导入会停止并说明原因。暂不支持 `PERIOD` 类型的 `RDATE`、缺少主记录的重复例外、缺少 DTSTART 的取消例外及 `METHOD:CANCEL` 文件；请在原日历应用整理或重新导出。未知 TZID 需要原文件提供完整、有效的 VTIMEZONE，不能默认为北京时间。
 
 ## 卸载
 

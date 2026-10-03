@@ -82,4 +82,6 @@ export * from './web.js';
 export * from './settings.js';
 export * from './store.js';
 export * from './host-settings.js';
+export * from './import-ical.js';
+export * from './import-web.js';
 export { liveConfig } from './host-config.js';

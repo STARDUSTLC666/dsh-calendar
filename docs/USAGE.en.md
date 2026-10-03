@@ -24,7 +24,9 @@ Then restart the web service. To clean up fully, also remove the plugin entry fr
 
 Open「Connection」in the panel toolbar, pick a provider, fill in the address and account, hit **Test connection** (it really lists the next 30 days) and then **Save and enable**. The tools pick the new configuration up on their next call — no restart, no YAML editing.
 
-What the panel saves lives in your local `settings.yaml` under the `dsh-calendar` namespace (the password is a secret field: no logs, no exports). If the host has no settings service (or the namespace cannot be registered), the connection is stored in the plugin’s own file `$DSH_HOME/data/dsh-calendar/connection.json` (0600) instead, and the panel says which one is in use. **The YAML remains the base layer**: any field the panel never touched still comes from it, so an existing `cordis.patch.yml` setup needs no migration; a headless host without a settings page still configures through YAML only.
+Harness 0.1.7 and later use the host settings service to update the profile's `calendar` entry immediately; older versions use the `dsh-calendar` namespace in `settings.yaml`. Passwords, client secrets and refresh tokens are never filled back into the browser. If the host settings service is unavailable, the plugin uses `$DSH_HOME/data/dsh-calendar/connection.json` and shows the storage location. Existing configuration and environment credentials remain available as defaults.
+
+Use calendar service credentials here, not a DSH model API key. Google uses OAuth; iCloud uses an app-specific password. Viewing the panel and importing files do not themselves require a model call.
 
 Per-provider notes:
 
@@ -32,7 +34,20 @@ Per-provider notes:
 - **Nextcloud / self-hosted**: server URL + username + calendar name (self-hosted: the full collection URL, keep the trailing slash) and an app password
 - **Google**: OAuth only — Google rejects every Basic password, including app passwords; needs `clientId` / `clientSecret` / `refreshToken` / `calendarId`
 
-### Or: write YAML (advanced / headless)
+## Import ICS events
+
+1. Connect the target calendar in Settings → Calendar and choose Import ICS.
+2. Select an `.ics` file or paste a complete VCALENDAR. Explicitly choose an interpretation timezone for times without a TZID or UTC marker; existing timezones are preserved.
+3. Preview and check titles, dates, recurrence exceptions, existing UIDs and first-occurrence overlaps. Previewing reads the target calendar without writing it.
+4. Select events and confirm a batch of up to 20 series. Failed items can be retried without writing successful items again.
+
+One UID, including its master and RECURRENCE-ID overrides, becomes one resource. RRULE, EXDATE, date-based RDATE and VTIMEZONE survive the import. Existing target UIDs are skipped, never overwritten. Previews expire after 15 minutes; changing the account, collection or credentials requires a new preview. After stopping a batch, preview again to check completed writes.
+
+Events are imported as private copies without ATTENDEE or ORGANIZER, so no meeting invitations are sent; only DISPLAY alarms remain. Non-event components are counted and skipped. Overlap hints only cover the first occurrence, not every recurring instance.
+
+Limits: 256 KiB, 100 UID series and 1000 VEVENTs per file; 5000 objects and 16 MiB in the target calendar. An unreadable target event blocks duplicate checking. PERIOD-based RDATE, orphan recurrence overrides, cancelled exceptions without DTSTART and METHOD:CANCEL files are unsupported. Unknown TZIDs require complete, valid VTIMEZONE definitions in the file.
+
+## YAML configuration (advanced / headless)
 
 The fields below mirror the panel form one-to-one; whatever the panel never set comes from here.
 All configuration lives in your profile's cordis.patch.yml; override the `calendar` line by id (overriding replaces that line's config wholesale). Common fields:

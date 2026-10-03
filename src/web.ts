@@ -246,6 +246,9 @@ export class CalendarSettingsBackend {
     return { ...base, ...draftToConfig(stored as Partial<CalendarSettingsValue>) }
   }
 
+  /** Internal getter shared with the authenticated import carrier. Never sent to the browser. */
+  currentConfig(): CalendarConfig { return this.configOf() }
+
   /** 惰性解析配置；凭据/端点变化即重建（闭包内比较，不落盘不记日志）。 */
   private service(): CalendarServiceLike {
     const current = this.configOf()

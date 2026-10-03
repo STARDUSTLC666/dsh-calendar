@@ -38,6 +38,13 @@ export declare class CalendarService {
     create(fields: EventFields, signal?: AbortSignal): Promise<CalendarEvent>;
     /** 解析 PUT 响应的 Location；取不到时回读一次确认，避免把本地猜测的 href 当成 uid。 */
     private resolveCreatedHref;
+    /** Complete UID inventory before import, including recurrence overrides outside the visible date window. */
+    importSnapshot(signal?: AbortSignal): Promise<{
+        uids: Set<string>;
+        events: CalendarEvent[];
+    }>;
+    /** Insert one already reviewed UID resource; tsdav uses If-None-Match:* and never overwrites existing objects. */
+    importRaw(uid: string, data: string, signal?: AbortSignal): Promise<void>;
     /** 按 uid 更新事件；未提供的字段保留原值。 */
     update(uid: string, changes: Partial<EventFields>, signal?: AbortSignal): Promise<CalendarEvent>;
     /** 按 uid 删除事件。 */

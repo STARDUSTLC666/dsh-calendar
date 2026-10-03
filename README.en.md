@@ -10,6 +10,7 @@ View, create and reschedule CalDAV events from DSH.
 
 - Month, week and agenda views with drag and keyboard rescheduling.
 - Create, search, update and delete events, including recurring occurrences.
+- Import an ICS file or pasted content after reviewing timezones, duplicates and overlap hints.
 - Connect Google, iCloud, Nextcloud or your own CalDAV server.
 
 ## Install
@@ -25,6 +26,8 @@ For the web version, replace `desktop` with `web`. Restart DSH after installatio
 ## Start using it
 
 Open Settings → Calendar, configure a provider, test the connection and save. Then ask: “Show this week’s events and find a one-hour gap.”
+
+To migrate events, choose Import ICS. Previewing does not change your calendar. Select events and confirm the import; existing events are skipped and failed items can be retried separately.
 
 ## Requirements and configuration
 

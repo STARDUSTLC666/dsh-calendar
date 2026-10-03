@@ -4,6 +4,14 @@
 
 These English notes preserve the earlier translations. The main changelog contains the consolidated version history.
 
+## 0.10.0 (2026-10-03)
+
+- Import ICS files or pasted content with an explicit preview, selection and batch confirmation. Preserve recurrence rules, excluded dates, moved exceptions and timezone definitions.
+- Require a timezone choice for floating times and show actionable errors for unsupported or malformed events. Use `timezones-ical-library` for IANA definitions without sharing file-specific timezones globally.
+- Check all target UIDs, skip existing events and retry failed items without repeating successful writes. Expired previews or a changed connection require a new preview; conditional creation never overwrites an existing resource.
+- Import private copies without guests, organizers or non-display alarms. Overlap hints cover the first occurrence only.
+- Clarify calendar credentials and fix the settings layout at a 390px viewport. See the [validation record](VALIDATION.md) for the tested scope.
+
 ## 0.9.4 (2026-10-02)
 
 - Upgrade Undici to 8.11.2 and eliminate the production dependency audit findings.

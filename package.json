@@ -1,6 +1,6 @@
 {
   "name": "dsh-calendar",
-  "version": "0.9.4",
+  "version": "0.10.0",
   "description": "连接 CalDAV 日历，在 DSH 中查看、创建和调整日程。",
   "type": "module",
   "main": "lib/index.js",
@@ -57,6 +57,7 @@
     "@deepseek-ai/schemastery": "^3.18.3",
     "ical.js": "^2.1.0",
     "schemastery": "^3.18.0",
+    "timezones-ical-library": "2.3.2",
     "tsdav": "^2.3.1",
     "undici": "^8.11.2",
     "yaml": "^2.9.1"

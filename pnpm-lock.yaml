@@ -17,6 +17,9 @@ importers:
       schemastery:
         specifier: ^3.18.0
         version: 3.18.0
+      timezones-ical-library:
+        specifier: 2.3.2
+        version: 2.3.2
       tsdav:
         specifier: ^2.3.1
         version: 2.3.1
@@ -210,6 +213,9 @@ packages:
   source-map-js@1.2.1:
     resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}
     engines: {node: '>=0.10.0'}
+
+  timezones-ical-library@2.3.2:
+    resolution: {integrity: sha512-AEhFhnhx6jI40kbcZ+rnpDnvb9raIvkyJGuBJvr6a1tfsbHWVM0oIqxbDZ3h8o/4m/x7lAXW9z+Abahdrlwn3Q==}
 
   tldts-core@7.4.13:
     resolution: {integrity: sha512-mbYsrih5FRtGxs3Usvl/PqwJsNpp+jsmrdFviiK02teHDG0/HebBG/pqCylje3kzgXYzuLoHJF/0mz9W53t8Xg==}
@@ -438,6 +444,8 @@ snapshots:
       cosmokit: 1.8.1
 
   source-map-js@1.2.1: {}
+
+  timezones-ical-library@2.3.2: {}
 
   tldts-core@7.4.13: {}
 

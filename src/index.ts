@@ -14,6 +14,7 @@ import { CalendarSettingsSchema, SETTINGS_NAMESPACE, toCalendarConfig, toSetting
 import { CalendarSettingsBackend, installCalendarSettingsWeb, CONNECTION_KEYS, hostFormsFaceOf, settingsFaceOf, type CalendarSettingsFace } from './web.js'
 import { connectionFile, readConnectionFile, writeConnectionFile } from './store.js'
 import { Config as ConfigSchema, liveConfig } from './host-config.js'
+import { CalendarImportBackend, installCalendarImport } from './import-web.js'
 import { entryIdOf, installLegacySettingsImport, isFormsProvider, isLegacyProvider, settingsProviderOf } from './host-settings.js'
 
 /** 宿主用 entry 的 Config 生成设置表单：0.1.7 起这就是「注册设置项」的方式。 */
@@ -179,6 +180,7 @@ export function apply(ctx: CalendarPluginContext, config?: CalendarConfig | null
   })
   try {
     installCalendarSettingsWeb(ctx, backend)
+    installCalendarImport(ctx, new CalendarImportBackend({ config: () => backend.currentConfig() }))
   } catch (error) {
     console.warn('dsh-calendar: 面板路由未挂载：' + (error instanceof Error ? error.message : String(error)))
   }
@@ -200,4 +202,6 @@ export * from './web.js'
 export * from './settings.js'
 export * from './store.js'
 export * from './host-settings.js'
+export * from './import-ical.js'
+export * from './import-web.js'
 export { liveConfig } from './host-config.js'
