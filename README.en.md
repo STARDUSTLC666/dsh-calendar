@@ -2,6 +2,8 @@
 
 [中文](README.md)
 
+![dsh-calendar whale girl plugin cover](https://raw.githubusercontent.com/STARDUSTLC666/dsh-calendar/main/assets/cover-whale-girl.png)
+
 View, create and reschedule CalDAV events from DSH.
 
 [![npm](https://img.shields.io/npm/v/dsh-calendar)](https://www.npmjs.com/package/dsh-calendar) [![downloads](https://img.shields.io/npm/dm/dsh-calendar)](https://www.npmjs.com/package/dsh-calendar)

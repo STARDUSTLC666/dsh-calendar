@@ -2,6 +2,8 @@
 
 [English](README.en.md)
 
+![dsh-calendar 鲸鱼娘插件封面](https://raw.githubusercontent.com/STARDUSTLC666/dsh-calendar/main/assets/cover-whale-girl.png)
+
 连接 CalDAV 日历，在 DSH 中查看、创建和调整日程。
 
 [![npm](https://img.shields.io/npm/v/dsh-calendar)](https://www.npmjs.com/package/dsh-calendar) [![downloads](https://img.shields.io/npm/dm/dsh-calendar)](https://www.npmjs.com/package/dsh-calendar)
