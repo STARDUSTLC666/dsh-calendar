@@ -6,7 +6,7 @@
 
 View, create and reschedule CalDAV events from DSH.
 
-[![npm](https://img.shields.io/npm/v/dsh-calendar)](https://www.npmjs.com/package/dsh-calendar) [![downloads](https://img.shields.io/npm/dm/dsh-calendar)](https://www.npmjs.com/package/dsh-calendar)
+[![npm](https://img.shields.io/npm/v/dsh-calendar)](https://www.npmjs.com/package/dsh-calendar) [![downloads](https://raw.githubusercontent.com/STARDUSTLC666/dsh-suite/npm-downloads/assets/dsh-calendar-downloads.svg)](https://www.npmjs.com/package/dsh-calendar)
 
 ## What it does
 

@@ -6,7 +6,7 @@
 
 连接 CalDAV 日历，在 DSH 中查看、创建和调整日程。
 
-[![npm](https://img.shields.io/npm/v/dsh-calendar)](https://www.npmjs.com/package/dsh-calendar) [![downloads](https://img.shields.io/npm/dm/dsh-calendar)](https://www.npmjs.com/package/dsh-calendar)
+[![npm](https://img.shields.io/npm/v/dsh-calendar)](https://www.npmjs.com/package/dsh-calendar) [![downloads](https://raw.githubusercontent.com/STARDUSTLC666/dsh-suite/npm-downloads/assets/dsh-calendar-downloads.svg)](https://www.npmjs.com/package/dsh-calendar)
 
 ## 功能
 
