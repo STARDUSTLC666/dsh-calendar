@@ -6,6 +6,7 @@
  */
 import { type CalendarConfig } from './config.js';
 import { type CalendarEvent } from './ical.js';
+export { assertIsoTime } from './time.js';
 /** 模型可见的内容块。 */
 export interface ContentBlock {
     type: 'text';
@@ -29,7 +30,6 @@ export interface CalendarToolDefinition {
 }
 export declare function asRecord(args: unknown): Record<string, unknown>;
 export declare function optionalString(args: Record<string, unknown>, key: string): string | undefined;
-export declare function assertIsoTime(value: string, label: string): void;
 export declare function assertTimeRange(start: string, end: string): void;
 export declare function isoNoMillis(value: string): string;
 /** 按开始时间升序稳定排序（CalDAV 服务端返回顺序不保证稳定）。 */

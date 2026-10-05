@@ -7,6 +7,7 @@
 
 import { randomUUID } from 'node:crypto'
 import ICAL from 'ical.js'
+import { assertIsoTime } from './time.js'
 
 /** 一个暴露给模型的日历事件（或重复系列的一个展开实例）。 */
 export interface CalendarEvent {
@@ -508,6 +509,7 @@ export function updateICalString(data: string, changes: Partial<EventFields>): s
 
 /** 把 ISO 字符串解析成 ICAL.Time（全天 YYYY-MM-DD 或转 UTC 的定时时间）。 */
 function parseTime(value: string, allDay: boolean): ICAL.Time {
+  assertIsoTime(value, '时间')
   if (allDay || isDateOnly(value)) {
     return ICAL.Time.fromDateString(value)
   }

@@ -2,6 +2,10 @@
 
 [Overview](../README.en.md) · [Changelog](../CHANGELOG.md) · [Validation](VALIDATION.md)
 
+## Current improvements
+
+Use YYYY-MM-DD for dates and ISO datetimes with Z or a UTC offset. Invalid dates fail before remote creation or updates. Existing events are preserved.
+
 ## Installation
 
 ```bash

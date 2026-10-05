@@ -166,6 +166,8 @@ test('参数不合法时给出可读的中文错误，且不去打扰 CalDAV 服
   for (const body of [
     { action: 'create', start: '2026-09-22T01:30:00Z', end: '2026-09-22T02:00:00Z' },
     { action: 'create', summary: '没有时间' },
+    { action: 'create', summary: '日期不能挪动', start: '2026-02-30T09:00:00+08:00', end: '2026-03-03T10:00:00+08:00' },
+    { action: 'update', uid: EVENT.uid, start: '2026-04-31T09:00:00Z' },
     { action: 'update' },
     { action: 'delete' },
     { action: 'nope' },

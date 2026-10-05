@@ -2,6 +2,10 @@
 
 [返回简介](../README.md) · [更新记录](../CHANGELOG.md) · [验证记录](VALIDATION.md)
 
+## 本次改进
+
+日期使用 YYYY-MM-DD；带时间使用带 Z 或 UTC 偏移的 ISO 格式。错误日期会在创建或更新远端日程前报错，原日程保留。
+
 ## 安装
 
 ```bash

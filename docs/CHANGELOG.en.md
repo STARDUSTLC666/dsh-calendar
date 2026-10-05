@@ -4,6 +4,10 @@
 
 These English notes preserve the earlier translations. The main changelog contains the consolidated version history.
 
+## 0.10.2 (2026-10-05)
+
+- Validate real ISO calendar dates, rejecting nonexistent dates, ambiguous locale formats and datetimes without a timezone.
+
 ## 0.10.0 (2026-10-03)
 
 - Import ICS files or pasted content with an explicit preview, selection and batch confirmation. Preserve recurrence rules, excluded dates, moved exceptions and timezone definitions.
