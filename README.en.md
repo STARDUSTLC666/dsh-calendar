@@ -8,6 +8,8 @@ View, create and reschedule CalDAV events from DSH.
 
 [![npm](https://img.shields.io/npm/v/dsh-calendar)](https://www.npmjs.com/package/dsh-calendar) [![downloads](https://raw.githubusercontent.com/STARDUSTLC666/dsh-suite/npm-downloads/assets/dsh-calendar-downloads.svg)](https://www.npmjs.com/package/dsh-calendar)
 
+Feedback and contributions are welcome: report [issues](https://github.com/STARDUSTLC666/dsh-calendar/issues) or submit [pull requests](https://github.com/STARDUSTLC666/dsh-calendar/pulls).
+
 ## What it does
 
 - Month, week and agenda views with drag and keyboard rescheduling.

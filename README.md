@@ -8,6 +8,8 @@
 
 [![npm](https://img.shields.io/npm/v/dsh-calendar)](https://www.npmjs.com/package/dsh-calendar) [![downloads](https://raw.githubusercontent.com/STARDUSTLC666/dsh-suite/npm-downloads/assets/dsh-calendar-downloads.svg)](https://www.npmjs.com/package/dsh-calendar)
 
+欢迎使用，遇到问题或有改进建议，请提交 [issues](https://github.com/STARDUSTLC666/dsh-calendar/issues) 和 [PR](https://github.com/STARDUSTLC666/dsh-calendar/pulls)。
+
 ## 功能
 
 - 月、周与议程视图，支持拖拽和键盘改期。
