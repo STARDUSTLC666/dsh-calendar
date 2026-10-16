@@ -10,6 +10,9 @@ View, create and reschedule CalDAV events from DSH.
 
 Feedback and contributions are welcome: report [issues](https://github.com/STARDUSTLC666/dsh-calendar/issues) or submit [pull requests](https://github.com/STARDUSTLC666/dsh-calendar/pulls).
 
+
+See the [0.10.4 validation record](docs/validation/0.10.4.md) for DSH `0.2.1-alpha.5` browser checks and the remaining limits.
+
 ## What it does
 
 - Month, week and agenda views with drag and keyboard rescheduling.

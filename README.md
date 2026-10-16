@@ -10,6 +10,9 @@
 
 欢迎使用，遇到问题或有改进建议，请提交 [issues](https://github.com/STARDUSTLC666/dsh-calendar/issues) 和 [PR](https://github.com/STARDUSTLC666/dsh-calendar/pulls)。
 
+
+DSH `0.2.1-alpha.5` 的本轮检查与未验收范围见 [0.10.4 验收记录](docs/validation/0.10.4.md)。
+
 ## 功能
 
 - 月、周与议程视图，支持拖拽和键盘改期。
