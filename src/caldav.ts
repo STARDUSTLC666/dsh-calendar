@@ -18,6 +18,7 @@ import {
   generateUid,
   parseEventFromICal,
   updateICalString,
+  isRecurringResource,
   type CalendarEvent,
   type EventFields,
 } from './ical.js'
@@ -297,8 +298,18 @@ export class CalendarService {
     } catch (error) { signal?.throwIfAborted(); throw translateError(error, '导入日程', this.config) }
   }
 
+  /** Read the resource master rather than a projected occurrence. */
+  async get(uid: string, signal?: AbortSignal): Promise<CalendarEvent> {
+    try {
+      const object = await this.findObject(uid, signal)
+      const event = object && parseEventFromICal(String(object.data ?? ''), object.url, object.etag)
+      if (!event) throw new CalDAVError('找不到或无法解析日程，请刷新日历后重试。')
+      return event
+    } catch (error) { signal?.throwIfAborted(); throw translateError(error, '读取系列事件', this.config) }
+  }
+
   /** 按 uid 更新事件；未提供的字段保留原值。 */
-  async update(uid: string, changes: Partial<EventFields>, signal?: AbortSignal): Promise<CalendarEvent> {
+  async update(uid: string, changes: Partial<EventFields>, signal?: AbortSignal, scope?: 'series'): Promise<CalendarEvent> {
     signal?.throwIfAborted()
     let object: DAVCalendarObject | undefined
     try {
@@ -314,6 +325,8 @@ export class CalendarService {
       )
     }
     const existing = parseEventFromICal(String(object.data ?? ''), object.url, object.etag)
+    if (!existing) throw new CalDAVError('无法解析原日程，更新已取消；请在原日历客户端检查。')
+    if (isRecurringResource(String(object.data ?? '')) && scope !== 'series') throw new CalDAVError('这是整个重复系列。请先向用户说明影响，确认后显式传 scope="series"；当前不支持只改某一次。')
     const start = changes.start ?? existing?.start
     const end = changes.end ?? existing?.end
     if (start === undefined || end === undefined) {
@@ -357,7 +370,7 @@ export class CalendarService {
   }
 
   /** 按 uid 删除事件。 */
-  async delete(uid: string, signal?: AbortSignal): Promise<{ uid: string; href: string }> {
+  async delete(uid: string, signal?: AbortSignal, scope?: 'series'): Promise<{ uid: string; href: string }> {
     signal?.throwIfAborted()
     let object: DAVCalendarObject | undefined
     try {
@@ -372,6 +385,7 @@ export class CalendarService {
         '该事件可能已被删除或 uid 已过期。',
       )
     }
+    if (isRecurringResource(String(object.data ?? '')) && scope !== 'series') throw new CalDAVError('这是整个重复系列。请先向用户说明影响，确认后显式传 scope="series"；当前不支持只删某一次。')
     try {
       const client = await this.client()
       signal?.throwIfAborted()

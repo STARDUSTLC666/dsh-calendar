@@ -61,10 +61,11 @@ export function postVerdict(headers: Record<string, unknown>): { status: number;
 
 /** 面板需要的服务面；测试里可以塞假的进来。 */
 export interface CalendarServiceLike {
+  get?(uid: string, signal?: AbortSignal): Promise<CalendarEvent>
   list(start: string, end: string, options?: unknown, signal?: AbortSignal): Promise<CalendarEvent[]>
   create(fields: unknown, signal?: AbortSignal): Promise<CalendarEvent>
-  update(uid: string, changes: unknown, signal?: AbortSignal): Promise<CalendarEvent>
-  delete(uid: string, signal?: AbortSignal): Promise<{ uid: string; href: string }>
+  update(uid: string, changes: unknown, signal?: AbortSignal, scope?: 'series'): Promise<CalendarEvent>
+  delete(uid: string, signal?: AbortSignal, scope?: 'series'): Promise<{ uid: string; href: string }>
 }
 
 /** 面板用于读写 settings 命名空间的最小面（index.ts 在 settings 服务到位后接上）。 */
@@ -422,13 +423,18 @@ export class CalendarSettingsBackend {
       const fields = eventFields(body, true)
       return { event: await this.service().create(fields) }
     }
+    if (action === 'event') {
+      const service = this.service()
+      if (!service.get) throw new Error('当前日历连接不支持读取系列原始事件')
+      return { event: await service.get(requireString(body, 'uid', '缺少事件 uid')) }
+    }
     if (action === 'update') {
       const uid = requireString(body, 'uid', '缺少要修改的事件 uid')
-      return { event: await this.service().update(uid, eventFields(body, false)) }
+      return { event: await this.service().update(uid, eventFields(body, false), undefined, body.scope === 'series' ? 'series' : undefined) }
     }
     if (action === 'delete') {
       const uid = requireString(body, 'uid', '缺少要删除的事件 uid')
-      return await this.service().delete(uid)
+      return await this.service().delete(uid, undefined, body.scope === 'series' ? 'series' : undefined)
     }
     throw new Error('未知动作：' + (action === '' ? '(空)' : action))
   }

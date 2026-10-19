@@ -45,10 +45,12 @@ export declare class CalendarService {
     }>;
     /** Insert one already reviewed UID resource; tsdav uses If-None-Match:* and never overwrites existing objects. */
     importRaw(uid: string, data: string, signal?: AbortSignal): Promise<void>;
+    /** Read the resource master rather than a projected occurrence. */
+    get(uid: string, signal?: AbortSignal): Promise<CalendarEvent>;
     /** 按 uid 更新事件；未提供的字段保留原值。 */
-    update(uid: string, changes: Partial<EventFields>, signal?: AbortSignal): Promise<CalendarEvent>;
+    update(uid: string, changes: Partial<EventFields>, signal?: AbortSignal, scope?: 'series'): Promise<CalendarEvent>;
     /** 按 uid 删除事件。 */
-    delete(uid: string, signal?: AbortSignal): Promise<{
+    delete(uid: string, signal?: AbortSignal, scope?: 'series'): Promise<{
         uid: string;
         href: string;
     }>;

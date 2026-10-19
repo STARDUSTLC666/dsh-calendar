@@ -248,9 +248,10 @@ export function buildCalendarTools(config: CalendarConfigSource, env: NodeJS.Pro
 
   const update = {
     name: 'calendar_update',
-    description: '按 uid 修改日历事件。uid 必填（来自 calendar_list / calendar_search 返回的 uid）。summary、start、end、description、location、allDay、rrule 均可选，未提供的字段保留原值。description、location、rrule 显式传空字符串可分别清空说明、地点或停止重复。',
+    description: '按 uid 修改日历事件。uid 必填（来自 calendar_list / calendar_search 返回的 uid）。summary、start、end、description、location、allDay、rrule 均可选，未提供的字段保留原值。description、location、rrule 显式传空字符串可分别清空说明、地点或停止重复。重复日程的 uid 指整个系列；先向用户说明，确认后传 scope="series"，不能只改某一次。有例外场次的系列不允许整体改开始时间、全天类型或重复规则。',
     parameters: compileParameters({
       uid: { type: 'string', required: true, description: '事件稳定标识（来自 calendar_list / calendar_search 的 uid，必填）。' },
+      scope: { type: 'string', enum: ['series'], description: '重复日程必须先向用户说明影响；确认操作整个系列后传 series。不能只改或删除某一次。' },
       summary: { type: 'string', description: '新标题（可选）。' },
       start: { type: 'string', description: '新开始时间（ISO 8601，可选）。' },
       end: { type: 'string', description: '新结束时间（ISO 8601，可选）。' },
@@ -289,7 +290,7 @@ export function buildCalendarTools(config: CalendarConfigSource, env: NodeJS.Pro
       if (allDay !== undefined) changes.allDay = allDay
       const rrule = optionalPatchString(input, 'rrule')
       if (rrule !== undefined) changes.rrule = rrule
-      const updated = await service().update(uid, changes, executionSignal(exec))
+      const updated = await service().update(uid, changes, executionSignal(exec), input.scope === 'series' ? 'series' : undefined)
       return { updated }
     },
     timeoutMs: TIMEOUT_MS,
@@ -297,9 +298,10 @@ export function buildCalendarTools(config: CalendarConfigSource, env: NodeJS.Pro
 
   const remove = {
     name: 'calendar_delete',
-    description: '按 uid 删除日历事件。uid 必填（来自 calendar_list / calendar_search 返回的 uid）。删除不可撤销。',
+    description: '按 uid 删除日历事件。uid 必填（来自 calendar_list / calendar_search 返回的 uid）。删除不可撤销。重复日程的 uid 指向整个系列，不能只删某一次；必须先向用户说明将删除所有场次，确认后传 scope="series"，否则拒绝。',
     parameters: compileParameters({
       uid: { type: 'string', required: true, description: '事件稳定标识（来自 calendar_list / calendar_search 的 uid，必填）。' },
+      scope: { type: 'string', enum: ['series'], description: '重复日程必须先向用户说明影响；确认操作整个系列后传 series。不能只改或删除某一次。' },
     }),
     output: {
       schema: {
@@ -320,7 +322,7 @@ export function buildCalendarTools(config: CalendarConfigSource, env: NodeJS.Pro
     async execute(args: unknown, exec: unknown): Promise<unknown> {
       const input = asRecord(args)
       const uid = requiredString(input, 'uid', '事件 uid')
-      const result = await service().delete(uid, executionSignal(exec))
+      const result = await service().delete(uid, executionSignal(exec), input.scope === 'series' ? 'series' : undefined)
       return { deleted: true, uid: result.uid, href: result.href }
     },
     timeoutMs: TIMEOUT_MS,

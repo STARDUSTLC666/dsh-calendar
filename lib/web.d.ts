@@ -27,10 +27,11 @@ export declare function postVerdict(headers: Record<string, unknown>): {
 } | undefined;
 /** 面板需要的服务面；测试里可以塞假的进来。 */
 export interface CalendarServiceLike {
+    get?(uid: string, signal?: AbortSignal): Promise<CalendarEvent>;
     list(start: string, end: string, options?: unknown, signal?: AbortSignal): Promise<CalendarEvent[]>;
     create(fields: unknown, signal?: AbortSignal): Promise<CalendarEvent>;
-    update(uid: string, changes: unknown, signal?: AbortSignal): Promise<CalendarEvent>;
-    delete(uid: string, signal?: AbortSignal): Promise<{
+    update(uid: string, changes: unknown, signal?: AbortSignal, scope?: 'series'): Promise<CalendarEvent>;
+    delete(uid: string, signal?: AbortSignal, scope?: 'series'): Promise<{
         uid: string;
         href: string;
     }>;

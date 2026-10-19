@@ -4,6 +4,7 @@
  *
  * @module dsh-calendar/ical
  */
+export declare function isRecurringResource(data: string): boolean;
 /** 一个暴露给模型的日历事件（或重复系列的一个展开实例）。 */
 export interface CalendarEvent {
     /** 稳定标识（CalDAV href），calendar_update / calendar_delete 用它。 */

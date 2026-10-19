@@ -48,7 +48,7 @@ test('calendar_update 改标题时保留 ATTENDEE/ORGANIZER/EXDATE/STATUS/CATEGO
   const service = new CalendarService(config)
   service.clientPromise = Promise.resolve(fakeClientWithCapture(ORIGINAL, capture))
 
-  const updated = await service.update(HREF, { summary: '新标题' })
+  const updated = await service.update(HREF, { summary: '新标题' }, undefined, 'series')
 
   assert.equal(updated.summary, '新标题')
   assert.match(capture.body, /SUMMARY:新标题/)
@@ -67,7 +67,7 @@ test('calendar_update 补齐 RFC 5545 必需的 UID/DTSTAMP/VERSION/PRODID 且�
   const service = new CalendarService(config)
   service.clientPromise = Promise.resolve(fakeClientWithCapture(ORIGINAL, capture))
 
-  const updated = await service.update(HREF, { summary: '新标题' })
+  const updated = await service.update(HREF, { summary: '新标题' }, undefined, 'series')
 
   assert.equal(updated.icalUid, 'team-meeting@example.com')
   assert.match(capture.body, /UID:team-meeting@example\.com/)
@@ -81,14 +81,14 @@ test('calendar_update 补齐 RFC 5545 必需的 UID/DTSTAMP/VERSION/PRODID 且�
 
 test('calendar_update tool explicitly clears optional text and recurrence without losing unrelated fields', async (t) => {
   const capture = {}
-  const original = ORIGINAL.replace('SUMMARY:旧标题', 'SUMMARY:旧标题\r\nDESCRIPTION:原有说明\r\nLOCATION:会议室 A')
+  const original = ORIGINAL.replace('EXDATE:20250217T090000Z\r\n', '').replace('SUMMARY:旧标题', 'SUMMARY:旧标题\r\nDESCRIPTION:原有说明\r\nLOCATION:会议室 A')
   const update = CalendarService.prototype.update
-  t.mock.method(CalendarService.prototype, 'update', function (uid, changes, signal) {
+  t.mock.method(CalendarService.prototype, 'update', function (uid, changes, signal, scope) {
     this.clientPromise = Promise.resolve(fakeClientWithCapture(original, capture))
-    return update.call(this, uid, changes, signal)
+    return update.call(this, uid, changes, signal, scope)
   })
   const tool = buildCalendarTools(config, {}).find(tool => tool.name === 'calendar_update')
-  const { updated } = await tool.execute({ uid: HREF, description: '', location: '  ', rrule: '' }, {})
+  const { updated } = await tool.execute({ uid: HREF, description: '', location: '  ', rrule: '', scope: 'series' }, {})
   assert.equal(updated.description ?? '', '')
   assert.equal(updated.location ?? '', '')
   assert.equal(updated.rrule, undefined)
