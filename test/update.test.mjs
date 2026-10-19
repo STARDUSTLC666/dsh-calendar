@@ -1,6 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { CalendarService, resolveConfig } from '../lib/index.js'
+import { buildCalendarTools } from '../lib/tools.js'
 
 const config = resolveConfig({ provider: 'custom', username: 'test', password: 'test', caldavUrl: 'https://calendar.example/test/' }, {})
 const HREF = 'https://calendar.example/test/team.ics'
@@ -76,4 +77,24 @@ test('calendar_update 补齐 RFC 5545 必需的 UID/DTSTAMP/VERSION/PRODID 且�
   assert.match(capture.body, /DTSTART:20250203T090000Z/)
   assert.match(capture.body, /DTEND:20250203T100000Z/)
   assert.match(capture.body, /RRULE:FREQ=WEEKLY;COUNT=4/)
+})
+
+test('calendar_update tool explicitly clears optional text and recurrence without losing unrelated fields', async (t) => {
+  const capture = {}
+  const original = ORIGINAL.replace('SUMMARY:旧标题', 'SUMMARY:旧标题\r\nDESCRIPTION:原有说明\r\nLOCATION:会议室 A')
+  const update = CalendarService.prototype.update
+  t.mock.method(CalendarService.prototype, 'update', function (uid, changes, signal) {
+    this.clientPromise = Promise.resolve(fakeClientWithCapture(original, capture))
+    return update.call(this, uid, changes, signal)
+  })
+  const tool = buildCalendarTools(config, {}).find(tool => tool.name === 'calendar_update')
+  const { updated } = await tool.execute({ uid: HREF, description: '', location: '  ', rrule: '' }, {})
+  assert.equal(updated.description ?? '', '')
+  assert.equal(updated.location ?? '', '')
+  assert.equal(updated.rrule, undefined)
+  assert.doesNotMatch(capture.body, /RRULE:/)
+  assert.match(capture.body, /SUMMARY:旧标题/)
+  assert.match(capture.body, /DTSTART:20250203T090000Z/)
+  assert.match(capture.body, /ATTENDEE;CN=Alice;PARTSTAT=ACCEPTED:/)
+  assert.match(capture.body, /BEGIN:VALARM/)
 })

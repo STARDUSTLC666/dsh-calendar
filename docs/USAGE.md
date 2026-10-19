@@ -187,7 +187,7 @@ Nextcloud / 自定义 Basic 服务：检查账号、密码或服务要求的应�
 - `calendar_health`：离线检查服务商、日历集合地址与 Basic/OAuth 凭据完整性，不回显密钥、不发起网络连接。
 - `calendar_list`：列出某时间段事件（start/end，ISO 8601，缺省未来 7 天）。默认展开重复事件（`expand` 默认 true，`maxOccurrences` 默认 30、clamp 1-200）：每个实例独立成行，带 `isOccurrence: true` 与 `seriesStart`；非重复事件保持 `isOccurrence: false`。`expand=false` 时重复事件按原始单条返回并带 `rrule`。结果按开始时间稳定排序
 - `calendar_create`：新建事件（summary/start/end 必填，description/location/allDay/rrule 可选）。严格校验真实日历日期与 `end >= start`
-- `calendar_update`：按 uid 改事件（summary/start/end/description/location/allDay/rrule 可选，未提供保留原值；ATTENDEE、ORGANIZER、VALARM 等原始属性一并保留，重复规则不再丢失）
+- `calendar_update`：按 uid 改事件（summary/start/end/description/location/allDay/rrule 可选，未提供保留原值；description、location、rrule 显式传空字符串可清空说明、地点或停止重复；ATTENDEE、ORGANIZER、VALARM 等原始属性一并保留）
 - `calendar_delete`：按 uid 删事件
 - `calendar_search`：按关键词搜事件（只查询 start~end 窗口内的事件，缺省为当前时间前后各 1 年；客户端过滤标题/描述/地点/UID，不区分大小写；`limit` 默认 50、clamp 1-200，结果按开始时间排序）
 
