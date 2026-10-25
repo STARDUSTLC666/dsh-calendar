@@ -1,6 +1,6 @@
 {
   "name": "dsh-calendar",
-  "version": "0.11.2",
+  "version": "0.12.0",
   "description": "连接 CalDAV 日历，在 DSH 中查看、创建和调整日程。",
   "type": "module",
   "main": "lib/index.js",
@@ -24,7 +24,7 @@
     "docs"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node scripts/build-client.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "pnpm run build && node --test \"test/*.test.mjs\"",
     "prepublishOnly": "pnpm run build"
@@ -35,7 +35,9 @@
     },
     "client": {
       "inject": [
-        "@deepseek-ai/dsh-client-ui-settings"
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-sidebar"
       ],
       "platform": "web"
     }

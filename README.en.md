@@ -13,6 +13,8 @@ Feedback and contributions are welcome: report [issues](https://github.com/STARD
 
 See the [0.10.4 validation record](docs/validation/0.10.4.md) for DSH `0.2.1-alpha.5` browser checks and the remaining limits.
 
+Open the new native sidebar workbench after updating and restarting DSH. Settings remains available. See the [workbench guide and validation boundaries](docs/WORKBENCH.md).
+
 ## What it does
 
 - Month, week and agenda views with drag and keyboard rescheduling.

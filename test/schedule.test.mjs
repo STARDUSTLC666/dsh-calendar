@@ -131,11 +131,11 @@ test('拖拽接线：监听器一次注册/卸载摘净、视口坐标判列、r
   assert.match(src, /impl\.current = \{ stopDrag, updatePreview, isOwnPointer \}/, '监听器通过 impl ref 调最新实现');
   const begin = src.slice(src.indexOf('const beginDrag'), src.indexOf('const onKeyDown'));
   assert.equal(/addEventListener/.test(begin), false, 'beginDrag 里不再挂监听器');
-  assert.match(src, /keyEvent\.key === "Escape"[\s\S]{0,80}stopPropagation\(\)[\s\S]{0,40}stopDrag\(false\)/, 'Esc 捕获阶段取消拖动（不吃掉浮层面板的 Esc）');
-  assert.match(src, /if \(dragRef\.current !== null\) return;\s*\/\/ 已经有一根指针在拖/, '第二根手指按下要忽略');
+  assert.match(src, /keyEvent\.key === "Escape"[\s\S]{0,180}stopPropagation\(\)[\s\S]{0,100}(?:impl\.current\.)?stopDrag\(false\)/, 'Esc 捕获阶段取消拖动（不吃掉浮层面板的 Esc）');
+  assert.match(src, /if \(dragRef\.current !== null\)\s*return;\s*\/\/ 已经有一根指针在拖/, '第二根手指按下要忽略');
   assert.match(src, /setTimeout\(\(\) => \{ suppressClick\.current = false; \}, 0\)/, '拖动后点击抑制要兜底清除');
   assert.match(src, /clickEvent\.stopPropagation\(\)/, 'slot 的 click 必须挡住冒泡（否则点事件同时弹新建）');
-  assert.match(src, /if \(clickEvent\.target !== clickEvent\.currentTarget\) return;/, '只有点格子空白才新建');
+  assert.match(src, /if \(clickEvent\.target !== clickEvent\.currentTarget\)\s*return;/, '只有点格子空白才新建');
   assert.equal(/\.offsetLeft/.test(src), false, '不能用 offsetLeft（与 clientX 不同坐标系）');
   assert.match(src, /columnIndexFromRects\(clientX, drag\.columns\)/, '列判定走纯函数');
   assert.match(src, /requestAnimationFrame\(stepAutoScroll\)/, '边缘滚动用 rAF 持续滚');
@@ -143,9 +143,9 @@ test('拖拽接线：监听器一次注册/卸载摘净、视口坐标判列、r
   assert.match(src, /stopAutoScroll\(\);\s*\n\s*const drag = dragRef\.current;/, '结束拖动要停掉 rAF');
   assert.match(src, /node\.scrollTop = 7 \* HOUR_PX/, '周视图默认 07:00');
   assert.match(src, /const moveQueue = useRef\(\{\}\)/, '每个 uid 一个串行队列');
-  assert.match(src, /if \(range\.start === shown\.start && range\.end === shown\.end\) return;/, '无效位移不发请求');
+  assert.match(src, /if \(range\.start === shown\.start && range\.end === shown\.end\)\s*return;/, '无效位移不发请求');
   assert.match(src, /AbortSignal\.timeout\(API_TIMEOUT_MS\)/, '请求要有超时');
-  assert.match(src, /if \(isRecurring\(event\)\) \{ notify\(t\("move\.recurringUnsupported"\)\); return; \}/, '重复日程拖动被挡（会重锚系列起点）');
+  assert.match(src, /if \(isRecurring\(event\)\) \{\s*notify\(t\("move\.recurringUnsupported"\)\);\s*return;\s*\}/, '重复日程拖动被挡（会重锚系列起点）');
   assert.match(src, /slotFromEvent\(event\)\.durationMinutes > 24 \* 60/, '超过 24 小时的日程也挡住');
   assert.ok(src.indexOf('const data = useCalendarData') < src.indexOf('const focusUid = useRef(null)'), '焦点恢复的 effect 必须写在 const data 之后（依赖数组在渲染期求值，写前面会 TDZ 崩溃）');
   assert.match(src, /active\.closest\("\.dshc-root"\)/, '只在焦点还在面板里时才回收焦点');

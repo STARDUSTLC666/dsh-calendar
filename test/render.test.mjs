@@ -305,7 +305,7 @@ test('重复日程：拖动被挡住（不做重锚系列起点的危险写入�
   // 这里断言的是：拖动本身把 range 交上来了，具体拦截由面板那层做（见下面的源码级断言）。
   assert.equal(moves.length, 1);
   const inner = SOURCE.slice(SOURCE.indexOf('const reschedule ='), SOURCE.indexOf('const undoMove'));
-  assert.match(inner, /if \(isRecurring\(event\)\) \{ notify\(t\("move\.recurringUnsupported"\)\); return; \}/, '面板层必须拦住重复日程');
+  assert.match(inner, /if \(isRecurring\(event\)\) \{\s*notify\(t\("move\.recurringUnsupported"\)\);\s*return;\s*\}/, '面板层必须拦住重复日程');
 });
 
 test('Esc 分层关闭：先关新建表单，面板还在；再按一次才关面板', async () => {
