@@ -4,6 +4,12 @@
 
 [历史英文记录](docs/CHANGELOG.en.md)
 
+## 0.13.0 (2026-10-26)
+
+- Add this plugin’s own update controls and independent preferences. Automatic installation stays off until explicitly enabled.
+- Confirm manual installs, preserve local sources and disabled state, pause for tasks or unsaved changes, and use native DSH recovery without forced restarts.
+- Require the public DSH 0.2.1-rc.3 update APIs; Suite components remain managed through Suite.
+
 ## 0.12.0（2026-10-25）
 
 - 日历主工作台，日期导航、月周议程切换与日程编辑分层更清楚。

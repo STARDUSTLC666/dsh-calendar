@@ -1384,6 +1384,9 @@ let calendarHostContext;
             const { draft, events, onCancel, onSubmit, busy, error } = props;
             const formId = useId();
             const [form, setForm] = useState(draft);
+// Update protection: dsh-calendar.event
+__stardustUpdatesGuard(React, "dsh-calendar.event", { dirty: JSON.stringify(form) !== JSON.stringify(draft), busy: !!busy });
+
             useEffect(() => { setForm(draft); }, [draft.uid, draft.date, draft.startTime, draft.summary]);
             const patch = (fields) => setForm((prev) => Object.assign({}, prev, fields));
             const isEdit = draft.uid !== undefined;
@@ -1555,6 +1558,9 @@ let calendarHostContext;
             const [busy, setBusy] = useState("");
             const [result, setResult] = useState(null);
             const maySave = connection === null || connection.settingsAvailable !== false;
+// Update protection: dsh-calendar.connection
+__stardustUpdatesGuard(React, "dsh-calendar.connection", { dirty: JSON.stringify(form) !== JSON.stringify(connectionDraftOf(connection)), busy: !!busy });
+
             const patch = (fields) => {
                 setForm((prev) => Object.assign({}, prev, fields));
                 setResult(null);
@@ -1801,6 +1807,9 @@ let calendarHostContext;
             const [content, setContent] = useState(""), [timezone, setTimezone] = useState(""), [zones, setZones] = useState(["UTC", "Asia/Shanghai", "America/New_York", "Europe/London"]);
             const [preview, setPreview] = useState(null), [selected, setSelected] = useState([]), [results, setResults] = useState({}), [error, setError] = useState(""), [busy, setBusy] = useState(false);
             const controller = useRef(null), alive = useRef(true), fileSequence = useRef(0);
+// Update protection: dsh-calendar.import
+__stardustUpdatesGuard(React, "dsh-calendar.import", { dirty: !!content.trim(), busy });
+
             useEffect(() => {
                 alive.current = true;
                 const abort = new AbortController();
@@ -1921,6 +1930,9 @@ let calendarHostContext;
             const [connOpen, setConnOpen] = useState(false);
             const [importOpen, setImportOpen] = useState(false), [importBusy, setImportBusy] = useState(false);
             const layerOpen = draft !== null || selected !== null || connOpen === true;
+// Update protection: dsh-calendar
+__stardustUpdatesGuard(React, "dsh-calendar", { busy: busy || importBusy || layerOpen || importOpen });
+
             const rootRef = useRef(null);
             /** 让 Launcher 知道本面板里有没有浮层：宿主 Portal 的 Esc 不能被面板级监听抢走。 */
             useEffect(() => {
