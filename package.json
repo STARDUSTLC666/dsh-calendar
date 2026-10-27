@@ -1,6 +1,6 @@
 {
   "name": "dsh-calendar",
-  "version": "0.13.1",
+  "version": "0.13.2",
   "description": "连接 CalDAV 日历，在 DSH 中查看、创建和调整日程。",
   "type": "module",
   "main": "lib/index.js",
@@ -64,7 +64,7 @@
     "tsdav": "^2.3.1",
     "undici": "^8.11.2",
     "yaml": "^2.9.1",
-    "@stardustlc/dsh-updates": "0.1.1"
+    "@stardustlc/dsh-updates": "0.1.2"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
