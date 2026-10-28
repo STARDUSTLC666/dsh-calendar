@@ -4,16 +4,13 @@
 
 ![dsh-calendar whale girl plugin cover](https://raw.githubusercontent.com/STARDUSTLC666/dsh-calendar/main/assets/cover-whale-girl.png)
 
-View, create and reschedule CalDAV events from DSH.
+Connect CalDAV in the DSH calendar workbench to view, create and reschedule events. Use month, week or agenda views, and preview ICS files before choosing what to import.
 
 [![npm](https://img.shields.io/npm/v/dsh-calendar)](https://www.npmjs.com/package/dsh-calendar) [![downloads](https://raw.githubusercontent.com/STARDUSTLC666/dsh-suite/npm-downloads/assets/dsh-calendar-downloads.svg)](https://www.npmjs.com/package/dsh-calendar)
 
 Feedback and contributions are welcome: report [issues](https://github.com/STARDUSTLC666/dsh-calendar/issues) or submit [pull requests](https://github.com/STARDUSTLC666/dsh-calendar/pulls).
 
-
-See the [0.10.4 validation record](docs/validation/0.10.4.md) for DSH `0.2.1-alpha.5` browser checks and the remaining limits.
-
-Open the new native sidebar workbench after updating and restarting DSH. Settings remains available. See the [workbench guide and validation boundaries](docs/WORKBENCH.md).
+Open the workbench from the native DSH sidebar. See the [workbench guide](docs/WORKBENCH.md) for configuration and operating boundaries.
 
 ## What it does
 

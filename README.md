@@ -4,16 +4,13 @@
 
 ![dsh-calendar 鲸鱼娘插件封面](https://raw.githubusercontent.com/STARDUSTLC666/dsh-calendar/main/assets/cover-whale-girl.png)
 
-连接 CalDAV 日历，在 DSH 中查看、创建和调整日程。
+在 DSH 日历工作台连接 CalDAV，查看、创建和调整日程。支持月历、周视图与议程，以及先预览再选择导入的 ICS 日历文件。
 
 [![npm](https://img.shields.io/npm/v/dsh-calendar)](https://www.npmjs.com/package/dsh-calendar) [![downloads](https://raw.githubusercontent.com/STARDUSTLC666/dsh-suite/npm-downloads/assets/dsh-calendar-downloads.svg)](https://www.npmjs.com/package/dsh-calendar)
 
 欢迎使用，遇到问题或有改进建议，请提交 [issues](https://github.com/STARDUSTLC666/dsh-calendar/issues) 和 [PR](https://github.com/STARDUSTLC666/dsh-calendar/pulls)。
 
-
-DSH `0.2.1-alpha.5` 的本轮检查与未验收范围见 [0.10.4 验收记录](docs/validation/0.10.4.md)。
-
-更新并重启 DSH 后，可从原生侧栏打开新版工作台，原设置入口继续保留。详见[工作台说明与验收范围](docs/WORKBENCH.md)。
+从 DSH 原生侧栏打开工作台；配置与操作边界见[工作台说明](docs/WORKBENCH.md)。
 
 ## 功能
 
