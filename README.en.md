@@ -6,7 +6,9 @@
 
 Connect CalDAV in the DSH calendar workbench to view, create and reschedule events. Use month, week or agenda views, and preview ICS files before choosing what to import.
 
-[![npm](https://img.shields.io/npm/v/dsh-calendar)](https://www.npmjs.com/package/dsh-calendar) [![downloads](https://raw.githubusercontent.com/STARDUSTLC666/dsh-suite/npm-downloads/assets/dsh-calendar-downloads.svg)](https://www.npmjs.com/package/dsh-calendar)
+[![npm](https://img.shields.io/npm/v/dsh-calendar)](https://www.npmjs.com/package/dsh-calendar) [![downloads](https://raw.githubusercontent.com/STARDUSTLC666/dsh-suite/npm-downloads/assets/dsh-calendar-downloads.svg)](https://www.npmjs.com/package/dsh-calendar) [![total downloads](https://raw.githubusercontent.com/STARDUSTLC666/dsh-suite/npm-downloads/assets/dsh-calendar-total-downloads.svg)](https://www.npmjs.com/package/dsh-calendar)
+
+[Download statistics](https://github.com/STARDUSTLC666/dsh-suite/blob/npm-downloads/README.md)
 
 Feedback and contributions are welcome: report [issues](https://github.com/STARDUSTLC666/dsh-calendar/issues) or submit [pull requests](https://github.com/STARDUSTLC666/dsh-calendar/pulls).
 
@@ -31,9 +33,10 @@ For the web version, replace `desktop` with `web`. Restart DSH after installatio
 
 ## Start using it
 
-Open Settings → Calendar, configure a provider, test the connection and save. Then ask: “Show this week’s events and find a one-hour gap.”
-
-To migrate events, choose Import ICS. Previewing does not change your calendar. Select events and confirm the import; existing events are skipped and failed items can be retried separately.
+1. Open Calendar in the sidebar; choose a provider in connection settings and enter your account credentials.
+2. Test the connection, select a calendar and verify its time zone before using month, week or agenda views.
+3. Before creating or editing an event, check its date, time and destination calendar, then confirm.
+4. Preview and select ICS entries before importing; review skipped and failed entries before retrying.
 
 ## Requirements and configuration
 

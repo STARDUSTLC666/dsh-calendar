@@ -6,7 +6,9 @@
 
 在 DSH 日历工作台连接 CalDAV，查看、创建和调整日程。支持月历、周视图与议程，以及先预览再选择导入的 ICS 日历文件。
 
-[![npm](https://img.shields.io/npm/v/dsh-calendar)](https://www.npmjs.com/package/dsh-calendar) [![downloads](https://raw.githubusercontent.com/STARDUSTLC666/dsh-suite/npm-downloads/assets/dsh-calendar-downloads.svg)](https://www.npmjs.com/package/dsh-calendar)
+[![npm](https://img.shields.io/npm/v/dsh-calendar)](https://www.npmjs.com/package/dsh-calendar) [![downloads](https://raw.githubusercontent.com/STARDUSTLC666/dsh-suite/npm-downloads/assets/dsh-calendar-downloads.svg)](https://www.npmjs.com/package/dsh-calendar) [![total downloads](https://raw.githubusercontent.com/STARDUSTLC666/dsh-suite/npm-downloads/assets/dsh-calendar-total-downloads.svg)](https://www.npmjs.com/package/dsh-calendar)
+
+[下载统计说明](https://github.com/STARDUSTLC666/dsh-suite/blob/npm-downloads/README.md)
 
 欢迎使用，遇到问题或有改进建议，请提交 [issues](https://github.com/STARDUSTLC666/dsh-calendar/issues) 和 [PR](https://github.com/STARDUSTLC666/dsh-calendar/pulls)。
 
@@ -31,9 +33,10 @@ dsh plugin --profile desktop add dsh-calendar
 
 ## 开始使用
 
-打开「设置 → 日历」，选择服务商，填写连接信息后测试并保存。随后可说：“查看我这周的日程，找一个一小时的空档。”
-
-迁移日程时，点击「导入 ICS」。预览不会修改日历；勾选后确认导入，已有日程自动跳过，失败项可以单独重试。
+1. 打开左侧栏“日历”，在连接设置中选择服务商并填写自己的账号与授权信息。
+2. 测试连接并选择目标日历，核对时区后读取月、周或议程视图。
+3. 新建或调整日程时，先核对日期、时间和目标日历，再确认保存。
+4. 导入 ICS 时先预览并选择条目，再确认导入；检查跳过项和失败项后按需重试。
 
 ## 依赖与配置
 
