@@ -1,5 +1,11 @@
 # 更新记录
 
+## 0.14.2 (2026-10-30)
+
+- 原生插件列表与详情新增专门生成的鲸鱼娘图标：大头像、独立功能符号、透明留白，适合 30 / 36 px 显示；原封面保留。
+- Add purpose-made whale-girl artwork with a distinct function emblem, transparent padding and small-size readability; preserve the original cover.
+
+
 ## 0.14.1 (2026-10-30)
 
 - 修复候选进入草稿后，夏令时回拨的重复钟点可能被换成另一个时间的问题；未修改的起止时间分别保留原 UTC 偏移。

@@ -1,6 +1,6 @@
 {
   "name": "dsh-calendar",
-  "version": "0.14.1",
+  "version": "0.14.2",
   "description": "DSH 日历工作台：CalDAV 日程、月 / 周 / 议程视图、空闲时段建议与 ICS 预览导入。欢迎提交 issues 和 PR。",
   "type": "module",
   "main": "lib/index.js",
@@ -21,7 +21,8 @@
     "README.md",
     "README.en.md",
     "CHANGELOG.md",
-    "docs"
+    "docs",
+    "assets/plugin-icon.webp"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json && node scripts/build-client.mjs && node scripts/build-updates.mjs",
@@ -83,5 +84,6 @@
   },
   "homepage": "https://github.com/STARDUSTLC666/dsh-calendar#readme",
   "author": "stardustlc",
-  "packageManager": "pnpm@11.7.0"
+  "packageManager": "pnpm@11.7.0",
+  "icon": "./assets/plugin-icon.webp"
 }

@@ -1,0 +1,17 @@
+{
+  "source": "built-in image_gen",
+  "characterReference": "dsh-dream/assets/cover-whale-girl.png",
+  "styleAnchor": "generated dsh-dream icon",
+  "sourceSha256": "a3d1750d1b816aeabc39317b731a75e7b3a8c00456f968b2b0e21dc59b5ddbb0",
+  "promptFile": "assets/plugin-icon.prompt.txt",
+  "transform": "preserve generated alpha; contain inside 224x224; add 16px transparent margin; encode 256x256 WebP quality 90",
+  "width": 256,
+  "height": 256,
+  "alphaBounds": {
+    "left": 24,
+    "top": 24,
+    "right": 233,
+    "bottom": 232
+  },
+  "originalCoverUnchanged": true
+}
