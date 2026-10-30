@@ -16,6 +16,7 @@
 import { type CalendarConfig } from './config.js';
 import { type CalendarSettingsValue } from './settings.js';
 import type { CalendarEvent } from './ical.js';
+import type { AvailabilityInput, AvailabilityResult } from './availability.js';
 /** 面板与浏览器说话的同源路由。 */
 export declare const SETTINGS_ROUTE = "/_dsh/dsh-calendar/settings";
 /** Host 头裁决：undefined = 放行，否则给出拒绝原因。 */
@@ -27,6 +28,7 @@ export declare function postVerdict(headers: Record<string, unknown>): {
 } | undefined;
 /** 面板需要的服务面；测试里可以塞假的进来。 */
 export interface CalendarServiceLike {
+    availability?(input: AvailabilityInput, signal?: AbortSignal): Promise<AvailabilityResult>;
     get?(uid: string, signal?: AbortSignal): Promise<CalendarEvent>;
     list(start: string, end: string, options?: unknown, signal?: AbortSignal): Promise<CalendarEvent[]>;
     create(fields: unknown, signal?: AbortSignal): Promise<CalendarEvent>;

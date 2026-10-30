@@ -30,6 +30,7 @@ export interface CalendarEvent {
     /** 系列原开始时间（仅 isOccurrence 为 true 的实例存在）。 */
     seriesStart?: string;
     status?: string;
+    transparency?: string;
     url?: string;
     created?: string;
     lastModified?: string;
@@ -74,7 +75,11 @@ export declare function parseEventFromICal(data: string, href: string, etag?: st
  * @param maxOccurrences - 每个事件最多展开的实例数（防死循环）。
  * @throws {ExpansionLimitError} 迭代次数超出预算仍未能到达查询窗口时抛出。
  */
-export declare function expandEventFromICal(data: string, href: string, etag: string | undefined, rangeStart: string, rangeEnd: string, maxOccurrences: number): CalendarEvent[];
+export declare function expandEventFromICal(data: string, href: string, etag: string | undefined, rangeStart: string, rangeEnd: string, maxOccurrences: number, options?: {
+    strict?: boolean;
+    overlap?: boolean;
+    deadline?: number;
+}): CalendarEvent[];
 /** 生成随机 iCal UID（带 host 后缀，形如 UUID）。 */
 export declare function generateUid(): string;
 /** 把字段生成一段完整 iCal 文本（单个 VEVENT）。 */

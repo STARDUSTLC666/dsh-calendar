@@ -4,6 +4,7 @@
  *
  * @module dsh-calendar/caldav
  */
+import { type AvailabilityInput, type AvailabilityResult } from './availability.js';
 import type { ResolvedConfig } from './config.js';
 import { type CalendarEvent, type EventFields } from './ical.js';
 /** CalDAV 操作错误：带中文指引。 */
@@ -30,6 +31,8 @@ export declare class CalendarService {
         end: string;
     }): Promise<CalendarEvent[]>;
     private toEvents;
+    /** A complete read of the connected collection; never writes or reserves events. */
+    availability(input: AvailabilityInput, signal?: AbortSignal): Promise<AvailabilityResult>;
     /** 列出并展开：每个对象经 expandEventFromICal 展开为若干实例行。 */
     private toExpandedEvents;
     /** 按 uid（href）找到服务器对象（含 etag 与原始 data）。 */

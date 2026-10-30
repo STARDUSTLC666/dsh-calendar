@@ -14,7 +14,7 @@ import { readFileSync } from 'node:fs';
 import { JSDOM } from 'jsdom';
 
 const SOURCE = readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
-const EXPOSE = 'module.exports.__internals = { __components: { WeekView, MonthView, CalendarPanel, Launcher, ConnectionForm }, __layer: { registerLayerEscape } };';
+const EXPOSE = 'module.exports.__internals = { __components: { WeekView, MonthView, CalendarPanel, Launcher, ConnectionForm, AvailabilityPanel }, __layer: { registerLayerEscape } };';
 if (!SOURCE.includes('return module.exports;')) throw new Error('client.js 装载契约变了，本测试的注入点要跟着改');
 const PATCHED = SOURCE.replace('return module.exports;', EXPOSE + '\nreturn module.exports;');
 
@@ -523,4 +523,31 @@ test('F3：面板内两层同开，Esc 关最后打开的那层', async () => {
   await react.act(async () => { win.document.body.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); });
   assert.equal(modalTexts().length, 0, '第二次 Esc 关掉剩下的新建表单');
   assert.notEqual(container.querySelector('.dshc-float'), null, '面板不能被一起关掉');
+});
+
+
+test('availability candidates only populate a draft, and changing a filter clears stale choices', async () => {
+  const { react, reactDomClient, components, win, apiCalls } = await setup();
+  const chosen = [];
+  globalThis.fetch = async (_url, init) => { apiCalls.push({body:JSON.parse(init.body)});return {ok:true,status:200,json:async()=>({ok:true,value:{count:1,busyEventCount:1,checkedAt:'2026-11-02T08:00:00Z',hasMore:false,slots:[{start:'2026-11-02T09:00:00Z',end:'2026-11-02T10:00:00Z'}]}})}; };
+  const { root } = await render(react, reactDomClient, react.createElement(components.AvailabilityPanel,{anchor:new Date('2026-11-02T00:00:00Z'),onBusy(){},onClose(){},onChoose:s=>chosen.push(s)}));
+  try {
+    await react.act(async()=>win.document.querySelector('form').dispatchEvent(new win.Event('submit',{bubbles:true,cancelable:true})));
+    const choose=[...win.document.querySelectorAll('button')].find(b=>b.textContent==='用此时段新建');assert.ok(choose);
+    await react.act(async()=>choose.click());assert.equal(chosen.length,1);assert.ok(apiCalls.every(c=>c.body.action==='availability'));
+    const checkbox=win.document.querySelector('input[type=checkbox]');await react.act(async()=>checkbox.click());
+    assert.equal([...win.document.querySelectorAll('button')].some(b=>b.textContent==='用此时段新建'),false);
+  } finally { await react.act(async()=>root.unmount()); }
+});
+
+test('cancelled availability queries cannot restore late candidates even if a transport ignores abort', async () => {
+  const { react, reactDomClient, components, win } = await setup();let resolveResponse;
+  globalThis.fetch=()=>new Promise(resolve=>{resolveResponse=resolve});
+  const { root }=await render(react,reactDomClient,react.createElement(components.AvailabilityPanel,{anchor:new Date('2026-11-02T00:00:00Z'),onBusy(){},onClose(){},onChoose(){throw Error('No candidate should be selectable')}}));
+  try {
+    await react.act(async()=>{win.document.querySelector('form').dispatchEvent(new win.Event('submit',{bubbles:true,cancelable:true}));await Promise.resolve()});
+    const cancel=[...win.document.querySelectorAll('button')].find(b=>b.textContent==='取消查询');assert.ok(cancel);await react.act(async()=>cancel.click());
+    await react.act(async()=>{resolveResponse({ok:true,status:200,json:async()=>({ok:true,value:{count:1,busyEventCount:0,checkedAt:'2026-11-02T08:00:00Z',slots:[{start:'2026-11-02T09:00:00Z',end:'2026-11-02T10:00:00Z'}]}})});await new Promise(r=>setTimeout(r,0))});
+    assert.equal([...win.document.querySelectorAll('button')].some(b=>b.textContent==='用此时段新建'),false);
+  } finally { await react.act(async()=>root.unmount()); }
 });

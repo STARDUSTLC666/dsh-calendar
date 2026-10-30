@@ -185,7 +185,7 @@ test('importLegacySettings：把老 settings.yaml 的 dsh-calendar 段补进 pro
   assert.equal(otherEntry, false, '自定义实例不继承全局命名空间里的凭据');
 });
 
-test('apply：0.1.7 宿主上照常注册 6 个工具，不再抛 register is not a function', (t) => {
+test('apply：0.1.7 宿主上照常注册 7 个工具，不再抛 register is not a function', (t) => {
   // 搬迁逻辑会去读 DSH_HOME 里的老 settings.yaml：测试必须与本机真实配置隔离。
   const home = mkdtempSync(join(tmpdir(), 'dsh-calendar-apply-'));
   t.after(() => rmSync(home, { recursive: true, force: true }));
@@ -203,7 +203,7 @@ test('apply：0.1.7 宿主上照常注册 6 个工具，不再抛 register is no
   } finally {
     console.warn = originalWarn;
   }
-  assert.equal(ctx.registered.length, 6);
+  assert.equal(ctx.registered.length, 7);
   assert.equal(ctx.routes.length, 1, '面板路由照常挂上');
   assert.equal(ctx.routes[0].path, SETTINGS_ROUTE);
   assert.equal(provider.state.configured.length, 1, '自带设置页要登记 auto:false，宿主才不会再生成一页');

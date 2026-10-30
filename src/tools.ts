@@ -13,6 +13,7 @@ import {
 import { type CalendarEvent, type EventFields } from './ical.js'
 import { compileParameters } from './parameters.js'
 import { assertIsoTime, DATE_ONLY_PATTERN } from './time.js'
+import type { AvailabilityInput, AvailabilityResult } from './availability.js'
 export { assertIsoTime } from './time.js'
 
 /** 模型可见的内容块。 */
@@ -131,7 +132,7 @@ function buildSearchFilter(query: string): (event: CalendarEvent) => boolean {
   }
 }
 
-/** 构建六个工具定义；每个 execute 惰性解析配置，缺失时抛出中文指引。 */
+/** 构建七个工具定义；每个 execute 惰性解析配置，缺失时抛出中文指引。 */
 /** 配置来源：静态对象，或一个 getter（面板把新配置写进 settings 后，工具下一次调用就该用新的）。 */
 export type CalendarConfigSource = CalendarConfig | undefined | (() => CalendarConfig | undefined)
 
@@ -431,5 +432,27 @@ export function buildCalendarTools(config: CalendarConfigSource, env: NodeJS.Pro
     timeoutMs: TIMEOUT_MS,
   }
 
-  return [list, create, update, remove, search, health]
+  const findTime: CalendarToolDefinition = {
+    name: 'calendar_find_time',
+    description: '只读查询当前连接日历的空闲时段，不创建或预约日程。须提供带时区的 start/end（最多 31 天）与 IANA timeZone；默认工作日周一至周五 09:00–18:00、60 分钟时长、15 分钟候选间隔。按查询时区解释全天和浮动时间，排除透明或取消事件，展开完整的重复例外；读取或展开不完整时明确失败，不把部分结果当空闲。bufferMinutes 仅用于定时日程前后缓冲。候选可重叠，只反映读取时当前连接的一个日历，不保证其他日历或参会者空闲；创建前需向用户核对。',
+    parameters: compileParameters({
+      start: { type: 'string', required: true, description: '查询开始，带 Z 或 UTC 偏移的 ISO 时间' },
+      end: { type: 'string', required: true, description: '查询结束，不包含端点，最多 31 天' },
+      timeZone: { type: 'string', required: true, description: '工作时间和全天日期使用的 IANA 时区，如 Asia/Shanghai' },
+      durationMinutes: { type: 'integer', description: '时长 5–480 分钟，默认 60' },
+      workStart: { type: 'string', description: '每天工作开始 HH:mm，默认 09:00' },
+      workEnd: { type: 'string', description: '每天工作结束 HH:mm，默认 18:00，不支持跨日窗口' },
+      weekdays: { type: 'array', items: 'integer', description: '工作日，周一 1 至周日 7；默认 [1,2,3,4,5]' },
+      bufferMinutes: { type: 'integer', description: '定时日程前后缓冲 0–120 分钟，默认 0' },
+      stepMinutes: { type: 'integer', description: '本地钟点候选间隔 1–60 分钟，默认 15' },
+      limit: { type: 'integer', description: '最多返回 1–100 个候选，默认 20' },
+    }),
+    output: { schema: { type: 'object', additionalProperties: true }, render: (_args, value) => {
+      const result = value as AvailabilityResult
+      return [{ type: 'text', text: ['当前连接日历的空闲候选（' + result.timeZone + '；读取于 ' + result.checkedAt + '；不代表其他日历或参会者空闲）：', ...result.slots.map(s => s.start + ' ~ ' + s.end), result.hasMore ? '候选数量已达上限，可调整范围或数量后再查。' : result.count ? '候选仅供选择，尚未预约或创建日程。' : '完整查询范围内没有符合条件的时段。'].join('\n') }]
+    } },
+    execute: (args, exec) => service().availability(asRecord(args) as unknown as AvailabilityInput, executionSignal(exec)),
+    timeoutMs: TIMEOUT_MS,
+  }
+  return [list, create, update, remove, search, health, findTime]
 }

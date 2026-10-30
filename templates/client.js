@@ -464,12 +464,15 @@ let calendarHostContext;
         }
         /** 调插件自己的路由；错误码原样带出，方便上层区分「没配置」与「服务器拒绝」。 */
         const API_TIMEOUT_MS = 15000;
-        async function api(action, payload) {
+        async function api(action, payload, signal) {
             const init = { credentials: "same-origin", method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(Object.assign({ action }, payload)) };
             // 请求必须有上限：挂起的 Promise 会让乐观覆盖一直盖着、撤销条永不出现，
             // 表现就是「界面改了、服务器没改」而用户以为成功。超时按失败处理（调用方会回滚并对账）。
-            if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function")
-                init.signal = AbortSignal.timeout(API_TIMEOUT_MS);
+            if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") {
+                if (action === 'availability') init.signal = AbortSignal.timeout(25000);
+                else init.signal = AbortSignal.timeout(API_TIMEOUT_MS);
+            }
+            if (signal) init.signal = init.signal && typeof AbortSignal.any === 'function' ? AbortSignal.any([init.signal, signal]) : signal;
             const res = await fetch(ROUTE, init);
             let body = null;
             try {
@@ -591,6 +594,7 @@ let calendarHostContext;
         }
         /** 两个事件是否真的重叠（全天事件按当天整天算）。 */
         function overlaps(a, b) {
+            if ([a,b].some(event=>event.status?.toUpperCase()==='CANCELLED'||event.transparency?.toUpperCase()==='TRANSPARENT')) return false;
             const as = startDate(a).getTime(), ae = endDate(a).getTime() || as;
             const bs = startDate(b).getTime(), be = endDate(b).getTime() || bs;
             return as < be && bs < ae;
@@ -1929,9 +1933,10 @@ __stardustUpdatesGuard(React, "dsh-calendar.import", { dirty: !!content.trim(), 
             const [conn, setConn] = useState(null);
             const [connOpen, setConnOpen] = useState(false);
             const [importOpen, setImportOpen] = useState(false), [importBusy, setImportBusy] = useState(false);
+            const [availabilityOpen,setAvailabilityOpen]=useState(false),[availabilityBusy,setAvailabilityBusy]=useState(false);
             const layerOpen = draft !== null || selected !== null || connOpen === true;
 // Update protection: dsh-calendar
-__stardustUpdatesGuard(React, "dsh-calendar", { busy: busy || importBusy || layerOpen || importOpen });
+__stardustUpdatesGuard(React, "dsh-calendar", { busy: busy || importBusy || layerOpen || importOpen || availabilityOpen || availabilityBusy });
 
             const rootRef = useRef(null);
             /** 让 Launcher 知道本面板里有没有浮层：宿主 Portal 的 Esc 不能被面板级监听抢走。 */
@@ -2219,6 +2224,7 @@ __stardustUpdatesGuard(React, "dsh-calendar", { busy: busy || importBusy || laye
                 h(Btn, { key: "next", onClick: () => step(1), "aria-label": t("action.next") }, "\u203a"),
                 h(Btn, { key: "conn", disabled: configured === null, onClick: () => setConnOpen(true) }, t("conn.button")),
                 h(Btn, { key: "import", disabled: demo === true || importBusy, onClick: () => setImportOpen(value => !value) }, t("import.open")),
+                h(Btn,{key:'availability',disabled:demo || configured!==true,onClick:()=>setAvailabilityOpen(v=>!v)},calendarText('找空闲时段','Find available time')),
                 demo === true
                     ? h(Btn, { key: "exitdemo", onClick: () => setDemo(false) }, t("action.exitDemo"))
                     : h(Btn, { key: "reload", onClick: reload }, t("action.refresh")),
@@ -2275,6 +2281,7 @@ __stardustUpdatesGuard(React, "dsh-calendar", { busy: busy || importBusy || laye
                         : null,
                     compact === true ? toolbar : h("div", null, [toolbar]),
                     importOpen ? h(IcsImportPanel, { key: "ics-import", onBusy: setImportBusy, onClose: () => setImportOpen(false), onConnection: () => setConnOpen(true), onImported: reload }) : null,
+                    availabilityOpen ? h(AvailabilityPanel,{key:'availability',anchor,onBusy:setAvailabilityBusy,onClose:()=>setAvailabilityOpen(false),onChoose:slot=>{setAvailabilityOpen(false);setAnchor(new Date(slot.start));setFormError(null);setDraft({...draftOfEvent({start:slot.start,end:slot.end,allDay:false}),uid:undefined});}}) : null,
                     body(),
                     h("div", { className: "dshc-footer" }, [
                         h("span", null, t("count.events", { n: data.events.length }) + (data.events.some((e) => e.isOccurrence) ? " · " + t("count.occurrences", { n: data.events.filter((e) => e.isOccurrence).length }) : "")),
@@ -2334,6 +2341,7 @@ if(compact) return content;
 return h(W.Page,{workbench:props.workbench===true,title:t('section.title'),subtitle:calendarText('查看日程、安排时间和管理导入。','View events, plan time and manage imports.'),className:'calendar-workbench',actions:h(React.Fragment,null,
  h(W.Button,{icon:'link',disabled:configured===null,onClick:()=>setConnOpen(true)},calendarText('日历连接','Calendar connection')),
  h(W.Button,{icon:'upload',disabled:demo || importBusy,onClick:()=>setImportOpen(value=>!value)},t('import.open')),
+ h(W.Button,{disabled:demo || configured!==true,onClick:()=>setAvailabilityOpen(v=>!v)},calendarText('找空闲时段','Find available time')),
  h(W.Button,{variant:'primary',disabled:demo || configured!==true,title:configured!==true?calendarText('请先连接日历','Connect a calendar first'):undefined,onClick:()=>setDraft(draftAt(anchor))},t('action.new')))},h('style',null,CALENDAR_WORKBENCH_CSS),content);
         }
         /** 月份平移：先跳到本月 1 号再加月，避免 1 月 31 日 +1 个月变成 3 月 3 日。 */

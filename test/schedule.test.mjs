@@ -121,6 +121,13 @@ test('isRecurring：系列本身与展开出来的实例都要拦（它们会改
   assert.equal(isRecurring({ uid: 'x', summary: '单次' }), false);
 });
 
+test('透明与取消日程不产生新建或拖拽冲突提示', () => {
+  const slot = { dayKey: '2026-09-19', minutes: 600, durationMinutes: 60, allDay: false };
+  const base = timedEvent('2026-09-19', 10, 0, 60);
+  const events = [{ ...base, uid: 'transparent', transparency: 'TRANSPARENT' }, { ...base, uid: 'cancelled', status: 'CANCELLED' }, { ...base, uid: 'busy' }];
+  assert.deepEqual(conflictsForSlot(events, slot, 'none').map(e=>e.uid), ['busy']);
+});
+
 // ───────────────────────────── 拖拽接线（源码级契约） ─────────────────────────────
 
 test('拖拽接线：监听器一次注册/卸载摘净、视口坐标判列、rAF 滚动、串行请求、重复日程被挡', () => {

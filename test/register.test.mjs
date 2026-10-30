@@ -24,14 +24,15 @@ function makeFakeCtx() {
   return { ctx, registered, listeners }
 }
 
-test('apply 注册 6 个工具且名字正确', () => {
+test('apply 注册 7 个工具且名字正确', () => {
   const { ctx, registered } = makeFakeCtx()
   apply(ctx, { provider: 'custom', username: 'u', password: 'p', caldavUrl: 'https://x/' })
-  assert.equal(registered.length, 6)
+  assert.equal(registered.length, 7)
   const names = registered.map((definition) => definition.name).sort()
   assert.deepEqual(names, [
     'calendar_create',
     'calendar_delete',
+    'calendar_find_time',
     'calendar_health',
     'calendar_list',
     'calendar_search',
@@ -41,7 +42,7 @@ test('apply 注册 6 个工具且名字正确', () => {
 
 test('每个工具的 parameters 是编译好的 object JSON Schema', () => {
   const tools = buildCalendarTools({ provider: 'custom', username: 'u', password: 'p', caldavUrl: 'https://x/' })
-  assert.equal(tools.length, 6)
+  assert.equal(tools.length, 7)
   for (const tool of tools) {
     assert.equal(tool.parameters.type, 'object')
     assert.equal(typeof tool.parameters.properties, 'object')
@@ -72,13 +73,13 @@ test('配置缺失时 execute 抛中文指引（插件仍已加载）', async ()
 test('apply 在配置缺失时不抛，仅注册工具', () => {
   const { ctx, registered } = makeFakeCtx()
   assert.doesNotThrow(() => apply(ctx, {}))
-  assert.equal(registered.length, 6)
+  assert.equal(registered.length, 7)
 })
 
 test('dispose 触发时卸载全部工具', () => {
   const { ctx, registered, listeners } = makeFakeCtx()
   apply(ctx, { provider: 'custom', username: 'u', password: 'p', caldavUrl: 'https://x/' })
-  assert.equal(registered.length, 6)
+  assert.equal(registered.length, 7)
   assert.ok(listeners.dispose, '应注册 dispose 监听')
   for (const listener of listeners.dispose) listener()
   assert.equal(registered.length, 0)

@@ -1,5 +1,14 @@
 # 更新记录
 
+## 0.14.0 (2026-10-30)
+
+- 新增「找空闲时段」与只读 `calendar_find_time`：设置工作日、时间、时长与缓冲，选择候选后进入原有新建草稿，保存仍由用户确认。
+- 处理全天结束边界、透明 / 取消日程、重复例外、跨窗口重叠、查询时区与夏令时；不完整或超预算的日历响应不作为空闲依据。
+- 查询可取消，旧响应不覆盖新条件；候选说明当前日历范围、读取时间与数量上限。自动安装仍默认关闭。
+- 候选显示 UTC 偏移以区分夏令时的重复钟点；新建和拖拽冲突提示同步排除透明及取消日程。
+- Add read-only availability suggestions, explicit scope and draft-only selection; preserve complete recurrence and timezone checks.
+
+
 [返回简介](README.md) · [使用说明](docs/USAGE.md) · [验证记录](docs/VALIDATION.md)
 
 [历史英文记录](docs/CHANGELOG.en.md)

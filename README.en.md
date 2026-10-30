@@ -16,6 +16,9 @@ Open the workbench from the native DSH sidebar. See the [workbench guide](docs/W
 
 ## What it does
 
+- Find available times in the connected calendar, then fill a new-event draft for review. Set duration, working hours/days and buffers; see [availability](docs/AVAILABILITY.md#english).
+
+
 - Month, week and agenda views with drag and keyboard rescheduling.
 - Create, search, update and delete events, including recurring occurrences.
 - Import an ICS file or pasted content after reviewing timezones, duplicates and overlap hints.

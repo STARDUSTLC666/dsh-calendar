@@ -55,6 +55,7 @@ export interface CalendarEvent {
   /** 系列原开始时间（仅 isOccurrence 为 true 的实例存在）。 */
   seriesStart?: string
   status?: string
+  transparency?: string
   url?: string
   created?: string
   lastModified?: string
@@ -153,6 +154,7 @@ function veventToEvent(vevent: ICAL.Component, href: string, etag?: string): Cal
   const description = asString(vevent.getFirstPropertyValue('description'))
   const location = asString(vevent.getFirstPropertyValue('location'))
   const status = asString(vevent.getFirstPropertyValue('status'))
+  const transparency = asString(vevent.getFirstPropertyValue('transp'))
   const url = asString(vevent.getFirstPropertyValue('url'))
   const created = timePropertyValue(vevent, 'created')
   const lastModified = timePropertyValue(vevent, 'last-modified')
@@ -190,6 +192,7 @@ function veventToEvent(vevent: ICAL.Component, href: string, etag?: string): Cal
     ...(location !== undefined ? { location } : {}),
     ...(rrule !== undefined ? { rrule } : {}),
     ...(status !== undefined ? { status } : {}),
+    ...(transparency !== undefined ? { transparency } : {}),
     ...(url !== undefined ? { url } : {}),
     ...(created !== undefined ? { created: icalTimeToIso(created) } : {}),
     ...(lastModified !== undefined ? { lastModified: icalTimeToIso(lastModified) } : {}),
@@ -231,6 +234,7 @@ function buildOccurrence(base: CalendarEvent, occurrenceStart: ICAL.Time, durati
     ...(base.description !== undefined ? { description: base.description } : {}),
     ...(base.location !== undefined ? { location: base.location } : {}),
     ...(base.status !== undefined ? { status: base.status } : {}),
+    ...(base.transparency !== undefined ? { transparency: base.transparency } : {}),
     ...(base.url !== undefined ? { url: base.url } : {}),
     ...(base.created !== undefined ? { created: base.created } : {}),
     ...(base.lastModified !== undefined ? { lastModified: base.lastModified } : {}),
@@ -252,6 +256,7 @@ function buildOverrideEvent(base: CalendarEvent, vevent: ICAL.Component): Calend
       isOccurrence: true,
       seriesStart: base.start,
       ...(parsed.icalUid === undefined && base.icalUid !== undefined ? { icalUid: base.icalUid } : {}),
+      ...(parsed.transparency === undefined && base.transparency !== undefined ? { transparency: base.transparency } : {}),
     }
   }
   const recurrenceId = timePropertyValue(vevent, 'recurrence-id')
@@ -295,18 +300,22 @@ export function expandEventFromICal(
   rangeStart: string,
   rangeEnd: string,
   maxOccurrences: number,
+  options: { strict?: boolean; overlap?: boolean; deadline?: number } = {},
 ): CalendarEvent[] {
   let vcal: ICAL.Component
   try {
     vcal = new ICAL.Component(ICAL.parse(data))
   } catch {
+    if (options.strict) throw new ExpansionLimitError('无法完整解析日历资源，未给出空闲建议')
     return []
   }
   prepareTimezones(vcal)
   const master = masterVevent(vcal)
-  if (master === null) return []
+  if (master === null) { if (options.strict) throw new ExpansionLimitError('日历资源缺少主日程，未给出空闲建议'); return [] }
   const base = veventToEvent(master, href, etag)
-  if (base === null) return []
+  if (base === null) { if (options.strict) throw new ExpansionLimitError('日程缺少开始时间，未给出空闲建议'); return [] }
+  if (options.strict && base.allDay && base.end === base.start) base.end = new Date(Date.parse(base.start) + 86400000).toISOString().slice(0, 10)
+  if (options.strict && Date.parse(base.end) < Date.parse(base.start)) throw new ExpansionLimitError('日程结束早于开始，未给出空闲建议')
 
   // 收集 RECURRENCE-ID -> 覆盖 VEVENT，展开时按原实例时间替换。
   const overrides = new Map<string, ICAL.Component>()
@@ -327,21 +336,26 @@ export function expandEventFromICal(
   const rangeStartMs = isoToEpochMs(rangeStart)
   const rangeEndMs = isoToEpochMs(rangeEnd)
   const inRange = (event: CalendarEvent): boolean => {
+    if (options.strict && event.allDay && event.end === event.start) event.end = new Date(Date.parse(event.start) + 86400000).toISOString().slice(0, 10)
+    if (options.strict && Date.parse(event.end) < Date.parse(event.start)) throw new ExpansionLimitError('重复例外结束早于开始，未给出空闲建议')
     const startMs = isoToEpochMs(event.start)
+    if (options.overlap) return startMs < rangeEndMs && isoToEpochMs(event.end) > rangeStartMs
     return !Number.isNaN(startMs) && startMs >= rangeStartMs && startMs <= rangeEndMs
   }
 
-  const duration = veventDuration(master, dtstart)
+  const duration = veventDuration(master, dtstart) ?? (options.strict && base.allDay ? ICAL.Duration.fromData({ days: 1 }) : null)
   const expansion = new ICAL.RecurExpansion({ component: master, dtstart })
   const occurrences: CalendarEvent[] = []
   const consumedOverrides = new Set<string>()
-  const totalIterationCap = Math.max(100000, maxOccurrences * 1000)
+  const totalIterationCap = options.strict ? 100000 : Math.max(100000, maxOccurrences * 1000)
   let budgetExhausted = false
 
   try {
     let iterations = 0
-    while (occurrences.length < maxOccurrences) {
+    while (options.strict || occurrences.length < maxOccurrences) {
+      if (options.strict && occurrences.length > maxOccurrences) throw new ExpansionLimitError('重复日程实例过多，请缩小空闲查询范围')
       iterations += 1
+      if (options.strict && iterations % 256 === 1 && Date.now() > (options.deadline ?? Infinity)) throw new ExpansionLimitError('空闲查询展开超时，请缩小范围')
       if (iterations > totalIterationCap) {
         budgetExhausted = true
         break
@@ -359,10 +373,12 @@ export function expandEventFromICal(
         if (overrideEvent !== null && inRange(overrideEvent)) occurrences.push(overrideEvent)
         continue
       }
-      if (occMs < rangeStartMs) continue
-      occurrences.push(buildOccurrence(base, next, duration))
+      if (!options.overlap && occMs < rangeStartMs) continue
+      const occurrence = buildOccurrence(base, next, duration)
+      if (inRange(occurrence)) occurrences.push(occurrence)
     }
-  } catch {
+  } catch (error) {
+    if (options.strict) throw error instanceof ExpansionLimitError ? error : new ExpansionLimitError('重复规则无法完整展开，未给出空闲建议')
     // 规则无法满足或迭代异常时，返回已成功展开的部分实例。
   }
 
@@ -379,7 +395,7 @@ export function expandEventFromICal(
     if (consumedOverrides.has(key)) continue
     const overrideEvent = buildOverrideEvent(base, overrideVevent)
     if (overrideEvent === null || !inRange(overrideEvent)) continue
-    if (occurrences.length >= maxOccurrences) break
+    if (occurrences.length >= maxOccurrences) { if (options.strict) throw new ExpansionLimitError('重复日程例外过多，请缩小空闲查询范围'); break }
     occurrences.push(overrideEvent)
   }
 

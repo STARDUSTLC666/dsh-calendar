@@ -18,6 +18,7 @@ import { CalendarSettingsSchema, SETTINGS_NAMESPACE, draftToConfig, validateSett
 import { CalendarService } from './caldav.js'
 import { asRecord, assertIsoTime, assertTimeRange, isoNoMillis, optionalString, sortEvents } from './tools.js'
 import type { CalendarEvent } from './ical.js'
+import type { AvailabilityInput, AvailabilityResult } from './availability.js'
 
 /** 面板与浏览器说话的同源路由。 */
 export const SETTINGS_ROUTE = '/_dsh/dsh-calendar/settings'
@@ -61,6 +62,7 @@ export function postVerdict(headers: Record<string, unknown>): { status: number;
 
 /** 面板需要的服务面；测试里可以塞假的进来。 */
 export interface CalendarServiceLike {
+  availability?(input: AvailabilityInput, signal?: AbortSignal): Promise<AvailabilityResult>
   get?(uid: string, signal?: AbortSignal): Promise<CalendarEvent>
   list(start: string, end: string, options?: unknown, signal?: AbortSignal): Promise<CalendarEvent[]>
   create(fields: unknown, signal?: AbortSignal): Promise<CalendarEvent>
@@ -373,18 +375,22 @@ export class CalendarSettingsBackend {
       })
       return
     }
+    const requestController = new AbortController()
+    const disconnect = () => { if (!res.writableEnded) requestController.abort(new Error('空闲查询已取消')) }
+    res.once?.('close', disconnect)
     try {
       const body = await readJsonBody(req)
-      const value = await this.dispatch(asRecord(body))
+      const value = await this.dispatch(asRecord(body), requestController.signal)
       this.responseJson(res, 200, { ok: true, value })
     } catch (error) {
+      if (res.destroyed) return
       const message = error instanceof Error ? error.message : String(error)
       this.responseJson(res, 400, { ok: false, error: { code: 'rejected', message } })
-    }
+    } finally { res.off?.('close', disconnect) }
   }
 
   /** 动作分发。每个动作自己校验参数，错误信息面向用户（中文，面板直接显示）。 */
-  private async dispatch(body: Record<string, unknown>): Promise<unknown> {
+  private async dispatch(body: Record<string, unknown>, signal?: AbortSignal): Promise<unknown> {
     const action = typeof body.action === 'string' ? body.action : ''
     if (action === 'status' || action === 'connection') return this.connection()
     if (action === 'testConnection') {
@@ -418,6 +424,11 @@ export class CalendarSettingsBackend {
         maxOccurrences: clampInt(body.maxOccurrences, 200, 1, 500),
       }))
       return { count: events.length, start, end, events }
+    }
+    if (action === 'availability') {
+      const service = this.service()
+      if (!service.availability) throw new Error('当前日历连接不支持完整的空闲查询，请更新插件')
+      return service.availability(body as unknown as AvailabilityInput, signal)
     }
     if (action === 'create') {
       const fields = eventFields(body, true)

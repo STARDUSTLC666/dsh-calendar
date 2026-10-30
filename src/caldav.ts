@@ -8,6 +8,8 @@
 import { createDAVClient } from 'tsdav'
 import { createHash } from 'node:crypto'
 import ICAL from 'ical.js'
+import { availabilityRequest, findAvailableTimes, type AvailabilityInput, type AvailabilityResult } from './availability.js'
+import { busyResource } from './availability-ical.js'
 import { createProxyFetch } from './proxy-fetch.js'
 import { createOAuthFetch, OAuthError } from './oauth.js'
 import type { ResolvedConfig } from './config.js'
@@ -158,6 +160,30 @@ export class CalendarService {
       if (event !== null) events.push(event)
     }
     return events
+  }
+
+  /** A complete read of the connected collection; never writes or reserves events. */
+  async availability(input: AvailabilityInput, signal?: AbortSignal): Promise<AvailabilityResult> {
+    const request = availabilityRequest(input), deadline = Date.now() + 20000, cancel = AbortSignal.any([...(signal ? [signal] : []), AbortSignal.timeout(20000)])
+    cancel.throwIfAborted()
+    const start = new Date(request.startMs - 2 * 86400000).toISOString(), end = new Date(request.endMs + 2 * 86400000).toISOString()
+    try {
+      const client = await this.client(); cancel.throwIfAborted()
+      const objects = await client.fetchCalendarObjects({ calendar: this.calendar(), timeRange: { start, end }, urlFilter: (url: string) => typeof url === 'string' && url.length > 0, fetchOptions: { signal: cancel } })
+      cancel.throwIfAborted()
+      if (objects.length > 1000) throw new Error('日历资源超过 1000 条，请缩小空闲查询范围')
+      const events: CalendarEvent[] = []; let bytes = 0
+      for (const object of objects) {
+        cancel.throwIfAborted(); const data = String(object.data ?? ''); bytes += Buffer.byteLength(data)
+        if (bytes > 8 * 1024 * 1024) throw new Error('日历资源总量超过 8 MiB，请缩小空闲查询范围')
+        if (Date.now() > deadline) throw new Error('空闲查询超时，请缩小范围')
+        events.push(...busyResource(data, object.url, start, end, request.timeZone, deadline))
+        if (events.length > 10000) throw new Error('日程实例超过 10000 条，请缩小空闲查询范围')
+      }
+      cancel.throwIfAborted(); const result = findAvailableTimes(events, input)
+      if (Date.now() > deadline) throw new Error('空闲查询超时，请缩小范围')
+      return result
+    } catch (error) { cancel.throwIfAborted(); throw translateError(error, '查询空闲时段', this.config) }
   }
 
   /** 列出并展开：每个对象经 expandEventFromICal 展开为若干实例行。 */
