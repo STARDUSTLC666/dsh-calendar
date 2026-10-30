@@ -1295,7 +1295,7 @@ let calendarHostContext;
             const rawEnd = endDate(event);
             // 全天事件的 DTEND 是「次日零点」：编辑时退一天，否则用户会看到莫名多一天。
             const e = allDay ? addDays(rawEnd, -1) : rawEnd;
-            return {
+            const draft = {
                 uid: event.uid,
                 isSeries: isRecurring(event),
                 summary: event.summary || "",
@@ -1308,6 +1308,8 @@ let calendarHostContext;
                 repeat: repeatKeyOf(event.rrule),
                 rrule: event.rrule || ""
             };
+            if (!allDay) draft.sourceRange = { date: draft.date, startTime: draft.startTime, endTime: draft.endTime, start: isoOf(s), end: isoOf(rawEnd) };
+            return draft;
         }
         /** 新建表单：默认落在被点的那一天，上午 10:00–11:00（日历产品的惯例）。 */
         function draftAt(date, hour) {
@@ -1366,10 +1368,12 @@ let calendarHostContext;
                 fields.allDay = true;
             }
             else {
+                if (!/^\d{2}:\d{2}$/.test(draft.startTime || '') || !/^\d{2}:\d{2}$/.test(draft.endTime || '')) throw new Error(calendarText('请补全起止时间','Complete the start and end times'));
                 const start = new Date(draft.date + "T" + (draft.startTime || "00:00") + ":00");
                 const end = new Date(draft.date + "T" + (draft.endTime || "00:00") + ":00");
-                fields.start = isoOf(start);
-                fields.end = isoOf(end);
+                const source = draft.sourceRange, sameDate = source && source.date === draft.date;
+                fields.start = sameDate && source.startTime === draft.startTime ? source.start : isoOf(start);
+                fields.end = sameDate && source.endTime === draft.endTime ? source.end : isoOf(end);
                 fields.allDay = false;
             }
             const rrule = draft.repeat === "custom" ? (draft.rrule || "").trim() : rruleForRepeat(draft.repeat);
@@ -1381,8 +1385,10 @@ let calendarHostContext;
         }
         /** 草稿算出来的临时事件，用来做冲突检测（不落盘）。 */
         function asPseudoEvent(draft) {
-            const fields = fieldsOfDraft(draft);
-            return { uid: "__draft", summary: fields.summary || "(未命名)", start: fields.start, end: fields.end, allDay: draft.allDay === true };
+            try {
+                const fields = fieldsOfDraft(draft);
+                return { uid: "__draft", summary: fields.summary || "(未命名)", start: fields.start, end: fields.end, allDay: draft.allDay === true };
+            } catch { return null; }
         }
         function EventForm(props) {
             const { draft, events, onCancel, onSubmit, busy, error } = props;
@@ -1395,9 +1401,10 @@ __stardustUpdatesGuard(React, "dsh-calendar.event", { dirty: JSON.stringify(form
             const patch = (fields) => setForm((prev) => Object.assign({}, prev, fields));
             const isEdit = draft.uid !== undefined;
             const pseudo = asPseudoEvent(form);
-            const conflicts = form.summary.trim() === "" ? [] : events.filter((event) => overlaps(event, pseudo) && event.uid !== form.uid);
-            const canSave = form.summary.trim() !== "" && (form.allDay === true || form.startTime <= form.endTime);
+            const conflicts = form.summary.trim() === "" || !pseudo ? [] : events.filter((event) => overlaps(event, pseudo) && event.uid !== form.uid);
+            const canSave = form.summary.trim() !== "" && !!pseudo && Date.parse(pseudo.end) >= Date.parse(pseudo.start);
             const body = h("div", null, [
+                form.sourceRange && !form.allDay && pseudo ? h('p',{className:'dshe-hint',role:'note'},calendarText('实际时段：','Resolved time: ')+[pseudo.start,pseudo.end].map(iso=>new Intl.DateTimeFormat(UI_LANG==='en'?'en-US':'zh-CN',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',timeZoneName:'shortOffset'}).format(new Date(iso))).join(' — ')+calendarText('。未修改的钟点保留原 UTC 偏移。',' · Unchanged times preserve their original UTC offsets.')) : null,
                 draft.isSeries ? h("div", { className: "dshc-alert" }, t("form.series")) : null,
                 error ? h("div", { className: "dshc-alert error" }, error) : null,
                 h("div", { className: "dshc-field" }, [

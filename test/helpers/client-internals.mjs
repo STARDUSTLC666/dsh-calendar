@@ -9,7 +9,7 @@
 import { readFileSync } from 'node:fs';
 
 const SOURCE = readFileSync(new URL('../../lib/client.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
-const EXPOSE = 'module.exports.__internals = { snapMinutes, slotFromEvent, moveSlot, slotFromDrag, resizeSlot, rangeOfSlot, conflictsForSlot, isRecurring, columnIndexFromRects };';
+const EXPOSE = 'module.exports.__internals = { snapMinutes, slotFromEvent, moveSlot, slotFromDrag, resizeSlot, rangeOfSlot, conflictsForSlot, isRecurring, columnIndexFromRects, draftOfEvent, fieldsOfDraft, asPseudoEvent };';
 if (!SOURCE.includes('return module.exports;')) throw new Error('client.js 的装载契约变了，本助手要跟着改');
 const patched = SOURCE.replace('return module.exports;', EXPOSE + '\nreturn module.exports;');
 

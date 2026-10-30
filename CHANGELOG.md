@@ -1,5 +1,11 @@
 # 更新记录
 
+## 0.14.1 (2026-10-30)
+
+- 修复候选进入草稿后，夏令时回拨的重复钟点可能被换成另一个时间的问题；未修改的起止时间分别保留原 UTC 偏移。
+- 表单显示实际时段及偏移，以绝对时间判断顺序；暂时清空日期或时间会停用保存，不再使编辑器崩溃。
+- Preserve exact candidate instants through daylight-saving folds and show the resolved offsets before explicit saving.
+
 ## 0.14.0 (2026-10-30)
 
 - 新增「找空闲时段」与只读 `calendar_find_time`：设置工作日、时间、时长与缓冲，选择候选后进入原有新建草稿，保存仍由用户确认。
