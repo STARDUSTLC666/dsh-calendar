@@ -526,6 +526,83 @@ test('F3：面板内两层同开，Esc 关最后打开的那层', async () => {
 });
 
 
+/** 等到条件成立（面板里都是「先探测连接、再列表」的异步链，固定 sleep 很脆）。 */
+async function until(react, predicate, label = '条件') {
+  for (let i = 0; i < 60; i++) {
+    if (predicate()) return;
+    await react.act(async () => { await new Promise((resolve) => setTimeout(resolve, 10)); });
+  }
+  assert.fail('等待超时：' + label);
+}
+
+test('首次打开未连接日历：复用共享空状态，并给出两条真实出路', async () => {
+  const { react, reactDomClient, components, win } = await setup({ notConfigured: true });
+  const { container, root } = await render(react, reactDomClient, react.createElement(components.CalendarPanel, {}));
+  try {
+    await until(react, () => container.querySelector('.w-empty') !== null, '未配置空状态');
+    assert.equal(container.querySelector('.dshc-empty'), null, '不要再手写 .dshc-empty');
+    const labels = [...container.querySelectorAll('.w-empty button')].map(node => node.textContent.trim());
+    assert.ok(labels.includes('连接设置'), '空状态要能直接打开连接设置，实际：' + labels.join('/'));
+    assert.ok(labels.includes('查看示例'), '空状态要保留示例入口，实际：' + labels.join('/'));
+  } finally { await react.act(async () => root.unmount()); win.close(); }
+});
+
+test('月视图的日期格有完整可及名，今天带 aria-current', async () => {
+  const { react, reactDomClient, components } = await setup();
+  const { container } = await render(react, reactDomClient, react.createElement(components.MonthView, {
+    anchor: new Date(), events: [], onPick: () => {}, onCreateAt: () => {},
+  }));
+  const cells = [...container.querySelectorAll('.dshc-cell')];
+  assert.equal(cells.length, 42, '月视图 6×7 格');
+  for (const cell of cells) {
+    assert.match(cell.getAttribute('aria-label') || '', /新建日程/, '读屏要能听出这一格是「新建日程」');
+    assert.match(cell.getAttribute('aria-label') || '', /\d{4}/, '可及名要带年份，光有日号分不清月份');
+  }
+  const today = cells.find(cell => cell.className.includes('today'));
+  assert.ok(today, '今天要有 today 标记');
+  assert.equal(today.getAttribute('aria-current'), 'date');
+});
+
+test('未连接日历时「新建日程」不是死按钮：打开连接设置并说明原因', async () => {
+  const { react, reactDomClient, components, win } = await setup({ notConfigured: true });
+  const { container, root } = await render(react, reactDomClient, react.createElement(components.CalendarPanel, {}));
+  try {
+    await until(react, () => [...container.querySelectorAll('button')].some(node => node.textContent.trim() === '新建日程' && node.disabled === false), '可用的新建日程按钮');
+    const create = [...container.querySelectorAll('button')].find(node => node.textContent.trim() === '新建日程');
+    await react.act(async () => create.click());
+    assert.match(container.textContent, /请先连接日历/, '要告诉用户为什么没进新建表单');
+    const modal = container.querySelector('.dshc-modal');
+    assert.notEqual(modal, null, '要顺手把连接设置打开');
+    assert.equal(modal.getAttribute('role'), 'dialog', '兜底对话框要有 dialog 语义');
+    assert.equal(modal.getAttribute('aria-modal'), 'true');
+  } finally { await react.act(async () => root.unmount()); win.close(); }
+});
+
+test('空范围给一行说明；读取失败时不冒充「这段时间没有日程」', async () => {
+  const { react, reactDomClient, components, win } = await setup();
+  const empty = await render(react, reactDomClient, react.createElement(components.CalendarPanel, {}));
+  try {
+    await until(react, () => empty.container.querySelector('.dshc-emptyhint') !== null, '空范围提示');
+    assert.match(empty.container.querySelector('.dshc-emptyhint').textContent, /没有日程/);
+    assert.notEqual(empty.container.querySelector('.dshc-grid'), null, '仍然要画出月历网格，别把格子换成空页面');
+  } finally { await react.act(async () => empty.root.unmount()); win.close(); }
+
+  const second = await setup();
+  second.win.fetch = second.win.fetch.bind(second.win);
+  globalThis.fetch = async (url, init) => {
+    const body = JSON.parse(String(init.body));
+    if (body.action === 'list') return { ok: false, status: 500, json: async () => ({ ok: false, error: { message: '日历服务暂时不可用' } }) };
+    return { ok: true, status: 200, json: async () => ({ ok: true, value: { configured: true, count: 0, start: '', end: '', events: [] } }) };
+  };
+  const { react: react2, reactDomClient: rdc2, components: comps2, win: win2 } = second;
+  const failed = await render(react2, rdc2, react2.createElement(comps2.CalendarPanel, {}));
+  try {
+    await until(react2, () => /重试/.test(failed.container.textContent), '错误条与重试');
+    assert.doesNotMatch(failed.container.textContent, /这段时间没有日程/, '失败不能被说成「没有日程」');
+    assert.match(failed.container.textContent, /日历服务暂时不可用/);
+  } finally { await react2.act(async () => failed.root.unmount()); win2.close(); }
+});
+
 test('availability candidates only populate a draft, and changing a filter clears stale choices', async () => {
   const { react, reactDomClient, components, win, apiCalls } = await setup();
   const chosen = [];

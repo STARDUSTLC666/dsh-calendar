@@ -104,6 +104,7 @@ let calendarHostContext;
             ".dshc-meta{color:var(--dsw-alias-label-tertiary,#6b7280);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
             ".dshc-tag{display:inline-block;font-size:11px;padding:1px 6px;border-radius:999px;background:color-mix(in srgb,var(--dsw-alias-label-primary,#111) 7%,transparent);color:var(--dsw-alias-label-tertiary,#6b7280);margin-left:6px}",
             ".dshc-empty{padding:26px 18px;text-align:center;color:var(--dsw-alias-label-tertiary,#6b7280)}",
+            ".dshc-emptyhint{margin:0 0 6px;font-size:12px;line-height:1.6;color:var(--dsw-alias-label-tertiary,#6b7280)}",
             ".dshc-empty h3{color:var(--dsw-alias-label-primary,#111);margin:0 0 6px;font-size:14px}",
             ".dshc-empty code{background:var(--dsw-alias-bg-layer-2,rgba(0,0,0,.05));padding:1px 5px;border-radius:5px;font-size:12px}",
             ".dshc-alert{display:flex;gap:8px;align-items:flex-start;border-radius:10px;padding:8px 10px;font-size:12px;margin-bottom:10px;background:color-mix(in srgb,var(--dsw-alias-label-primary,#111) 5%,transparent)}",
@@ -683,7 +684,8 @@ let calendarHostContext;
                 return null;
             return h("div", { className: "dshc-modalwrap", onMouseDown: (e) => { if (e.target === e.currentTarget)
                     props.onClose(); } }, [
-                h("div", { className: "dshc-modal" }, [
+                // 宿主没有官方 Modal 时的兜底：至少给出与官方版相同的对话框语义（标题就是可及名）。
+                h("div", { className: "dshc-modal", role: "dialog", "aria-modal": "true", "aria-label": props.title }, [
                     h("div", { style: { position: "relative" } }, [
                         h("div", { className: "dshc-drawertitle" }, props.title),
                         h("button", { type: "button", className: "dshc-btn ghost dshc-close", onClick: props.onClose, "aria-label": props.closeLabel || props.title }, "\u2715")
@@ -858,6 +860,9 @@ let calendarHostContext;
                     role: "button",
                     tabIndex: 0,
                     className: "dshc-cell" + (day.getMonth() !== anchor.getMonth() ? " out" : "") + (key === today ? " today" : ""),
+                    // 读屏只会念出格子里的日期数字，不说这一格是干什么的；补上「哪天 + 新建」的完整名字。
+                    "aria-label": formatDay(day, { withYear: true }) + " · " + t("action.new"),
+                    "aria-current": key === today ? "date" : undefined,
                     onClick: () => onCreateAt(day),
                     onKeyDown: (e) => { if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
@@ -1214,7 +1219,7 @@ let calendarHostContext;
                 groups[index[key]].items.push(event);
             }
             if (groups.length === 0)
-                return h("div", { className: "dshc-empty" }, t("state.empty"));
+                return h(W.Empty, { icon: "calendar", title: t("state.empty"), action: h(W.Button, { icon: "plus", variant: "primary", onClick: () => onCreateAt(new Date()) }, t("action.new")) });
             return h("div", { className: "dshc-agenda" }, groups.map((group) => h("div", { className: "dshc-daygroup", key: group.key }, [
                 h("div", { className: "dshc-daylabel" }, [
                     h("b", null, formatDay(group.day)),
@@ -2170,6 +2175,11 @@ __stardustUpdatesGuard(React, "dsh-calendar", { busy: busy || importBusy || laye
                     notify(t("move.failed", { message: error !== null && error !== undefined && error.message ? error.message : String(error) }));
                 }
             };
+            /** 未连接日历时的点法：别让按钮「点了没反应」，直接打开连接设置并说明原因。 */
+            const connectFirst = () => {
+                setConnOpen(true);
+                notify(calendarText('请先连接日历，再新建日程或查找空闲时段。', 'Connect a calendar before creating events or finding available time.'));
+            };
             const notify = (text) => { setBanner(text); setTimeout(() => setBanner((current) => (current === text ? null : current)), 2200); };
             const title = view === "week" ? formatWeekTitle(anchor) : view === "agenda" ? t("view.agenda") : formatMonthTitle(anchor);
             const step = (delta) => setAnchor((current) => (view === "week" ? addDays(current, delta * 7) : addMonthShift(current, delta)));
@@ -2241,25 +2251,31 @@ __stardustUpdatesGuard(React, "dsh-calendar", { busy: busy || importBusy || laye
  h('div',{className:'calendar-view-controls',role:'group','aria-label':calendarText('日历视图','Calendar view')},VIEWS.map(name=>h(W.Button,{key:name,'aria-pressed':view === name,onClick:()=>{setView(name);storeView(name);}},t('view.'+name))),demo?h(W.Button,{onClick:()=>setDemo(false)},t('action.exitDemo')):h(W.IconButton,{icon:'refresh',label:t('action.refresh'),onClick:reload})));;
             const body = () => {
                 if (demo === false && configured === false) {
-                    return h("div", { className: "dshc-empty" }, [
-                        h("h3", null, t("state.notConfigured")),
-                        h("p", null, t("state.notConfiguredHint")),
-                        h("div", { style: { marginTop: "12px", display: "flex", gap: "8px", justifyContent: "center" } }, [
+                    return h(W.Empty, {
+                        icon: "calendar",
+                        title: t("state.notConfigured"),
+                        action: h(React.Fragment, null, [
                             h(Btn, { key: "cfg", variant: "primary", onClick: () => setConnOpen(true) }, t("conn.button")),
                             h(Btn, { key: "demo", onClick: () => setDemo(true) }, t("action.demo"))
                         ])
-                    ]);
+                    }, h("p", null, t("state.notConfiguredHint")));
                 }
                 if (configured === null)
                     return h("div", { className: "dshc-grid" }, Array.from({ length: 7 }, (_, i) => h("div", { className: "dshc-skel", key: i })));
                 if (data.loading === true && data.events.length === 0) {
                     return h("div", { className: "dshc-grid" }, Array.from({ length: 14 }, (_, i) => h("div", { className: "dshc-skel", key: i })));
                 }
-                if (view === "week")
-                    return h(WeekView, { anchor, events: visibleEvents, onPick: openEvent, onCreateAt: createAt, onReschedule: demo === true ? undefined : reschedule });
-                if (view === "agenda")
-                    return h(AgendaView, { events: visibleEvents, onPick: openEvent, onCreateAt: createAt });
-                return h(MonthView, { anchor, events: visibleEvents, onPick: openEvent, onCreateAt: createAt });
+                const viewNode = view === "week"
+                    ? h(WeekView, { anchor, events: visibleEvents, onPick: openEvent, onCreateAt: createAt, onReschedule: demo === true ? undefined : reschedule })
+                    : view === "agenda"
+                        ? h(AgendaView, { events: visibleEvents, onPick: openEvent, onCreateAt: createAt })
+                        : h(MonthView, { anchor, events: visibleEvents, onPick: openEvent, onCreateAt: createAt });
+                // 空范围只给一行说明 + 下一步；出错时不冒充「没有日程」，把解释权留给错误条。
+                const emptyHint = demo === false && view !== "agenda" && data.loading !== true && data.events.length === 0
+                    && (data.error === null || data.error === undefined);
+                return emptyHint
+                    ? h(React.Fragment, null, h("p", { className: "dshc-emptyhint", role: "status" }, calendarText("这段时间没有日程。点日期格或「新建日程」开始。", "Nothing scheduled in this range. Click a date or use New event.")), viewNode)
+                    : viewNode;
             };
             const openEvent = (event) => { setConfirmDelete(false); setSelected(event); };
             const createAt = (day, hour) => {
@@ -2269,7 +2285,10 @@ __stardustUpdatesGuard(React, "dsh-calendar", { busy: busy || importBusy || laye
                 }
                 setDraft(draftAt(day, hour));
             };
-            const content = h("div", { ref: rootRef, className: "dshc-root" }, [
+            // 浮层面板不是 W.Page，拿不到 ui/workbench-ui 的样式表；W.Button 之类会变成裸控件。
+            // 这里补一份 kit 自己的 stylesheet（唯一规范源），不再另画一套按钮。
+            const content = h("div", { ref: rootRef, className: "dshc-root" + (compact === true ? " dshw" : "") }, [
+                compact === true ? h("style", { key: "kit-styles" }, W.styles) : null,
                 h("div", { className: "dshc-shell" }, [
                     banner !== null ? h("div", { className: "dshc-alert demo", role: "status", "aria-live": "polite" }, banner) : null,
                     undo !== null
@@ -2348,8 +2367,8 @@ if(compact) return content;
 return h(W.Page,{workbench:props.workbench===true,title:t('section.title'),subtitle:calendarText('查看日程、安排时间和管理导入。','View events, plan time and manage imports.'),className:'calendar-workbench',actions:h(React.Fragment,null,
  h(W.Button,{icon:'link',disabled:configured===null,onClick:()=>setConnOpen(true)},calendarText('日历连接','Calendar connection')),
  h(W.Button,{icon:'upload',disabled:demo || importBusy,onClick:()=>setImportOpen(value=>!value)},t('import.open')),
- h(W.Button,{disabled:demo || configured!==true,onClick:()=>setAvailabilityOpen(v=>!v)},calendarText('找空闲时段','Find available time')),
- h(W.Button,{variant:'primary',disabled:demo || configured!==true,title:configured!==true?calendarText('请先连接日历','Connect a calendar first'):undefined,onClick:()=>setDraft(draftAt(anchor))},t('action.new')))},h('style',null,CALENDAR_WORKBENCH_CSS),content);
+ h(W.Button,{disabled:demo || configured===null,onClick:()=>configured===true?setAvailabilityOpen(v=>!v):connectFirst()},calendarText('找空闲时段','Find available time')),
+ h(W.Button,{variant:'primary',disabled:demo || configured===null,title:configured===true?undefined:calendarText('请先连接日历','Connect a calendar first'),onClick:()=>configured===true?setDraft(draftAt(anchor)):connectFirst()},t('action.new')))},h('style',null,CALENDAR_WORKBENCH_CSS),content);
         }
         /** 月份平移：先跳到本月 1 号再加月，避免 1 月 31 日 +1 个月变成 3 月 3 日。 */
         function addMonthShift(date, delta) {
