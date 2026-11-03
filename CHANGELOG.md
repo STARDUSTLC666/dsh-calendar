@@ -1,11 +1,18 @@
 # 更新记录
 
-## 0.14.3 (2026-11-03)
+## 0.14.4 (2026-11-03)
 
 - 未配置首屏复用 Empty；月历 42 格补可及名与 aria-current；空范围/失败区分；未连接按钮打开连接设置；浮层补齐共享样式。
 - Unconfigured states reuse Empty, calendar cells gain accessible names and aria-current, empty ranges are distinguished from failures, disconnected actions open connection settings, and floating panels share the workbench styles.
 - 同步共享 workbench-ui v1.1：Page 外的 Empty / Dialog / Status 自带样式与 `.dshw` 主题作用域，Status 新增 warn 色调。
 - Sync workbench-ui v1.1: Empty / Dialog / Status now carry their own styles and `.dshw` theme scope outside Page, and Status gains a warn tone.
+
+## 0.14.3 (2026-10-30)
+
+- 重整中英文首页：用途、三步流程图、安装入口与操作示例；详细配置与边界集中到完整说明。
+- 保留下载统计、独立更新选择、问题反馈和贡献入口；原封面与运行功能保留。
+- Refresh bilingual landing pages, workflow artwork, quick starts and reference navigation.
+
 
 ## 0.14.2 (2026-10-30)
 
