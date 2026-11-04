@@ -1,5 +1,13 @@
 # 更新记录
 
+## 0.14.5 (2026-11-04)
+
+- 同步共享界面：嵌入设置时继承宿主底色，输入框跟随主题，空状态保持可读宽度；新版 DSH 可显示插件设置图标。
+- Align embedded surfaces, themed inputs, readable empty states and optional native settings icons.
+- 修复中文及 Unicode CalDAV 账号的 UTF-8 Basic 认证。
+- Fix UTF-8 Basic authentication for Chinese and Unicode CalDAV credentials.
+
+
 ## 0.14.4 (2026-11-03)
 
 - 未配置首屏复用 Empty；月历 42 格补可及名与 aria-current；空范围/失败区分；未连接按钮打开连接设置；浮层补齐共享样式。

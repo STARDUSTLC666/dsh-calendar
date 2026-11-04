@@ -27,3 +27,9 @@ Edit the template sources and run pnpm run build. Commit generated lib/client.js
 邮件使用受控 AgentMail HTTP 服务，日历使用受控 CalDAV 协议传输；插件处理器、存储、校验和原生宿主均实际运行。未使用真实邮箱、真实日历账号或付费模型。RSS 访问 Node.js 官方公开来源。PPT 实际生成并渲染 PPTX、下载 ZIP；两个视频插件实际运行官方引擎并播放 MP4。
 
 这些是 Web 共用界面的验收结果，不代表已验收 Electron 专属菜单、系统权限、真实账号、全部外部来源或所有可选模型/引擎。Docker、Slack、钉钉继续按用户约定搁置。
+
+## 中文账号 / Unicode accounts
+
+Basic 认证现以 UTF-8 编码账号和密码，中文账号不再被本地 Latin-1 编码器拒绝。服务端仍须支持该账号及 UTF-8 凭据。OAuth 路径保持独立；遇到 401 请核对服务商要求的账号格式与授权。
+
+Basic credentials use UTF-8, avoiding local Latin-1 encoding failures for Unicode names. The server must still accept the account and encoding. OAuth is unaffected.

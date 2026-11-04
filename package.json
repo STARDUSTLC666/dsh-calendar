@@ -1,6 +1,6 @@
 {
   "name": "dsh-calendar",
-  "version": "0.14.4",
+  "version": "0.14.5",
   "description": "DSH 日历工作台：CalDAV 日程、月 / 周 / 议程视图、空闲时段建议与 ICS 预览导入。欢迎提交 issues 和 PR。",
   "type": "module",
   "main": "lib/index.js",
@@ -66,7 +66,7 @@
     "tsdav": "^2.3.1",
     "undici": "^8.11.2",
     "yaml": "^2.9.1",
-    "@stardustlc/dsh-updates": "0.1.3"
+    "@stardustlc/dsh-updates": "0.1.4"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
