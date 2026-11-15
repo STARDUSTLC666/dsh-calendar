@@ -13,11 +13,12 @@ const hostIcons = {
     close: "IconCloseOutlineMedium",
     refresh: "IconRefreshOutlineMedium",
     plus: "IconPlusOutlineMedium",
+    search: "IconSearchOutlineMedium",
     clock: "IconClockOutlineMedium",
     check: "IconCheckOutlineMedium",
     warning: "IconWarningTriangleOutlineMedium"
 };
-const fallbackIcons = { left: "‹", right: "›", down: "⌄", close: "×", refresh: "↻", plus: "+", clock: "◷", check: "✓", warning: "!" };
+const fallbackIcons = { left: "‹", right: "›", down: "⌄", close: "×", refresh: "↻", plus: "+", search: "⌕", clock: "◷", check: "✓", warning: "!" };
 
 function CalendarIcon({ size = 16 }) {
     return h("svg", {
@@ -53,9 +54,9 @@ function IconButton({ label, icon, className, ...props }) {
     return h(Btn, { ...props, className: clsx(styles.iconButton, className), icon, variant: "ghost", "aria-label": label, title: label });
 }
 
-function Txt({ className, ...props }) {
+function Txt({ className, icon, ...props }) {
     const input = PRIM?.Input
-        ? h(PRIM.Input, { ...props, className: clsx(styles.fieldControl, className) })
+        ? h(PRIM.Input, { ...props, icon, className: clsx(styles.fieldControl, className) })
         : h("input", { type: "text", ...props, className: clsx(styles["dshc-input"], className) });
     if (props.type !== "date" && props.type !== "time") return input;
     return h("span", { className: styles.temporalField }, input,
@@ -74,10 +75,13 @@ function Chk({ checked, disabled, label, onChange, className, title }) {
     );
 }
 
-function Picker({ id, label, value, options, onChange, disabled }) {
+function Picker({ id, label, value, options, onChange, disabled, compact = false }) {
     const [open, setOpen] = useState(false);
     if (!PRIM?.Menu) {
-        return h("select", { id, "aria-label": label, className: styles["dshc-input"], value, disabled, onChange: event => onChange(event.target.value) },
+        return h("select", {
+            id, "aria-label": label, className: clsx(styles["dshc-input"], compact && styles.toolbarPicker),
+            value, disabled, onChange: event => onChange(event.target.value)
+        },
             options.map(option => h("option", { key: option.id, value: option.id }, option.label)));
     }
     const selected = options.find(option => option.id === value);
@@ -85,9 +89,9 @@ function Picker({ id, label, value, options, onChange, disabled }) {
     // Menu composes the host's MenuSurface and owns positioning/keyboard focus.
     return h(PRIM.Menu, {
         open: expanded, portal: true, compact: true, autoFocus: true, minWidthFromAnchor: true,
-        className: styles.picker, listClassName: styles.menu,
+        className: compact ? styles.toolbarPicker : styles.picker, listClassName: styles.menu,
         anchor: h(Btn, {
-            id, disabled, className: styles.pickerTrigger,
+            id, disabled, className: compact ? styles.layoutTrigger : styles.pickerTrigger,
             "aria-label": label + " · " + (selected?.label ?? ""), "aria-haspopup": "menu", "aria-expanded": expanded,
             onClick: () => setOpen(value => !value)
         }, h("span", null, selected?.label), h(Icon, { name: "down" })),
@@ -161,8 +165,9 @@ function FallbackDialog({ title, onClose, children, review }) {
 }
 
 function Dlg({ open, onClose, title, closeLabel = title, children, footer, review = false }) {
+    const appearance = React.useContext(getCalendarAppearanceContext());
     if (!open) return null;
-    const frame = h("div", { key: "frame", className: styles.dialogFrame, "data-dshc-scope": "1" },
+    const frame = h("div", { key: "frame", className: styles.dialogFrame, style: appearance, "data-dshc-scope": "1" },
         h("header", { className: styles.dialogHeader },
             h("h2", null, title), h(IconButton, { icon: "close", label: closeLabel, onClick: onClose })
         ),

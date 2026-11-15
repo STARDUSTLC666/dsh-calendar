@@ -1750,13 +1750,19 @@ __stardustUpdatesGuard(React, "dsh-calendar.import", { dirty: !!content.trim(), 
             const [conn, setConn] = useState(null);
             const [connOpen, setConnOpen] = useState(false);
             const [tool, setTool] = useState("schedule");
+            const [layout, setLayout] = useState(loadCalendarLayout);
+            const [palette, setPalette] = useState(loadCalendarPalette);
+            const dark = useCalendarDarkMode(workbench);
+            const appearance = useMemo(() => workbench ? calendarAppearance(layout, palette, dark ? "dark" : "light") : undefined,
+                [workbench, layout, palette, dark]);
+            const [utility, setUtility] = useState(null);
             const [importBusy, setImportBusy] = useState(false);
             const [availabilityBusy, setAvailabilityBusy] = useState(false);
             const [connectionBusy, setConnectionBusy] = useState(false);
             const importOpen = tool === "import";
             const availabilityOpen = tool === "availability";
             const connectionOpen = tool === "connection";
-            const layerOpen = draft !== null || selected !== null || connOpen === true;
+            const layerOpen = draft !== null || selected !== null || connOpen === true || utility !== null;
             // Update protection: dsh-calendar
             __stardustUpdatesGuard(React, "dsh-calendar", { busy: busy || layerOpen || importOpen || availabilityOpen || connectionOpen });
 
@@ -1779,10 +1785,12 @@ __stardustUpdatesGuard(React, "dsh-calendar.import", { dirty: !!content.trim(), 
                     openKeys.push("draft");
                 if (connOpen === true)
                     openKeys.push("conn");
+                if (utility !== null)
+                    openKeys.push("utility");
                 const kept = layerOrderRef.current.filter((key) => openKeys.indexOf(key) !== -1);
                 const added = openKeys.filter((key) => kept.indexOf(key) === -1);
                 layerOrderRef.current = kept.concat(added);
-            }, [draft, connOpen, selected]);
+            }, [draft, connOpen, selected, utility]);
             /**
              * Esc 分层关闭：有浮层时只关最上面一层（表单/连接设置 > 详情抽屉）。
              * 监听走模块级的层栈 —— 多个 CalendarPanel 并存时一次 Esc 只关一层；
@@ -1804,13 +1812,15 @@ __stardustUpdatesGuard(React, "dsh-calendar.import", { dirty: !!content.trim(), 
                     }
                     else if (top === "conn")
                         setConnOpen(false);
+                    else if (top === "utility")
+                        setUtility(null);
                     else if (top === "selected") {
                         setSelected(null);
                         setConfirmDelete(false);
                     }
                 };
                 return registerLayerEscape(root, closeTop);
-            }, [draft, selected, connOpen]);
+            }, [draft, selected, connOpen, utility]);
             /** 乐观改期：uid → { start, end }。等服务器回读到同样的时间再撤掉，避免闪回。 */
             const [overrides, setOverrides] = useState({});
             const [undo, setUndo] = useState(null);
@@ -1838,7 +1848,7 @@ __stardustUpdatesGuard(React, "dsh-calendar.import", { dirty: !!content.trim(), 
                 return override === undefined ? event : Object.assign({}, event, override);
             }), [data.events, overrides]);
             const visibleEvents = showCalendar || demo ? eventsWithMoves : NO_EVENTS;
-            const { count: conflicts, conflicted } = useMemo(() => conflictSummary(visibleEvents), [visibleEvents]);
+            const { count: conflicts, conflicted, overlap } = useMemo(() => conflictSummary(visibleEvents), [visibleEvents]);
             const source = conn?.configured ? conn.calendar || connectionSummary(conn) : null;
             /**
              * 改期成功后把焦点还给同一个日程。
@@ -2120,6 +2130,47 @@ __stardustUpdatesGuard(React, "dsh-calendar.import", { dirty: !!content.trim(), 
                 ? h(Btn, { onClick: () => setDemo(false) }, t("action.exitDemo"))
                 : h(IconButton, { icon: "refresh", label: t("action.refresh"), onClick: reload });
             const availabilityLabel = calendarText("找空闲时段", "Find available time");
+            const quickLabel = calendarText("日历快捷操作", "Calendar quick actions");
+            const quickKey = workbench && document.documentElement.dataset.platform === "darwin" ? "⌘⇧K" : "Ctrl+Shift+K";
+            const layoutOptions = workbench ? calendarLayoutOptions() : [];
+            const selectLayout = value => { setLayout(value); storeCalendarPreference(CALENDAR_LAYOUT_KEY, value); };
+            const selectPalette = value => { setPalette(value); storeCalendarPreference(CALENDAR_PALETTE_KEY, value); };
+            const reviewConflicts = () => setUtility("conflicts");
+            const canCreate = !demo && configured !== null && !toolBusy;
+            const commandActions = workbench ? [
+                { id: "create", key: "n", label: t("action.new"), run: startDraft, disabled: !canCreate },
+                { id: "availability", key: "f", label: availabilityLabel, run: showAvailability, disabled: demo || configured === null },
+                { id: "conflicts", label: calendarText("查看日程冲突", "Review scheduling conflicts"), run: reviewConflicts, disabled: conflicts === 0 },
+                { id: "import", label: t("import.open"), run: () => setTool("import"), disabled: demo },
+                { id: "connection", label: t("conn.title"), run: () => setTool("connection"), disabled: configured === null },
+                ...VIEWS.map(name => ({
+                    id: name, key: name[0],
+                    label: calendarText("切换到" + t("view." + name) + "视图", "Switch to " + t("view." + name)),
+                    run: () => { backToSchedule(); selectView(name); }
+                })),
+                ...layoutOptions.map(option => ({
+                    id: option.id,
+                    label: calendarText("切换布局 · ", "Switch layout · ") + option.label,
+                    run: () => selectLayout(option.id)
+                }))
+            ] : [];
+            function onWorkbenchKeyDown(event) {
+                if (layerOpen || toolBusy || event.defaultPrevented || event.nativeEvent?.isComposing) return;
+                if (event.target.closest?.('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="menu"], [role="dialog"], [role="alertdialog"], [aria-expanded="true"][aria-haspopup="menu"]')) return;
+                const key = event.key.toLowerCase();
+                if (key === "k" && (event.ctrlKey || event.metaKey) && event.shiftKey && !event.altKey) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setUtility("commands");
+                    return;
+                }
+                if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey || tool !== "schedule") return;
+                const action = commandActions.find(action => action.key === key && !action.disabled);
+                if (!action) return;
+                event.preventDefault();
+                event.stopPropagation();
+                action.run();
+            }
             const compactToolbar = compact ? h("header", { className: styles["dshc-toolbar"] },
                 h("h2", { className: styles["dshc-title"] }, t("section.title")),
                 tool === "schedule" ? period : null,
@@ -2148,7 +2199,14 @@ __stardustUpdatesGuard(React, "dsh-calendar.import", { dirty: !!content.trim(), 
                 }),
                 h("div", { className: styles.topActions },
                     h("span", { className: styles.zone }, Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"),
-                    h(Btn, { variant: "primary", icon: "plus", disabled: demo || configured === null || toolBusy, onClick: startDraft }, t("action.new"))
+                    workbench ? h(Btn, {
+                        className: styles.commandTrigger, icon: "search", disabled: toolBusy,
+                        "aria-label": quickLabel, title: quickLabel + " (" + quickKey + ")",
+                        onClick: () => setUtility("commands"), "aria-keyshortcuts": "Control+Shift+K Meta+Shift+K"
+                    }, h("kbd", { className: styles.triggerKey }, quickKey)) : null,
+                    h(Btn, { variant: "primary", icon: "plus", disabled: !canCreate, onClick: startDraft }, t("action.new")),
+                    workbench ? h(CalendarLayoutPicker, { layout, options: layoutOptions, onChange: selectLayout }) : null,
+                    workbench ? h(CalendarPalettePicker, { palette, dark, onChange: selectPalette }) : null
                 )
             ) : null;
 
@@ -2180,14 +2238,22 @@ __stardustUpdatesGuard(React, "dsh-calendar.import", { dirty: !!content.trim(), 
                     calendar
                 );
             };
-            const schedule = tool === "schedule" ? h("div", { className: styles.schedule },
-                compact ? null : h(ScheduleRail, {
+            const schedule = tool === "schedule" ? h(ScheduleLayout, {
+                resizable: workbench && !compact,
+                rail: compact ? null : h(ScheduleRail, {
+                    id: viewId + "-sidebar",
                     anchor, onPick: setAnchor, source, showing: showCalendar, onVisibilityChange: setShowCalendar,
-                    conflicts, workbench, loading: configured === null
-                }),
+                    conflicts, overlap, workbench, loading: configured === null,
+                    onReviewConflicts: workbench ? reviewConflicts : undefined
+                })
+            },
                 h("div", { className: styles.scheduleMain },
                     compact ? null : h("div", { className: styles.calendarToolbar }, period,
-                        h("div", { className: styles.period }, views, refresh)),
+                        h("div", { className: styles.period }, views,
+                            workbench && conflicts > 0 ? h(Btn, {
+                                className: styles.toolbarConflicts, icon: "warning", onClick: reviewConflicts
+                            }, calendarText("查看日程冲突", "Review conflicts")) : null,
+                            refresh)),
                     data.error && !demo && configured !== false ? h("div", { className: clsx(styles["dshc-alert"], styles.error), role: "alert" },
                         backendMessage(data.error) || t("error.load"),
                         h("span", { className: styles["dshc-spacer"] }),
@@ -2199,6 +2265,7 @@ __stardustUpdatesGuard(React, "dsh-calendar.import", { dirty: !!content.trim(), 
                     h("footer", { className: styles["dshc-footer"] },
                         h("span", null, t("count.events", { n: visibleEvents.length }) +
                             (visibleEvents.some(event => event.isOccurrence) ? " · " + t("count.occurrences", { n: visibleEvents.filter(event => event.isOccurrence).length }) : "")),
+                        workbench ? h(CalendarShortcutHints, { quickKey }) : null,
                         compact && source ? h("span", null, t("conn.current", { summary: source })) : null
                     )
                 )
@@ -2218,7 +2285,12 @@ __stardustUpdatesGuard(React, "dsh-calendar.import", { dirty: !!content.trim(), 
                     inline: true, connection: conn, onClose: backToSchedule, onSaved: finishConnection, onBusy: setConnectionBusy
                 }) : schedule;
             const original = draft?.uid && !draft.isSeries ? data.events.find(event => event.uid === draft.uid) : undefined;
-            return h("section", { ref: rootRef, className: styles["dshc-root"], "data-main": workbench, "data-compact": compact },
+            const page = h("section", {
+                ref: rootRef, className: clsx(styles["dshc-root"], workbench && LAYOUT_CLASSES[layout]),
+                "data-main": workbench, "data-compact": compact, style: appearance,
+                onPointerMove: workbench && layout === "spotlight" ? moveCalendarSpotlight : undefined,
+                tabIndex: workbench ? 0 : undefined, onKeyDown: workbench ? onWorkbenchKeyDown : undefined
+            },
                 h("div", { className: styles["dshc-shell"] },
                     topbar, compactToolbar,
                     banner ? h("div", { className: styles["dshc-alert"], role: "status" }, banner) : null,
@@ -2239,8 +2311,13 @@ __stardustUpdatesGuard(React, "dsh-calendar.import", { dirty: !!content.trim(), 
                     draft, events: eventsWithMoves, busy, error: formError, source, original,
                     onCancel: closeDraft, onSubmit: submit, onDelete: remove, confirmDelete, setConfirmDelete
                 }) : null,
+                utility === "commands" ? h(CalendarCommands, { actions: commandActions, onClose: () => setUtility(null) }) : null,
+                utility === "conflicts" ? h(CalendarConflicts, {
+                    events: conflicted, onPick: openEvent, onClose: () => setUtility(null)
+                }) : null,
                 connOpen ? h(ConnectionForm, { connection: conn, onClose: () => setConnOpen(false), onSaved: finishConnection }) : null
             );
+            return workbench ? h(getCalendarAppearanceContext().Provider, { value: appearance }, page) : page;
         }
         /** 月份平移：先跳到本月 1 号再加月，避免 1 月 31 日 +1 个月变成 3 月 3 日。 */
         function addMonthShift(date, delta) {

@@ -1,5 +1,12 @@
 # 更新记录
 
+## 0.16.0 (2026-11-16)
+
+- 新增 DSH 原生、Arc 浮岛、Raycast 聚光和 Bento 卡片四种布局，可选用设计稿的默认蓝、极光紫、余烬橙和薄荷绿。配色随宿主切换深浅色，浏览器记住布局和配色。
+- 可拖动日程侧栏或用方向键调整宽度。日程页显示快捷键，命令面板可搜索日程操作和布局，冲突摘要显示重叠时段并可打开相关日程核对。
+- Add four layouts and the reference design's blue, purple, orange, and green palettes. The colors follow the host theme, and the browser remembers the layout and palette.
+- Resize the sidebar with the pointer or arrow keys, search actions and layouts in the command palette, and open overlapping events from the conflict summary.
+
 ## 0.15.0 (2026-11-15)
 
 - 用 Harness 原生控件重构工作台，新增迷你月历导航、已连接日历显隐和冲突摘要，更新检查移至日程侧栏底部。

@@ -13,6 +13,7 @@ function conflictSummary(events) {
         .sort((a, b) => a.start - b.start);
     const conflicted = new Set();
     let count = 0;
+    let overlap;
     for (const [index, current] of sorted.entries()) {
         for (let i = index + 1; i < sorted.length && sorted[i].start < current.end; i++) {
             const next = sorted[i];
@@ -20,9 +21,14 @@ function conflictSummary(events) {
             count++;
             conflicted.add(current.event);
             conflicted.add(next.event);
+            const end = Math.min(current.end, next.end);
+            if (!overlap && next.start < end) overlap = {
+                start: new Date(next.start), end: new Date(end),
+                allDay: current.event.allDay && next.event.allDay
+            };
         }
     }
-    return { count, conflicted };
+    return { count, conflicted, overlap };
 }
 
 function MiniCalendar({ anchor, onPick }) {
@@ -71,12 +77,12 @@ function MiniCalendar({ anchor, onPick }) {
     );
 }
 
-function ScheduleRail({ anchor, onPick, source, showing, onVisibilityChange, conflicts, workbench, loading }) {
+function ScheduleRail({ id, anchor, onPick, source, showing, onVisibilityChange, conflicts, overlap, workbench, loading, onReviewConflicts }) {
     const hasConflicts = conflicts > 0;
     const conflictText = hasConflicts
         ? calendarText(conflicts + " 处时间重叠", conflicts === 1 ? "1 scheduling overlap" : conflicts + " scheduling overlaps")
         : calendarText("当前范围无冲突", "No conflicts in this range");
-    return h("aside", { className: styles.rail, "aria-label": calendarText("日历侧栏", "Calendar sidebar") },
+    return h("aside", { id, className: styles.rail, "aria-label": calendarText("日历侧栏", "Calendar sidebar") },
         h("div", { className: styles.railScroll },
             h(MiniCalendar, { anchor, onPick }),
             h("section", { className: styles.railSection },
@@ -84,8 +90,16 @@ function ScheduleRail({ anchor, onPick, source, showing, onVisibilityChange, con
                 h("div", { className: styles.calendarSource }, source
                     ? h(Chk, { checked: showing, label: source, title: source, onChange: onVisibilityChange })
                     : h("p", { className: styles["dshc-sub"] }, loading ? t("state.loading") : calendarText("尚未连接日历", "No calendar connected"))),
-                source && showing ? h("div", { className: clsx(styles.conflictCard, hasConflicts && styles.warn), role: "status" },
-                    h(Icon, { name: hasConflicts ? "warning" : "check", size: 14 }), conflictText) : null
+                source && showing ? h("div", { className: clsx(styles.conflictCard, hasConflicts && styles.warn) },
+                    h(Icon, { name: hasConflicts ? "warning" : "check", size: 14 }),
+                    h("div", null,
+                        h("span", { role: "status" }, conflictText),
+                        workbench && overlap ? h("div", { className: styles.conflictRange }, formatWhen(overlap)) : null,
+                        hasConflicts && onReviewConflicts ? h(Btn, {
+                            variant: "ghost", className: styles.conflictLink, onClick: onReviewConflicts
+                        }, calendarText("查看冲突", "Review conflicts")) : null
+                    )
+                ) : null
             )
         ),
         workbench ? h("div", { className: styles.railUpdates },

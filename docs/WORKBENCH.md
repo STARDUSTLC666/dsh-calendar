@@ -14,6 +14,10 @@ Update the plugin, restart DSH and open its native sidebar panel (or More if it 
 
 The UI follows the host language and theme and shows event text as entered. The schedule sidebar contains the mini calendar, visibility for the connected CalDAV calendar, conflicts, and plugin updates. In narrow windows the sidebar moves above the calendar and the week grid scrolls horizontally. Deleting an event requires confirmation.
 
+顶部提供 DSH 原生、Arc 浮岛、Raycast 聚光和 Bento 卡片四种布局，以及原稿的蓝、紫、橙、绿四套配色。配色随宿主深浅色切换，仅应用于日历工作台。拖动侧栏分隔条或聚焦后按左右键调整宽度。浏览器会记住布局、配色和侧栏宽度。焦点在工作台内时，`Ctrl/⌘ + Shift + K` 打开可搜索的快捷操作，`W`、`M`、`A` 切换周、月、议程，`N` 新建，`F` 查找空闲。
+
+The header offers DSH Native, Arc Floating, Raycast Spotlight, and Bento Cards, with the reference's blue, purple, orange, and green palettes. The palette follows the host color mode and applies to the calendar workbench. Drag the sidebar separator or focus it and use the arrow keys to resize. The browser remembers the layout, palette, and width. With focus inside the workbench, `Ctrl/⌘ + Shift + K` opens searchable actions, `W`, `M`, and `A` switch views, `N` creates a draft, and `F` finds free time.
+
 ## 源码 / Source
 
 工作台源码位于 `templates/client.js`、`templates/panels/` 和 `templates/workbench-ui.js`。样式位于 `templates/calendar.module.css`。构建脚本通过 CSS Modules 编译样式并生成 `lib/client.js`，控件从宿主加载。
