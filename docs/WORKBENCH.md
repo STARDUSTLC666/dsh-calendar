@@ -10,15 +10,15 @@ Calendar workbench with clearer date navigation, views and event editing.
 
 Update the plugin, restart DSH and open its native sidebar panel (or More if it is not pinned). The existing Settings entry remains available. DSH owns sidebar order and pinning.
 
-界面跟随宿主中英文和深浅色，保留用户内容原文。窄窗口中先显示列表，打开详情后可返回；编辑器按可用宽度分栏或顺序排列。危险操作需要明确确认，未保存内容不会因切页而静默丢失。
+界面跟随宿主中英文和深浅色，保留日程原文。日程侧栏提供迷你月历、当前 CalDAV 日历的显隐、冲突摘要和插件更新。窄窗口中侧栏上移，周网格可横向滚动。删除日程前需确认。
 
-The UI follows host language and theme without translating user content. Narrow master/detail views have a Back action; editors adapt their columns to available space. Destructive actions require confirmation and edits are protected.
+The UI follows the host language and theme and shows event text as entered. The schedule sidebar contains the mini calendar, visibility for the connected CalDAV calendar, conflicts, and plugin updates. In narrow windows the sidebar moves above the calendar and the week grid scrolls horizontally. Deleting an event requires confirmation.
 
 ## 源码 / Source
 
-编辑 templates/client.js、templates/panels/*.js 与 templates/workbench-ui.js，运行 pnpm run build。lib/client.js 是确定性产物，请随源码提交。公共组件的规范源位于 dsh-suite/ui/workbench-ui.js，Suite 的同步脚本显式分发副本；单个仓库可独立构建和安装。
+工作台源码位于 `templates/client.js`、`templates/panels/` 和 `templates/workbench-ui.js`。样式位于 `templates/calendar.module.css`。构建脚本通过 CSS Modules 编译样式并生成 `lib/client.js`，控件从宿主加载。
 
-Edit the template sources and run pnpm run build. Commit generated lib/client.js with source changes. The vendored UI has no Suite runtime dependency.
+The workbench sources live in `templates/client.js`, `templates/panels/`, and `templates/workbench-ui.js`. The build compiles `templates/calendar.module.css` and generates `lib/client.js`. The client loads the controls from the host.
 
 ## 验收范围 / Validation boundary
 

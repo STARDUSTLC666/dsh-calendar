@@ -1,5 +1,14 @@
 # 更新记录
 
+## 0.15.0 (2026-11-15)
+
+- 用 Harness 原生控件重构工作台，新增迷你月历导航、已连接日历显隐和冲突摘要，更新检查移至日程侧栏底部。
+- 周网格空白时段和已有日程可直接进入草稿核对。空闲查找、ICS 预览与重试、CalDAV 连接测试使用统一的宿主样式。
+- 支持 DSH 0.2.1-rc.3 及更新版本，跟随宿主中英文与深浅色。
+- Rebuild the workbench with native Harness controls. Add mini-calendar navigation, calendar visibility and conflict summaries, and move update checks to the schedule sidebar.
+- Open drafts directly from an open slot or existing event. Availability, ICS preview and retry, and CalDAV connection testing use the same host design system.
+- Support DSH 0.2.1-rc.3 and later with host language and theme settings.
+
 ## 0.14.6 (2026-11-14)
 
 - 适配 DSH 0.2.2-rc.3：最低 Harness 版本声明提升至 0.2.2-rc.3，运行时代码未变。

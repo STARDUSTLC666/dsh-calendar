@@ -4,10 +4,10 @@ window.__ModuleLoader__.load({ id: "dsh-calendar", factory: (require) => {
         var exports = module.exports;
         "use strict";
         const React = require("react");
-        const W = createWorkbenchUI(React);
-let calendarHostContext;
-        const { useState, useEffect, useMemo, useRef, useCallback, useId } = React;
+        let calendarHostContext;
+        const { useState, useEffect, useMemo, useRef, useId } = React;
         const h = React.createElement;
+        // @calendar-ui
         // Resolve against the Harness document base, including any reverse-proxy prefix.
         const ROUTE = "_dsh/dsh-calendar/settings";
         const IMPORT_ROUTE = "api/dsh-calendar/import";
@@ -31,108 +31,6 @@ let calendarHostContext;
             }
             catch (error) { /* 写不进去就算了 */ }
         }
-        /* @ui-css-start */
-        const CSS = [
-            ".dshc-root{color:var(--dsw-alias-label-primary,#111);font-size:13px;line-height:1.5}",
-            // 面板可能出现在两个宽度差很大的容器里（对话页浮层 ~760px、设置页更窄）。
-            // 用容器查询按「面板自己的宽度」适配：窄的时候藏掉时间前缀与重复的标题，
-            // 让芯片至少能把日程标题露出来。
-            ".dshc-shell{background:var(--dsw-alias-bg-layer-1,#fff);border:1px solid var(--dsw-alias-border-l2,rgba(0,0,0,.08));border-radius:14px;padding:14px 16px 16px;container-type:inline-size}",
-            "@container (max-width: 620px){.dshc-title{display:none}.dshc-chip .t{display:none}.dshc-toolbar{gap:6px}.dshc-monthhead{min-width:0}}",
-            ".dshc-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}",
-            ".dshc-title{font-size:15px;font-weight:600;margin:0}",
-            ".dshc-sub{color:var(--dsw-alias-label-tertiary,#6b7280);font-size:12px}",
-            ".dshc-spacer{flex:1}",
-            ".dshc-btn{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--dsw-alias-border-l2,rgba(0,0,0,.1));background:var(--dsw-alias-bg-layer-1,#fff);color:var(--dsw-alias-label-primary,#111);border-radius:9px;padding:5px 11px;font-size:12px;cursor:pointer;transition:background .12s,border-color .12s}",
-            ".dshc-btn:hover:not(:disabled){background:color-mix(in srgb,var(--dsw-alias-label-primary,#111) 6%,transparent)}",
-            ".dshc-btn:disabled{opacity:.5;cursor:not-allowed}",
-            ".dshc-btn.primary{background:var(--dsw-alias-button-primary-fill,#2563eb);border-color:transparent;color:var(--dsw-alias-label-primary-foreground,#fff)}",
-            ".dshc-btn.primary:hover:not(:disabled){background:var(--dsw-alias-button-primary-hover,#1d4ed8)}",
-            ".dshc-btn.danger{color:var(--dsw-alias-state-error-primary,#dc2626);border-color:var(--dsw-alias-state-error-primary,#dc2626)}",
-            ".dshc-btn.ghost{border-color:transparent;background:transparent}",
-            ".dshc-tabs{display:inline-flex;background:var(--dsw-alias-bg-layer-2,rgba(0,0,0,.05));border-radius:10px;padding:2px;gap:2px}",
-            ".dshc-tab{border:0;background:transparent;border-radius:8px;padding:4px 10px;font-size:12px;cursor:pointer;color:var(--dsw-alias-label-tertiary,#6b7280)}",
-            ".dshc-tab.on{background:var(--dsw-alias-bg-layer-1,#fff);color:var(--dsw-alias-label-primary,#111);box-shadow:var(--dsw-elevation-prominent,0 1px 2px rgba(0,0,0,.12))}",
-            ".dshc-monthhead{text-align:center;font-size:13px;font-weight:600;min-width:104px}",
-            ".dshc-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}",
-            ".dshc-dow{text-align:center;font-size:11px;color:var(--dsw-alias-label-tertiary,#9ca3af);padding:2px 0 4px}",
-            ".dshc-cell{display:block;width:100%;min-height:88px;box-sizing:border-box;border-radius:10px;padding:5px 5px 6px;background:var(--dsw-alias-bg-layer-2,rgba(0,0,0,.03));border:1px solid transparent;cursor:pointer;text-align:left;font:inherit;color:inherit;transition:background .12s,border-color .12s;overflow:hidden}",
-            ".dshc-cell:hover{background:color-mix(in srgb,var(--dsw-alias-label-primary,#111) 7%,transparent)}",
-            ".dshc-cell.out{opacity:.45}",
-            ".dshc-cell.today{border-color:var(--dsw-alias-state-business-primary,#2563eb)}",
-            ".dshc-daynum{font-size:11px;color:var(--dsw-alias-label-tertiary,#9ca3af);margin:0 0 3px;display:flex;justify-content:space-between}",
-            ".dshc-cell.today .dshc-daynum b{background:var(--dsw-alias-state-business-primary,#2563eb);color:var(--dsw-alias-label-primary-foreground,#fff);border-radius:999px;padding:0 6px}",
-            ".dshc-cell.today .dshc-daynum b{font-weight:600}",
-            ".dshc-chip{display:block;width:100%;text-align:left;border:0;border-left:3px solid var(--dsw-alias-state-business-primary,#2563eb);background:var(--dsw-alias-bg-layer-1,#fff);color:var(--dsw-alias-label-primary,#111);border-radius:7px;padding:3px 6px;margin-bottom:3px;font-size:12px;line-height:1.35;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
-            ".dshc-chip:hover{background:var(--dsw-alias-button-elevated-fill,rgba(0,0,0,.06))}",
-            ".dshc-chip.allday{border-left-color:var(--dsw-alias-state-success-primary,#16a34a)}",
-            ".dshc-chip.recurring{border-left-color:var(--dsw-alias-state-warn-primary,#f59e0b)}",
-            ".dshc-chip .t{color:var(--dsw-alias-label-tertiary,#9ca3af);margin-right:4px}",
-            ".dshc-more{font-size:11px;color:var(--dsw-alias-label-tertiary,#9ca3af);padding-left:3px}",
-            ".dshc-week{display:grid;grid-template-columns:56px repeat(7,minmax(0,1fr));gap:4px;max-height:520px;overflow:auto}",
-            ".dshc-hour{font-size:11px;color:var(--dsw-alias-label-tertiary,#9ca3af);text-align:right;padding-right:4px;height:44px}",
-            ".dshc-daycol{position:relative;border-left:1px solid var(--dsw-alias-border-l2,rgba(0,0,0,.07));min-height:44px}",
-            ".dshc-daycol.today{background:color-mix(in srgb,var(--dsw-alias-state-business-primary,#2563eb) 7%,transparent)}",
-            ".dshc-dayhead{position:sticky;top:0;background:var(--dsw-alias-bg-layer-1,#fff);z-index:2;text-align:center;font-size:11px;color:var(--dsw-alias-label-tertiary,#9ca3af);padding-bottom:4px}",
-            ".dshc-dayhead b{color:var(--dsw-alias-label-primary,#111);font-weight:600;font-size:13px}",
-            ".dshc-slot{position:absolute;left:2px;right:2px;border-radius:7px;padding:3px 5px;font-size:11px;line-height:1.3;overflow:hidden;cursor:grab;background:var(--dsw-alias-state-business-primary,#2563eb);color:var(--dsw-alias-label-primary-foreground,#fff);border:0;text-align:left;touch-action:none;user-select:none}",
-            ".dshc-slot:active{cursor:grabbing}",
-            ".dshc-slot.dragging{opacity:.35}",
-            ".dshc-slot-title{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
-            ".dshc-slot-time{opacity:.78;white-space:nowrap}",
-            ".dshc-resize{position:absolute;left:0;right:0;bottom:0;height:6px;cursor:ns-resize;border-bottom-left-radius:7px;border-bottom-right-radius:7px}",
-            ".dshc-resize:hover{background:rgba(255,255,255,.35)}",
-            ".dshc-ghost{background:transparent !important;border:1px dashed var(--dsw-alias-state-business-primary,#2563eb);color:var(--dsw-alias-label-primary,#111);z-index:3;pointer-events:none;display:flex;flex-direction:column;justify-content:center}",
-            ".dshc-ghost.conflict{border-color:var(--dsw-alias-state-warn-primary,#f59e0b);background:color-mix(in srgb,var(--dsw-alias-state-warn-primary,#f59e0b) 18%,transparent) !important}",
-            ".dshc-draghint{margin-top:6px;font-size:11px;color:var(--dsw-alias-label-tertiary,#9ca3af)}",
-            ".dshc-confirmbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:color-mix(in srgb,var(--dsw-alias-state-warn-primary,#f59e0b) 14%,transparent);border-radius:10px;padding:8px 10px;font-size:12px;margin-bottom:10px}",
-            ".dshc-undo{display:flex;align-items:center;gap:10px;background:var(--dsw-alias-label-primary,#111);color:var(--dsw-alias-label-primary-foreground,#fff);border-radius:10px;padding:8px 12px;font-size:12px;margin-bottom:10px}",
-            ".dshc-undo-btn{border:1px solid currentColor;background:transparent;color:inherit;border-radius:7px;padding:2px 8px;font-size:12px;cursor:pointer}",
-            ".dshc-slot.allday{background:var(--dsw-alias-state-success-primary,#16a34a)}",
-            ".dshc-slot.recurring{background:var(--dsw-alias-state-warn-primary,#f59e0b);color:#1f2937}",
-            ".dshc-agenda{display:flex;flex-direction:column;gap:14px;max-height:560px;overflow:auto;padding-right:4px}",
-            ".dshc-daygroup{display:flex;flex-direction:column;gap:6px}",
-            ".dshc-daylabel{display:flex;align-items:baseline;gap:8px;position:sticky;top:0;background:var(--dsw-alias-bg-layer-1,#fff);padding:2px 0}",
-            ".dshc-daylabel b{font-size:13px}",
-            ".dshc-row{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border-radius:10px;background:var(--dsw-alias-bg-layer-2,rgba(0,0,0,.03));cursor:pointer;border-left:3px solid var(--dsw-alias-state-business-primary,#2563eb)}",
-            ".dshc-row:hover{background:color-mix(in srgb,var(--dsw-alias-label-primary,#111) 7%,transparent)}",
-            ".dshc-row.allday{border-left-color:var(--dsw-alias-state-success-primary,#16a34a)}",
-            ".dshc-row.recurring{border-left-color:var(--dsw-alias-state-warn-primary,#f59e0b)}",
-            ".dshc-time{font-variant-numeric:tabular-nums;color:var(--dsw-alias-label-tertiary,#6b7280);min-width:96px;font-size:12px;padding-top:1px}",
-            ".dshc-main{flex:1;min-width:0}",
-            ".dshc-name{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
-            ".dshc-meta{color:var(--dsw-alias-label-tertiary,#6b7280);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
-            ".dshc-tag{display:inline-block;font-size:11px;padding:1px 6px;border-radius:999px;background:color-mix(in srgb,var(--dsw-alias-label-primary,#111) 7%,transparent);color:var(--dsw-alias-label-tertiary,#6b7280);margin-left:6px}",
-            ".dshc-empty{padding:26px 18px;text-align:center;color:var(--dsw-alias-label-tertiary,#6b7280)}",
-            ".dshc-emptyhint{margin:0 0 6px;font-size:12px;line-height:1.6;color:var(--dsw-alias-label-tertiary,#6b7280)}",
-            ".dshc-empty h3{color:var(--dsw-alias-label-primary,#111);margin:0 0 6px;font-size:14px}",
-            ".dshc-empty code{background:var(--dsw-alias-bg-layer-2,rgba(0,0,0,.05));padding:1px 5px;border-radius:5px;font-size:12px}",
-            ".dshc-alert{display:flex;gap:8px;align-items:flex-start;border-radius:10px;padding:8px 10px;font-size:12px;margin-bottom:10px;background:color-mix(in srgb,var(--dsw-alias-label-primary,#111) 5%,transparent)}",
-            ".dshc-alert.error{background:color-mix(in srgb,var(--dsw-alias-state-error-primary,#dc2626) 12%,transparent);color:var(--dsw-alias-state-error-primary,#dc2626)}",
-            ".dshc-alert.warn{background:color-mix(in srgb,var(--dsw-alias-state-warn-primary,#f59e0b) 16%,transparent)}",
-            ".dshc-alert.demo{background:color-mix(in srgb,var(--dsw-alias-state-business-primary,#2563eb) 12%,transparent)}",
-            ".dshc-skel{height:88px;border-radius:10px;background:linear-gradient(90deg,var(--dsw-alias-bg-layer-2,rgba(0,0,0,.04)) 25%,color-mix(in srgb,var(--dsw-alias-label-primary,#111) 10%,transparent) 37%,var(--dsw-alias-bg-layer-2,rgba(0,0,0,.04)) 63%);background-size:400% 100%;animation:dshc-shimmer 1.4s ease infinite}",
-            "@keyframes dshc-shimmer{0%{background-position:100% 0}100%{background-position:0 0}}",
-            ".dshc-overlay{position:fixed;inset:0;background:var(--dsw-alias-bg-mask-3,rgba(15,23,42,.42));display:flex;justify-content:flex-end;z-index:60}",
-            ".dshc-drawer{width:min(420px,92vw);height:100%;background:var(--dsw-alias-bg-layer-1,#fff);border-left:1px solid var(--dsw-alias-border-l2,rgba(0,0,0,.08));padding:18px;overflow:auto;box-shadow:var(--dsw-elevation-prominent,0 10px 30px rgba(0,0,0,.2))}",
-            ".dshc-modalwrap{position:fixed;inset:0;background:var(--dsw-alias-bg-mask-3,rgba(15,23,42,.42));display:flex;align-items:center;justify-content:center;z-index:70;padding:20px}",
-            ".dshc-modal{width:min(460px,94vw);max-height:88vh;overflow:auto;background:var(--dsw-alias-bg-layer-1,#fff);border-radius:14px;padding:18px;box-shadow:var(--dsw-elevation-prominent,0 10px 30px rgba(0,0,0,.25))}",
-            ".dshc-field{margin-bottom:10px}",
-            ".dshc-field label{display:block;font-size:12px;color:var(--dsw-alias-label-tertiary,#6b7280);margin-bottom:4px}",
-            ".dshc-input,select.dshc-input,textarea.dshc-input{width:100%;box-sizing:border-box;background:var(--dsw-specific-input-major,var(--dsw-alias-bg-layer-2,rgba(0,0,0,.03)));border:1px solid var(--dsw-alias-border-l2,rgba(0,0,0,.12));border-radius:9px;padding:7px 9px;font:inherit;color:inherit}",
-            "textarea.dshc-input{min-height:72px;resize:vertical}",
-            ".dshc-two{display:grid;grid-template-columns:1fr 1fr;gap:8px}",
-            ".dshc-check{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--dsw-alias-label-primary,#111)}",
-            ".dshc-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}",
-            ".dshc-kv{display:grid;grid-template-columns:72px 1fr;gap:6px 10px;font-size:12px;margin:12px 0 0}",
-            ".dshc-kv dt{color:var(--dsw-alias-label-tertiary,#6b7280)}",
-            ".dshc-kv dd{margin:0;word-break:break-all}",
-            ".dshc-drawertitle{font-size:16px;font-weight:600;margin:0 0 4px}",
-            ".dshc-mono{font-family:ui-monospace,Consolas,monospace;font-size:11px;color:var(--dsw-alias-label-tertiary,#6b7280);word-break:break-all}",
-            ".dshc-close{position:absolute;top:10px;right:12px}",
-            ".dshc-footer{margin-top:12px;display:flex;align-items:center;gap:8px;justify-content:space-between;color:var(--dsw-alias-label-tertiary,#9ca3af);font-size:11px}"
-        ].join("");
-        /* @ui-css-end */
         const UI = {
             zh: {
                 "nav.title": "日历",
@@ -634,67 +532,6 @@ let calendarHostContext;
             });
         }
         // ───────────────────────────── 宿主 UI 组件（可选） ─────────────────────────────
-        // 平台的 seed 模块表里有 ui-primitives；老宿主没有时退回同名自绘控件，
-        // 面板不会因为「组件库不在」整块消失。
-        var PRIM = null;
-        try {
-            PRIM = require("@deepseek-ai/dsh-client-ui-primitives");
-        }
-        catch (e) {
-            PRIM = null;
-        }
-        /** Button：有官方组件就用官方（variant/tokens 一致），否则退回 .dshc-btn。 */
-        function Btn(props) {
-            const { variant, size, icon, className, children, ...rest } = props || {};
-            if (PRIM && typeof PRIM.Button === "function") {
-                return h(PRIM.Button, Object.assign({ variant: variant || "ghost", size: size || "sm" }, rest, { className }), children);
-            }
-            const cls = ["dshc-btn", variant === "primary" ? "primary" : "", variant === "danger" ? "danger" : "", variant === "ghost" ? "ghost" : "", className || ""].join(" ").trim();
-            return h("button", Object.assign({ type: "button" }, rest, { className: cls }), children);
-        }
-        /** Input：官方版是「带图标的 span 包 input」，属性透传，这里只用其属性面。 */
-        function Txt(props) {
-            const { className, ...rest } = props || {};
-            if (PRIM && typeof PRIM.Input === "function")
-                return h(PRIM.Input, Object.assign({}, rest, { className }));
-            return h("input", Object.assign({ type: "text" }, rest, { className: ["dshc-input", className || ""].join(" ").trim() }));
-        }
-        /** Checkbox：回到原生勾选框 + 文案，语义与官方一致（label 既是可见名也是无障碍名）。 */
-        function Chk(props) {
-            if (PRIM && typeof PRIM.Checkbox === "function")
-                return h(PRIM.Checkbox, props);
-            return h("label", { className: "dshc-check" }, [
-                h("input", { type: "checkbox", checked: props.checked === true, disabled: props.disabled === true, onChange: (e) => props.onChange(e.target.checked) }),
-                h("span", null, props.label)
-            ]);
-        }
-        /** Modal：官方版是 portal + 遮罩 + Esc 语义；没有它时用同一套 class 自绘。 */
-        function Dlg(props) {
-            if (PRIM && typeof PRIM.Modal === "function") {
-                return h(PRIM.Modal, {
-                    open: props.open,
-                    onClose: props.onClose,
-                    title: props.title,
-                    closeLabel: props.closeLabel || props.title,
-                    children: h("div", { "data-dshc-scope": "1" }, props.children),
-                    footer: props.footer
-                });
-            }
-            if (!props.open)
-                return null;
-            return h("div", { className: "dshc-modalwrap", onMouseDown: (e) => { if (e.target === e.currentTarget)
-                    props.onClose(); } }, [
-                // 宿主没有官方 Modal 时的兜底：至少给出与官方版相同的对话框语义（标题就是可及名）。
-                h("div", { className: "dshc-modal", role: "dialog", "aria-modal": "true", "aria-label": props.title }, [
-                    h("div", { style: { position: "relative" } }, [
-                        h("div", { className: "dshc-drawertitle" }, props.title),
-                        h("button", { type: "button", className: "dshc-btn ghost dshc-close", onClick: props.onClose, "aria-label": props.closeLabel || props.title }, "\u2715")
-                    ]),
-                    props.children,
-                    props.footer
-                ])
-            ]);
-        }
         /** 复制 uid：优先官方 writeClipboard（它处理了非 https 的降级），否则走 navigator。 */
         async function copyText(text) {
             try {
@@ -799,23 +636,26 @@ let calendarHostContext;
         // ───────────────────────────── 小部件 ─────────────────────────────
         /** 事件属于哪一类：影响左侧色条（全天绿 / 重复黄 / 普通蓝）。 */
         function eventClass(event) {
-            return event.allDay ? "allday" : (event.rrule || event.isOccurrence ? "recurring" : "");
+            return event.allDay ? styles.allday : isRecurring(event) ? styles.recurring : undefined;
+        }
+        function eventKey(event) {
+            return event.uid + "@" + event.start;
         }
         function Chip(props) {
-            const { event, onClick } = props;
+            const { event, onClick, conflicted } = props;
             return h("button", {
                 type: "button",
-                className: "dshc-chip " + eventClass(event),
+                className: clsx(styles["dshc-chip"], eventClass(event), conflicted && styles.conflicted),
                 title: event.summary,
                 onClick: (e) => { e.stopPropagation(); onClick(event); }
-            }, [
+            },
                 event.allDay ? null : h("span", { className: "t" }, hhmm(startDate(event))),
                 h("span", null, event.summary)
-            ]);
+            );
         }
         /** 议程里的一行：时间列 + 标题/地点 + 重复角标。 */
         function Row(props) {
-            const { event, onClick } = props;
+            const { event, onClick, conflicted } = props;
             const meta = [];
             if (event.location)
                 meta.push(event.location);
@@ -823,19 +663,19 @@ let calendarHostContext;
                 meta.push(humanRepeat(event.rrule));
             else if (event.isOccurrence)
                 meta.push(t("repeat.occurrence"));
-            return h("div", { className: "dshc-row " + eventClass(event), onClick: () => onClick(event), role: "button", tabIndex: 0,
-                onKeyDown: (e) => { if (e.key === "Enter" || e.key === " ")
-                    onClick(event); } }, [
-                h("div", { className: "dshc-time" }, event.allDay ? t("format.allday") : (hhmm(startDate(event)) + "–" + hhmm(endDate(event)))),
-                h("div", { className: "dshc-main" }, [
-                    h("div", { className: "dshc-name" }, event.summary),
-                    meta.length > 0 ? h("div", { className: "dshc-meta" }, meta.join(" · ")) : null
-                ])
-            ]);
+            return h("button", {
+                type: "button", className: clsx(styles["dshc-row"], conflicted && styles.conflicted), onClick: () => onClick(event)
+            },
+                h("span", { className: styles["dshc-time"] }, event.allDay ? t("format.allday") : (hhmm(startDate(event)) + "–" + hhmm(endDate(event)))),
+                h("span", { className: styles["dshc-main"] },
+                    h("span", { className: styles["dshc-name"] }, event.summary),
+                    meta.length > 0 ? h("span", { className: styles["dshc-meta"] }, meta.join(" · ")) : null
+                )
+            );
         }
         /** 月视图：6×7 网格；每格最多 3 条，多的收成「+N」。 */
         function MonthView(props) {
-            const { anchor, events, onPick, onCreateAt } = props;
+            const { anchor, events, onPick, onCreateAt, conflicted } = props;
             const days = monthGridDays(anchor);
             const today = dayKey(new Date());
             const byDay = {};
@@ -859,26 +699,26 @@ let calendarHostContext;
                     key: key,
                     role: "button",
                     tabIndex: 0,
-                    className: "dshc-cell" + (day.getMonth() !== anchor.getMonth() ? " out" : "") + (key === today ? " today" : ""),
+                    className: clsx(styles["dshc-cell"], day.getMonth() !== anchor.getMonth() && styles.out, key === today && "today"),
                     // 读屏只会念出格子里的日期数字，不说这一格是干什么的；补上「哪天 + 新建」的完整名字。
                     "aria-label": formatDay(day, { withYear: true }) + " · " + t("action.new"),
                     "aria-current": key === today ? "date" : undefined,
                     onClick: () => onCreateAt(day),
-                    onKeyDown: (e) => { if (e.key === "Enter" || e.key === " ") {
+                    onKeyDown: (e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
                         e.preventDefault();
                         onCreateAt(day);
                     } },
                     title: t("action.new")
-                }, [
-                    h("div", { className: "dshc-daynum" }, [key === today ? h("b", null, String(day.getDate())) : h("span", null, String(day.getDate()))]),
-                    shown.map((event) => h(Chip, { key: event.uid + "@" + key, event, onClick: onPick })),
-                    rest > 0 ? h("div", { className: "dshc-more" }, "+" + rest) : null
-                ]));
+                },
+                    h("div", { className: styles["dshc-daynum"] }, h("b", null, day.getDate())),
+                    shown.map((event) => h(Chip, { key: eventKey(event), event, onClick: onPick, conflicted: conflicted?.has(event) })),
+                    rest > 0 ? h("div", { className: styles["dshc-more"] }, "+" + rest) : null
+                ));
             }
-            return h("div", null, [
-                h("div", { className: "dshc-grid", style: { marginBottom: "4px" } }, WEEKDAYS_ZH.map((d, i) => h("div", { className: "dshc-dow", key: d }, UI_LANG === "en" ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][i] : "周" + d))),
-                h("div", { className: "dshc-grid" }, cells)
-            ]);
+            return h("div", null,
+                h("div", { className: styles["dshc-grid"] }, WEEKDAYS_ZH.map((d, i) => h("div", { className: styles["dshc-dow"], key: d }, weekDayLabel(i)))),
+                h("div", { className: styles["dshc-grid"] }, cells)
+            );
         }
         /**
          * 周视图：7 列 × 24 小时网格。除了画日程，它还负责改期：
@@ -895,7 +735,7 @@ let calendarHostContext;
          *      按渲染闭包挂/摘会出现「摘不掉 → 卸载后 pointerup 替用户提交一次改期」。
          */
         function WeekView(props) {
-            const { anchor, events, onPick, onCreateAt, onReschedule } = props;
+            const { anchor, events, onPick, onCreateAt, onReschedule, conflicted } = props;
             /** 示例模式下没有 onReschedule：不做改期，也不显示拖拽提示。 */
             const canEdit = typeof onReschedule === "function";
             const HOUR_PX = 44;
@@ -1133,7 +973,7 @@ let calendarHostContext;
                 keyEvent.preventDefault();
                 onReschedule(event, rangeOfSlot(moveSlot(slot, deltaDays, deltaMinutes, SNAP_MINUTES)), "move");
             };
-            const hoursColumn = h("div", { key: "__hours" }, [h("div", { className: "dshc-dayhead", key: "h" }, "\u00a0")].concat(Array.from({ length: 24 }, (_, hour) => h("div", { className: "dshc-hour", key: "h" + hour }, hour === 0 ? "" : pad2(hour) + ":00"))));
+            const hoursColumn = h("div", { key: "__hours" }, [h("div", { className: styles["dshc-dayhead"], key: "h" }, "\u00a0")].concat(Array.from({ length: 24 }, (_, hour) => h("div", { className: styles["dshc-hour"], key: "h" + hour }, hour === 0 ? "" : pad2(hour) + ":00"))));
             const dayColumns = days.map((day) => {
                 const key = dayKey(day);
                 const dayTimed = timed.filter((event) => daysOfEvent(event).some((d) => dayKey(d) === key));
@@ -1156,11 +996,11 @@ let calendarHostContext;
                     const height = Math.max(18, ((to - from) / 60000) * (HOUR_PX / 60));
                     const dragging = ghost !== null && ghost.uid === event.uid;
                     return h("div", {
-                        key: event.uid,
+                        key: eventKey(event),
                         role: "button",
                         tabIndex: 0,
                         "data-uid": event.uid,
-                        className: "dshc-slot " + eventClass(event) + (dragging ? " dragging" : ""),
+                        className: clsx(styles["dshc-slot"], eventClass(event), canEdit && styles.movable, dragging && styles.dragging, conflicted?.has(event) && styles.conflicted),
                         style: Object.assign({ top: top + "px", height: height + "px" }, laneStyle(lane)),
                         title: event.summary + " " + hhmm(from) + "\u2013" + hhmm(to) + (canEdit === true ? " · " + t("drag.moveTitle") : ""),
                         onPointerDown: (e) => beginDrag(event, e, "move"),
@@ -1174,39 +1014,52 @@ let calendarHostContext;
                             }
                             onPick(event);
                         }
-                    }, h("div", { className: "dshc-slot-title" }, event.summary), h("div", { className: "dshc-slot-time" }, hhmm(from) + "\u2013" + hhmm(to)), canEdit === true ? h("div", { className: "dshc-resize", title: t("drag.resizeTitle"), onPointerDown: (e) => { e.stopPropagation(); beginDrag(event, e, "resize"); } }) : null);
+                    }, h("div", { className: styles["dshc-slot-title"] }, event.summary), h("div", { className: styles["dshc-slot-time"] }, hhmm(from) + "\u2013" + hhmm(to)), canEdit === true ? h("div", { className: styles["dshc-resize"], title: t("drag.resizeTitle"), onPointerDown: (e) => { e.stopPropagation(); beginDrag(event, e, "resize"); } }) : null);
                 });
                 const ghostBlock = ghost !== null && ghost.slot.dayKey === key
                     ? h("div", {
-                        className: "dshc-slot dshc-ghost" + (ghost.conflicts > 0 ? " conflict" : ""),
+                        className: clsx(styles["dshc-slot"], styles["dshc-ghost"], ghost.conflicts > 0 && styles.warn),
                         style: Object.assign({ top: (ghost.slot.minutes * (HOUR_PX / 60)) + "px", height: Math.max(18, ghost.slot.durationMinutes * (HOUR_PX / 60)) + "px" }, laneStyle(0)),
                         key: "__ghost"
-                    }, h("div", { className: "dshc-slot-title" }, ghost.conflicts > 0 ? t("drag.conflict", { n: ghost.conflicts }) + " · " + t("drag.keep") : t("drag.drop")), h("div", { className: "dshc-slot-time" }, pad2(Math.floor(ghost.slot.minutes / 60)) + ":" + pad2(ghost.slot.minutes % 60) + " \u2192 " + pad2(Math.floor((ghost.slot.minutes + ghost.slot.durationMinutes) / 60)) + ":" + pad2((ghost.slot.minutes + ghost.slot.durationMinutes) % 60)))
+                    }, h("div", { className: styles["dshc-slot-title"] }, ghost.conflicts > 0 ? t("drag.conflict", { n: ghost.conflicts }) + " · " + t("drag.keep") : t("drag.drop")), h("div", { className: styles["dshc-slot-time"] }, pad2(Math.floor(ghost.slot.minutes / 60)) + ":" + pad2(ghost.slot.minutes % 60) + " \u2192 " + pad2(Math.floor((ghost.slot.minutes + ghost.slot.durationMinutes) / 60)) + ":" + pad2((ghost.slot.minutes + ghost.slot.durationMinutes) % 60)))
                     : null;
-                // 可变参数：数组子节点要求 key，而这两块在这里各只出现一次。
-                return h("div", { key, style: { minWidth: 0 } }, h("div", { className: "dshc-dayhead" }, h("b", null, String(day.getDate())), " ", relativeDay(day)), h("div", {
-                    className: "dshc-daycol" + (key === today ? " today" : ""),
-                    "data-day": key,
-                    style: { height: (24 * HOUR_PX) + "px" },
-                    onClick: (clickEvent) => {
-                        // 只有点在格子空白处才新建：拖拽结束后的 click 可能落在 daycol 上，靠 suppressClick 兜住。
-                        if (clickEvent.target !== clickEvent.currentTarget)
-                            return;
-                        if (suppressClick.current === true)
-                            return;
-                        onCreateAt(day);
+                const hourSlots = Array.from({ length: 24 }, (_, hour) => h("button", {
+                    key: hour, type: "button", className: styles.hourSlot, "data-hour": hour,
+                    "aria-label": formatDay(day, { withYear: true }) + " " + pad2(hour) + ":00 · " + t("action.new"),
+                    tabIndex: hour === 7 ? 0 : -1,
+                    onClick: () => {
+                        if (suppressClick.current) { suppressClick.current = false; return; }
+                        onCreateAt(day, hour);
                     },
-                    title: t("action.new")
-                }, blocks.concat(ghostBlock === null ? [] : [ghostBlock])));
+                    onKeyDown: event => {
+                        const change = event.key === "ArrowUp" ? -1 : event.key === "ArrowDown" ? 1 : 0;
+                        if (change === 0) return;
+                        event.preventDefault();
+                        event.currentTarget.parentElement.querySelector('[data-hour="' + (hour + change) + '"]')?.focus();
+                    }
+                }));
+                return h("div", { key },
+                    h("div", { className: clsx(styles["dshc-dayhead"], key === today && "today"), "aria-current": key === today ? "date" : undefined },
+                        weekDayLabel(isoWeekday(day) - 1), h("b", null, day.getDate())
+                    ),
+                    h("div", {
+                        className: clsx(styles["dshc-daycol"], key === today && "today"), "data-day": key,
+                        onClick: clickEvent => {
+                            if (clickEvent.target !== clickEvent.currentTarget)
+                                return;
+                            if (suppressClick.current) { suppressClick.current = false; return; }
+                            onCreateAt(day);
+                        }
+                    }, hourSlots, blocks, ghostBlock)
+                );
             });
-            // 可变参数而不是数组：数组子节点要求 key，而这三个都只在 WeekView 里出现一次。
-            return h("div", null, allDay.length > 0
-                ? h("div", { style: { marginBottom: "8px" } }, allDay.map((event) => h(Row, { key: event.uid, event, onClick: onPick })))
-                : null, h("div", { className: "dshc-week", ref: scroller }, [hoursColumn].concat(dayColumns)), canEdit === true ? h("div", { className: "dshc-draghint" }, t("drag.hint")) : null);
+            return h("div", { className: styles.weekView }, allDay.length > 0
+                ? h("div", { className: styles.allDayList }, allDay.map((event) => h(Row, { key: eventKey(event), event, onClick: onPick, conflicted: conflicted?.has(event) })))
+                : null, h("div", { className: "dshc-week", ref: scroller }, hoursColumn, dayColumns), canEdit === true ? h("div", { className: styles["dshc-draghint"] }, t("drag.hint")) : null);
         }
         /** 议程视图：从今天起按天分组，最像「接下来要干什么」。 */
         function AgendaView(props) {
-            const { events, onPick, onCreateAt } = props;
+            const { events, onPick, onCreateAt, conflicted } = props;
             const groups = [];
             const index = {};
             for (const event of sortForDisplay(events)) {
@@ -1219,30 +1072,17 @@ let calendarHostContext;
                 groups[index[key]].items.push(event);
             }
             if (groups.length === 0)
-                return h(W.Empty, { icon: "calendar", title: t("state.empty"), action: h(W.Button, { icon: "plus", variant: "primary", onClick: () => onCreateAt(new Date()) }, t("action.new")) });
-            return h("div", { className: "dshc-agenda" }, groups.map((group) => h("div", { className: "dshc-daygroup", key: group.key }, [
-                h("div", { className: "dshc-daylabel" }, [
+                return h(EmptyState, { title: t("state.empty"), action: h(Btn, { icon: "plus", variant: "primary", onClick: () => onCreateAt(new Date()) }, t("action.new")) });
+            return h("div", { className: styles["dshc-agenda"] }, groups.map((group) => h("div", { className: styles["dshc-daygroup"], key: group.key },
+                h("div", { className: styles["dshc-daylabel"] },
                     h("b", null, formatDay(group.day)),
-                    h("span", { className: "dshc-sub" }, relativeDay(group.day)),
-                    h("span", { className: "dshc-spacer" }),
-                    h("button", { type: "button", className: "dshc-btn ghost", onClick: () => onCreateAt(group.day) }, t("action.new"))
-                ]),
-                group.items.map((event) => h(Row, { key: event.uid, event, onClick: onPick }))
-            ])));
+                    h("span", { className: styles["dshc-sub"] }, relativeDay(group.day)),
+                    h("span", { className: styles["dshc-spacer"] }),
+                    h(Btn, { variant: "ghost", onClick: () => onCreateAt(group.day) }, t("action.new"))
+                ),
+                group.items.map((event) => h(Row, { key: eventKey(event), event, onClick: onPick, conflicted: conflicted?.has(event) }))
+            )));
         }
-        // ───────────────────────────── 悬浮面板的样式补充 ─────────────────────────────
-        const CSS_EXTRA = [
-            ".dshc-fab{position:fixed;right:18px;bottom:88px;z-index:55;width:38px;height:38px;border-radius:999px;border:1px solid var(--dsw-alias-border-l2,rgba(0,0,0,.12));background:var(--dsw-alias-bg-layer-1,#fff);color:var(--dsw-alias-label-primary,#111);box-shadow:var(--dsw-elevation-prominent,0 6px 18px rgba(0,0,0,.18));cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:.62;transition:opacity .15s,transform .15s}",
-            ".dshc-fab:hover{opacity:1;transform:translateY(-1px)}",
-            ".dshc-fab.on{opacity:1;background:var(--dsw-alias-button-primary-fill,#2563eb);color:var(--dsw-alias-label-primary-foreground,#fff);border-color:transparent}",
-            ".dshc-float{position:fixed;right:18px;bottom:136px;z-index:56;box-sizing:border-box;width:min(760px,calc(100vw - 36px));max-height:min(calc(100vh - 160px),720px);overflow:auto;background:var(--dsw-alias-bg-layer-1,#fff);border:1px solid var(--dsw-alias-border-l2,rgba(0,0,0,.1));border-radius:16px;box-shadow:var(--dsw-elevation-prominent,0 18px 48px rgba(0,0,0,.28));padding:14px}",
-            ".dshc-float .dshc-shell{border:0;padding:0;background:transparent}",
-            ".dshc-steps{margin:2px 0 10px;font-size:12px;color:var(--dsw-alias-label-tertiary,#6b7280)}",
-            ".dshc-steps summary{cursor:pointer;color:var(--dsw-alias-state-business-primary,#2563eb)}",
-            ".dshc-steps ol{margin:6px 0 0;padding-left:18px;line-height:1.6}",
-            ".dshc-link{color:var(--dsw-alias-state-business-primary,#2563eb);text-decoration:none}",
-            ".dshc-toast{position:fixed;right:18px;bottom:182px;z-index:57;background:var(--dsw-alias-label-primary,#111);color:var(--dsw-alias-label-primary-foreground,#fff);border-radius:10px;padding:8px 12px;font-size:12px;box-shadow:var(--dsw-elevation-prominent,0 8px 20px rgba(0,0,0,.25))}"
-        ].join("");
         // ───────────────────────────── 数据 ─────────────────────────────
         /** 去掉毫秒：后端的 assertIsoTime 只认秒级 ISO，浏览器 toISOString 带 .000Z。 */
         function isoOf(date) { return date.toISOString().replace(/\.\d{3}Z$/, "Z"); }
@@ -1319,13 +1159,17 @@ let calendarHostContext;
         /** 新建表单：默认落在被点的那一天，上午 10:00–11:00（日历产品的惯例）。 */
         function draftAt(date, hour) {
             const d = date || new Date();
-            const startHour = typeof hour === "number" ? hour : 10;
+            if (typeof hour === "number") {
+                const start = startOfDay(d);
+                start.setHours(hour);
+                return draftOfEvent({ start: isoOf(start), end: isoOf(new Date(+start + 3600000)), allDay: false });
+            }
             return {
                 uid: undefined,
                 summary: "",
                 date: dayKey(d),
-                startTime: pad2(startHour) + ":00",
-                endTime: pad2(Math.min(23, startHour + 1)) + ":00",
+                startTime: "10:00",
+                endTime: "11:00",
                 allDay: false,
                 location: "",
                 description: "",
@@ -1395,117 +1239,6 @@ let calendarHostContext;
                 return { uid: "__draft", summary: fields.summary || "(未命名)", start: fields.start, end: fields.end, allDay: draft.allDay === true };
             } catch { return null; }
         }
-        function EventForm(props) {
-            const { draft, events, onCancel, onSubmit, busy, error } = props;
-            const formId = useId();
-            const [form, setForm] = useState(draft);
-// Update protection: dsh-calendar.event
-__stardustUpdatesGuard(React, "dsh-calendar.event", { dirty: JSON.stringify(form) !== JSON.stringify(draft), busy: !!busy });
-
-            useEffect(() => { setForm(draft); }, [draft.uid, draft.date, draft.startTime, draft.summary]);
-            const patch = (fields) => setForm((prev) => Object.assign({}, prev, fields));
-            const isEdit = draft.uid !== undefined;
-            const pseudo = asPseudoEvent(form);
-            const conflicts = form.summary.trim() === "" || !pseudo ? [] : events.filter((event) => overlaps(event, pseudo) && event.uid !== form.uid);
-            const canSave = form.summary.trim() !== "" && !!pseudo && Date.parse(pseudo.end) >= Date.parse(pseudo.start);
-            const body = h("div", null, [
-                form.sourceRange && !form.allDay && pseudo ? h('p',{className:'dshe-hint',role:'note'},calendarText('实际时段：','Resolved time: ')+[pseudo.start,pseudo.end].map(iso=>new Intl.DateTimeFormat(UI_LANG==='en'?'en-US':'zh-CN',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',timeZoneName:'shortOffset'}).format(new Date(iso))).join(' — ')+calendarText('。未修改的钟点保留原 UTC 偏移。',' · Unchanged times preserve their original UTC offsets.')) : null,
-                draft.isSeries ? h("div", { className: "dshc-alert" }, t("form.series")) : null,
-                error ? h("div", { className: "dshc-alert error" }, error) : null,
-                h("div", { className: "dshc-field" }, [
-                    h("label", { htmlFor: formId + "-summary" }, t("field.summary")),
-                    h(Txt, { id: formId + "-summary", value: form.summary, autoFocus: true, onChange: (e) => patch({ summary: e.target.value }), placeholder: t("form.newTitle") })
-                ]),
-                h("div", { className: "dshc-field" }, [
-                    h("label", { htmlFor: formId + "-date" }, t("field.date")),
-                    h(Txt, { id: formId + "-date", type: "date", value: form.date, onChange: (e) => patch({ date: e.target.value }) })
-                ]),
-                form.allDay === true ? null : h("div", { className: "dshc-two" }, [
-                    h("div", { className: "dshc-field" }, [h("label", { htmlFor: formId + "-start" }, t("field.start")), h(Txt, { id: formId + "-start", type: "time", value: form.startTime, onChange: (e) => patch({ startTime: e.target.value }) })]),
-                    h("div", { className: "dshc-field" }, [h("label", { htmlFor: formId + "-end" }, t("field.end")), h(Txt, { id: formId + "-end", type: "time", value: form.endTime, onChange: (e) => patch({ endTime: e.target.value }) })])
-                ]),
-                h("div", { className: "dshc-field" }, [h(Chk, { checked: form.allDay === true, label: t("field.allDay"), onChange: (next) => patch({ allDay: next }) })]),
-                h("div", { className: "dshc-field" }, [
-                    h("label", { htmlFor: formId + "-repeat" }, t("field.repeat")),
-                    h("select", { id: formId + "-repeat", className: "dshc-input", value: form.repeat, onChange: (e) => patch({ repeat: e.target.value }) }, [
-                        h("option", { value: "", key: "none" }, t("repeat.none")),
-                        h("option", { value: "daily", key: "d" }, t("repeat.daily")),
-                        h("option", { value: "weekly", key: "w" }, t("repeat.weekly")),
-                        h("option", { value: "monthly", key: "m" }, t("repeat.monthly")),
-                        h("option", { value: "yearly", key: "y" }, t("repeat.yearly")),
-                        h("option", { value: "custom", key: "c" }, t("repeat.custom"))
-                    ])
-                ]),
-                form.repeat === "custom" ? h("div", { className: "dshc-field" }, [
-                    h("label", { htmlFor: formId + "-rrule" }, "RRULE"),
-                    h(Txt, { id: formId + "-rrule", value: form.rrule, placeholder: "FREQ=WEEKLY;COUNT=10", onChange: (e) => patch({ rrule: e.target.value }) })
-                ]) : null,
-                h("div", { className: "dshc-field" }, [h("label", { htmlFor: formId + "-location" }, t("field.location")), h(Txt, { id: formId + "-location", value: form.location, onChange: (e) => patch({ location: e.target.value }) })]),
-                h("div", { className: "dshc-field" }, [
-                    h("label", { htmlFor: formId + "-description" }, t("field.description")),
-                    h("textarea", { id: formId + "-description", className: "dshc-input", value: form.description, onChange: (e) => patch({ description: e.target.value }) })
-                ]),
-                conflicts.length > 0 ? h("div", { className: "dshc-alert warn" }, [
-                    h("div", null, [
-                        h("div", null, t("conflict.title", { n: conflicts.length })),
-                        conflicts.slice(0, 3).map((event) => h("div", { key: event.uid }, "\u2022 " + formatWhen(event) + " " + event.summary)),
-                        h("div", { className: "dshc-sub" }, t("conflict.hint"))
-                    ])
-                ]) : null
-            ]);
-            const footer = h("div", { className: "dshc-actions" }, [
-                h(Btn, { key: "cancel", variant: "ghost", onClick: onCancel, disabled: busy === true }, t("action.cancel")),
-                h(Btn, { key: "save", variant: "primary", onClick: () => onSubmit(form), disabled: busy === true || canSave !== true }, busy === true ? "\u2026" : t("action.save"))
-            ]);
-            return h(Dlg, {
-                open: true,
-                onClose: onCancel,
-                title: isEdit ? t("form.editTitle") : t("form.newTitle"),
-                children: body,
-                footer: footer
-            });
-        }
-        // ───────────────────────────── 详情抽屉 ─────────────────────────────
-        function EventDrawer(props) {
-            const { event, onClose, onEdit, onDelete, busy, confirmDelete, setConfirmDelete, events, readOnly } = props;
-            const [copied, setCopied] = useState(false);
-            const seriesCount = event.isOccurrence ? events.filter((e) => e.seriesStart === event.seriesStart).length : 0;
-            return h("div", { className: "dshc-overlay", onMouseDown: (e) => { if (e.target === e.currentTarget)
-                    onClose(); } }, [
-                h("div", { className: "dshc-drawer", style: { position: "relative" } }, [
-                    h("button", { type: "button", className: "dshc-btn ghost dshc-close", onClick: onClose, "aria-label": "close" }, "\u2715"),
-                    h("div", { className: "dshc-drawertitle" }, event.summary),
-                    h("div", { className: "dshc-sub" }, [
-                        formatWhen(event),
-                        h("span", { className: "dshc-tag" }, formatDuration(event))
-                    ].filter(Boolean)),
-                    h("dl", { className: "dshc-kv" }, [
-                        event.rrule ? h("dt", { key: "rdt" }, t("repeat.recurring")) : null,
-                        event.rrule ? h("dd", { key: "rdd" }, humanRepeat(event.rrule) + " · " + event.rrule) : null,
-                        event.isOccurrence && !event.rrule ? h("dt", { key: "odt" }, t("repeat.occurrence")) : null,
-                        event.isOccurrence && !event.rrule ? h("dd", { key: "odd" }, (seriesCount > 0 ? seriesCount + " / " : "") + t("repeat.occurrence")) : null,
-                        event.location ? h("dt", { key: "ldt" }, t("field.location")) : null,
-                        event.location ? h("dd", { key: "ldd" }, event.location) : null,
-                        event.description ? h("dt", { key: "ddt" }, t("field.description")) : null,
-                        event.description ? h("dd", { key: "ddd", style: { whiteSpace: "pre-wrap" } }, event.description) : null,
-                        h("dt", { key: "udt" }, t("field.uid")),
-                        h("dd", { key: "udd" }, h("span", { className: "dshc-mono" }, event.uid))
-                    ].filter(Boolean)),
-                    h("div", { className: "dshc-actions" }, [
-                        h(Btn, { key: "copy", onClick: async () => { const ok = await copyText(event.uid); if (ok) {
-                                setCopied(true);
-                                setTimeout(() => setCopied(false), 1600);
-                            } } }, copied ? t("action.copied") : t("action.copy")),
-                        h("span", { className: "dshc-spacer" }),
-                        confirmDelete
-                            ? h(Btn, { key: "confirm", variant: "primary", disabled: busy === true || readOnly === true, onClick: () => onDelete(event) }, t("action.confirmDelete"))
-                            : h(Btn, { key: "delete", variant: "danger", onClick: () => setConfirmDelete(true), disabled: busy === true || readOnly === true }, t("action.delete")),
-                        h(Btn, { key: "edit", variant: "outline", onClick: () => onEdit(event), disabled: busy === true || readOnly === true }, t("action.edit"))
-                    ]),
-                    confirmDelete ? h("div", { className: "dshc-sub", style: { textAlign: "right", marginTop: "6px" } }, t(isRecurring(event) ? "confirm.deleteSeries" : "confirm.delete", { name: event.summary })) : null
-                ])
-            ]);
-        }
         // ───────────────────────────── 连接设置 ─────────────────────────────
         /** 每个服务商要填哪些格子。顺序就是表单里的顺序。 */
         const PROVIDER_FIELDS = {
@@ -1568,12 +1301,16 @@ __stardustUpdatesGuard(React, "dsh-calendar.event", { dirty: JSON.stringify(form
          * 所以「保存成功」等价于「这套凭据刚才真的连上了」。
          */
         function ConnectionForm(props) {
-            const { connection, onClose, onSaved } = props;
+            const { connection, onClose, onSaved, inline, onBusy } = props;
             const formId = useId();
             const [form, setForm] = useState(() => connectionDraftOf(connection));
             const [busy, setBusy] = useState("");
             const [result, setResult] = useState(null);
-            const maySave = connection === null || connection.settingsAvailable !== false;
+            const maySave = connection?.settingsAvailable !== false;
+            useEffect(() => {
+                onBusy?.(busy !== "");
+                return () => onBusy?.(false);
+            }, [busy, onBusy]);
 // Update protection: dsh-calendar.connection
 __stardustUpdatesGuard(React, "dsh-calendar.connection", { dirty: JSON.stringify(form) !== JSON.stringify(connectionDraftOf(connection)), busy: !!busy });
 
@@ -1629,56 +1366,62 @@ __stardustUpdatesGuard(React, "dsh-calendar.connection", { dirty: JSON.stringify
                     setBusy("");
                 }
             };
-            const body = h("div", null, [
-                h("div", { className: "dshc-sub", style: { marginBottom: "10px" } }, t("conn.intro")),
-                h("p", { className: "dshc-sub", style: { marginBottom: "10px" } }, t("conn.credentials")),
-                maySave !== true
-                    ? h("div", { className: "dshc-alert warn" }, t("conn.noSettings"))
-                    : null,
-                h("div", { className: "dshc-field" }, [
+            const title = t("conn.title");
+            const body = h(React.Fragment, null,
+                h("p", { className: styles.pageIntro }, t("conn.intro")),
+                h("p", { className: styles.pageIntro }, t("conn.credentials")),
+                maySave ? null : h("div", { className: clsx(styles["dshc-alert"], styles.warn) }, t("conn.noSettings")),
+                h("div", { className: styles["dshc-field"] },
                     h("label", { htmlFor: formId + "-provider" }, t("conn.provider")),
-                    h("select", { id: formId + "-provider", className: "dshc-input", "aria-label": t("conn.provider"), value: form.provider, onChange: (e) => patch({ provider: e.target.value }) }, [h("option", { value: "", key: "__none" }, "— " + t("conn.needProvider") + " —")].concat(PROVIDER_NAMES.map((name) => h("option", { value: name, key: name }, name === "custom" ? t("provider.custom") : name === "icloud" ? "iCloud" : name === "nextcloud" ? "Nextcloud" : "Google"))))
-                ]),
-                PROVIDER_HINT[form.provider] ? h("div", { className: "dshc-sub", style: { marginBottom: "8px" } }, t(PROVIDER_HINT[form.provider])) : null,
-                form.provider === "" ? null : h("details", { className: "dshc-steps" }, [
-                    h("summary", { key: "sum" }, t("conn.steps")),
-                    h("ol", { key: "list" }, (UI[UI_LANG]["steps." + form.provider] || []).map((line, index) => h("li", { key: "s" + index }, line))),
-                    (PROVIDER_LINKS[form.provider] || []).length === 0 ? null : h("div", { key: "links", style: { marginTop: "6px", display: "flex", gap: "10px", flexWrap: "wrap" } }, (PROVIDER_LINKS[form.provider] || []).map((link) => h("a", { key: link.href, href: link.href, target: "_blank", rel: "noreferrer", className: "dshc-link" }, t(link.key))))
-                ]),
-                visible.map((key) => {
-                    const secret = SECRET_FIELDS.indexOf(key) !== -1;
-                    const stored = connection !== null && connection !== undefined && ((key === "password" && connection.hasPassword === true)
-                        || (key === "clientSecret" && connection.hasClientSecret === true)
-                        || (key === "refreshToken" && connection.hasRefreshToken === true));
-                    const hintKey = FIELD_HINT[form.provider] ? FIELD_HINT[form.provider][key] : undefined;
-                    return h("div", { className: "dshc-field", key }, [
+                    h(Picker, {
+                        id: formId + "-provider", label: t("conn.provider"), value: form.provider, disabled: busy !== "",
+                        options: [{ id: "", label: t("conn.needProvider") }].concat(PROVIDER_NAMES.map(id => ({
+                            id, label: { google: "Google CalDAV OAuth", icloud: "iCloud", nextcloud: "Nextcloud", custom: t("provider.custom") }[id]
+                        }))),
+                        onChange: provider => patch({ provider })
+                    })
+                ),
+                PROVIDER_HINT[form.provider] ? h("p", { className: styles.pageIntro }, t(PROVIDER_HINT[form.provider])) : null,
+                form.provider ? h("details", { className: styles["dshc-steps"] },
+                    h("summary", null, t("conn.steps")),
+                    h("ol", null, (UI[UI_LANG]["steps." + form.provider] || []).map((line, index) => h("li", { key: index }, line))),
+                    h("div", { className: styles.helpLinks }, (PROVIDER_LINKS[form.provider] || []).map(link => h("a", {
+                        key: link.href, href: link.href, target: "_blank", rel: "noreferrer", className: styles["dshc-link"]
+                    }, t(link.key))))
+                ) : null,
+                h("div", { className: styles.formGrid }, visible.map(key => {
+                    const secret = SECRET_FIELDS.includes(key);
+                    const saved = { password: "hasPassword", clientSecret: "hasClientSecret", refreshToken: "hasRefreshToken" }[key];
+                    const hintKey = FIELD_HINT[form.provider]?.[key];
+                    return h("div", {
+                        key, className: clsx(styles["dshc-field"], ["caldavUrl", "tokenUrl", "proxyUrl"].includes(key) && styles.fullField)
+                    },
                         h("label", { htmlFor: formId + "-" + key }, t(FIELD_LABEL[key])),
                         h(Txt, {
-                            id: formId + "-" + key,
-                            type: secret ? "password" : "text",
-                            "aria-label": t(FIELD_LABEL[key]),
-                            value: form[key] || "",
-                            placeholder: stored ? t("conn.keep") : "",
-                            onChange: (e) => patch({ [key]: e.target.value })
+                            id: formId + "-" + key, type: secret ? "password" : "text", disabled: busy !== "",
+                            value: form[key] || "", placeholder: saved && connection?.[saved] ? t("conn.keep") : "",
+                            onChange: event => patch({ [key]: event.target.value })
                         }),
-                        hintKey ? h("div", { className: "dshc-sub", style: { marginTop: "3px" } }, t(hintKey)) : null
-                    ]);
-                }),
-                result !== null
-                    ? h("div", { className: "dshc-alert " + (result.ok === true ? "demo" : "error") }, (result.ok === true ? "✓ " : t("conn.fail") + "：") + result.text)
-                    : null,
-                h("div", { className: "dshc-actions" }, [
-                    h(Btn, { key: "cancel", onClick: onClose, disabled: busy !== "" }, t("action.cancel")),
-                    h(Btn, { key: "test", onClick: test, disabled: busy !== "" || form.provider === "" }, busy === "test" ? t("conn.testing") : t("conn.test")),
-                    h(Btn, { key: "save", variant: "primary", onClick: save, disabled: busy !== "" || form.provider === "" || maySave !== true }, busy === "save" ? t("conn.saving") : t("conn.save"))
-                ]),
-                maySave !== true || (connection !== null && connection !== undefined && connection.settingsKind === "file")
-                    ? h("div", { className: "dshc-sub", style: { marginTop: "10px" } }, connection !== null && connection !== undefined && connection.settingsKind === "file"
-                        ? t("conn.storageFallback")
-                        : t("conn.current", { summary: connectionSummary(connection) }))
-                    : null
-            ]);
-            return h(Dlg, { open: true, onClose, title: t("conn.title"), children: body });
+                        hintKey ? h("div", { className: styles["dshc-sub"] }, t(hintKey)) : null
+                    );
+                })),
+                result ? h("div", {
+                    className: clsx(styles["dshc-alert"], result.ok ? styles.success : styles.error), role: result.ok ? "status" : "alert"
+                }, (result.ok ? "✓ " : t("conn.fail") + "：") + result.text) : null,
+                connection?.settingsKind === "file" ? h("p", { className: styles.pageIntro }, t("conn.storageFallback")) : null
+            );
+            const actions = h("div", { className: styles["dshc-actions"] },
+                h(Btn, { variant: "ghost", onClick: onClose, disabled: busy !== "" }, t("action.cancel")),
+                h(Btn, { onClick: test, disabled: busy !== "" || !form.provider }, busy === "test" ? t("conn.testing") : t("conn.test")),
+                h(Btn, { variant: "primary", onClick: save, disabled: busy !== "" || !form.provider || !maySave }, busy === "save" ? t("conn.saving") : t("conn.save"))
+            );
+            if (inline) return h("section", { className: styles.workspacePage, "aria-label": title, "aria-busy": !!busy },
+                h("div", { className: styles.pageInner },
+                    h("h2", { className: styles.pageHeading }, title),
+                    h("div", { className: styles.card }, body, actions)
+                )
+            );
+            return h(Dlg, { open: true, onClose: () => { if (!busy) onClose(); }, title, children: body, footer: actions });
         }
         // ───────────────────────────── 主面板 ─────────────────────────────
         // ───────────────────────────── 浮层 Esc 的模块级栈 ─────────────────────────────
@@ -1734,6 +1477,7 @@ __stardustUpdatesGuard(React, "dsh-calendar.connection", { dirty: JSON.stringify
                     if (event.key !== "Escape" || event.isComposing === true)
                         return;
                     const target = event.target;
+                    if (target?.closest?.('[role="menu"], [aria-haspopup="menu"][aria-expanded="true"]')) return;
                     // 上层有别的宿主浮层（不是本插件渲染的）时，Esc 归它；
                     // 普通宿主元素（不在任何浮层里）仍然兜底关我们自己的层。
                     if (hasForeignHostDialog() || isForeignHostLayer(target))
@@ -1820,6 +1564,7 @@ __stardustUpdatesGuard(React, "dsh-calendar.connection", { dirty: JSON.stringify
             return fmt.format(new Date(row.start)) + " → " + fmt.format(new Date(row.end || row.start)) + " · " + timezone;
         }
         function IcsImportPanel(props) {
+            const timezoneId = useId();
             const [content, setContent] = useState(""), [timezone, setTimezone] = useState(""), [zones, setZones] = useState(["UTC", "Asia/Shanghai", "America/New_York", "Europe/London"]);
             const [preview, setPreview] = useState(null), [selected, setSelected] = useState([]), [results, setResults] = useState({}), [error, setError] = useState(""), [busy, setBusy] = useState(false);
             const controller = useRef(null), alive = useRef(true), fileSequence = useRef(0);
@@ -1861,7 +1606,7 @@ __stardustUpdatesGuard(React, "dsh-calendar.import", { dirty: !!content.trim(), 
                 }
             };
             const eligible = preview ? preview.rows.filter(row => row.status === "ready" && !["imported", "duplicate"].includes(results[row.id] && results[row.id].status)) : [];
-            const run = async (committing) => {
+            const run = async (committing, ids = selected) => {
                 if (busy)
                     return;
                 setBusy(true);
@@ -1870,7 +1615,7 @@ __stardustUpdatesGuard(React, "dsh-calendar.import", { dirty: !!content.trim(), 
                 controller.current = abort;
                 const timer = setTimeout(() => abort.abort(), 125000);
                 try {
-                    const value = await importApi(committing ? "commit" : "preview", committing ? { id: preview.id, selected, confirmed: true } : { ics: content, floatingTimezone: timezone }, abort.signal);
+                    const value = await importApi(committing ? "commit" : "preview", committing ? { id: preview.id, selected: ids, confirmed: true } : { ics: content, floatingTimezone: timezone }, abort.signal);
                     if (!alive.current)
                         return;
                     if (committing) {
@@ -1898,41 +1643,101 @@ __stardustUpdatesGuard(React, "dsh-calendar.import", { dirty: !!content.trim(), 
                 }
             };
             const count = Object.values(results);
-            return h("section", { className: "dshc-import", "aria-label": t("import.title"), "aria-busy": busy }, [
-                h("h3", { key: "title" }, t("import.title")), h("p", { key: "intro", className: "dshc-sub" }, t("import.intro")),
-                h("label", { key: "file" }, [t("import.file"), h("input", { type: "file", accept: ".ics,text/calendar", disabled: busy, onChange: loadFile })]),
-                h("label", { key: "paste" }, [t("import.paste"), h("textarea", { value: content, rows: 5, disabled: busy, onChange: e => update(e.target.value), spellCheck: false })]),
-                h("label", { key: "zone" }, [t("import.timezone"), h("select", { value: timezone, disabled: busy, onChange: e => { setTimezone(e.target.value); reset(); } }, [h("option", { key: "empty", value: "" }, t("import.chooseZone")), ...zones.map(zone => h("option", { key: zone, value: zone }, zone === "Asia/Shanghai" ? (UI_LANG === "en" ? "Beijing time · Asia/Shanghai" : "北京时间 · Asia/Shanghai") : zone))])]),
-                h("p", { key: "limit", className: "dshc-sub" }, t("import.limit")),
-                h("div", { key: "actions", className: "dshc-import-actions" }, [h(Btn, { key: "preview", disabled: busy || !content.trim(), onClick: () => run(false) }, busy ? t("import.busy") : t("import.preview")), h(Btn, { key: "close", disabled: busy, onClick: props.onClose }, t("import.close")), busy ? h(Btn, { key: "stop", onClick: () => controller.current && controller.current.abort() }, t("import.stop")) : null]),
-                error ? h("div", { key: "error", className: "dshc-alert error", role: "alert" }, error) : null,
-                preview ? h("div", { key: "preview-data" }, [
-                    preview.connectionReady === false ? h("div", { key: "connection", className: "dshc-alert warn" }, [backendMessage(preview.connectionMessage), h(Btn, { onClick: props.onConnection }, t("import.connection"))]) : null,
-                    h("p", { key: "scope", className: "dshc-sub" }, t("import.scope")),
-                    preview.ignored ? h("p", { key: "ignored" }, t("import.ignored", { n: preview.ignored })) : null,
-                    h("div", { key: "rows", className: "dshc-import-rows" }, preview.rows.map(row => {
-                        const result = results[row.id], status = result ? result.status : row.status;
-                        return h("div", { key: row.id, className: "dshc-import-row" }, [
-                            h("label", { key: "select", className: "dshc-import-pick" }, [h("input", { type: "checkbox", checked: selected.includes(row.id), disabled: busy || row.status !== "ready" || ["imported", "duplicate"].includes(status) || (!selected.includes(row.id) && selected.length >= 20), onChange: e => setSelected(prev => e.target.checked ? prev.concat(row.id) : prev.filter(id => id !== row.id)) }), h("strong", null, row.summary)]),
-                            h("span", { key: "status", className: "dshc-tag" }, t("import." + status)), h("p", { key: "date" }, importDate(row)),
-                            row.recurring ? h("p", { key: "repeat" }, t("import.recurring", { n: row.exceptions })) : null,
-                            status !== "duplicate" && status !== "imported" && row.conflicts ? h("p", { key: "conflict", className: "dshc-import-warning" }, t("import.conflicts", { n: row.conflicts })) : null,
-                            ...(status === "duplicate" || status === "imported" ? [] : row.warnings.concat(row.errors)).map((message, i) => h("p", { key: "message-" + i, className: "dshc-import-warning" }, backendMessage(message))),
-                            result && result.message ? h("p", { key: "failure", role: "alert" }, backendMessage(result.message)) : null
-                        ]);
-                    })),
-                    count.length ? h("p", { key: "results", role: "status", "aria-live": "polite" }, t("import.results", { ok: count.filter(r => r.status === "imported").length, duplicate: count.filter(r => r.status === "duplicate").length, failed: count.filter(r => r.status === "failed").length })) : null,
-                    count.some(r => r.status === "failed") ? h("p", { key: "retry" }, t("import.retryHint")) : null,
-                    !eligible.length && !count.length ? h("p", { key: "no-ready" }, t("import.noReady")) : null,
-                    h("div", { key: "commit", className: "dshc-import-actions" }, [h(Btn, { key: "select", disabled: busy || !eligible.length, onClick: () => setSelected(eligible.slice(0, 20).map(row => row.id)) }, t("import.select")), h(Btn, { key: "clear", disabled: busy, onClick: () => setSelected([]) }, t("import.clear")), h(Btn, { key: "commit", variant: "primary", disabled: busy || !preview.connectionReady || !selected.length, onClick: () => run(true) }, t("import.commit", { n: selected.length }))])
-                ]) : null
-            ]);
+            const failed = eligible.filter(row => results[row.id]?.status === "failed").slice(0, 20).map(row => row.id);
+            const importStatusTone = { ready: styles.success, imported: styles.success, blocked: styles.warn, failed: styles.error };
+            const title = t("import.title");
+            const fields = h("div", { className: styles.card },
+                h("label", { className: styles["dshc-field"] },
+                    h("span", null, t("import.file")),
+                    h("input", { className: styles["dshc-input"], type: "file", accept: ".ics,text/calendar", disabled: busy, onChange: loadFile })
+                ),
+                h("label", { className: styles["dshc-field"] },
+                    h("span", null, t("import.paste")),
+                    h("textarea", { className: clsx(styles["dshc-input"], styles.importText), value: content, rows: 5, disabled: busy, onChange: e => update(e.target.value), spellCheck: false })
+                ),
+                h("div", { className: styles["dshc-field"] },
+                    h("label", { htmlFor: timezoneId }, t("import.timezone")),
+                    h(Picker, {
+                        id: timezoneId, label: t("import.timezone"), value: timezone, disabled: busy,
+                        options: [{ id: "", label: t("import.chooseZone") }].concat(zones.map(id => ({
+                            id, label: id === "Asia/Shanghai" ? calendarText("北京时间 · Asia/Shanghai", "Beijing time · Asia/Shanghai") : id
+                        }))),
+                        onChange: value => { setTimezone(value); reset(); }
+                    })
+                ),
+                h("p", { className: styles["dshc-sub"] }, t("import.limit")),
+                h("div", { className: styles["dshc-import-actions"] },
+                    h(Btn, { variant: preview ? "outline" : "primary", disabled: busy || !content.trim(), onClick: () => run(false) }, busy ? t("import.busy") : t("import.preview")),
+                    busy ? h(Btn, { onClick: () => controller.current?.abort() }, t("import.stop")) : null
+                )
+            );
+            const previewCard = preview ? h("div", { className: styles.card },
+                h("div", { className: styles.cardToolbar },
+                    h("h3", null, t("import.preview")),
+                    h("div", { className: styles["dshc-actions"] },
+                        failed.length ? h(Btn, { disabled: busy || !preview.connectionReady, onClick: () => run(true, failed) },
+                            calendarText("重试失败项", "Retry failed items")) : null,
+                        h(Btn, { variant: "primary", disabled: busy || !preview.connectionReady || !selected.length, onClick: () => run(true) }, t("import.commit", { n: selected.length }))
+                    )
+                ),
+                preview.connectionReady === false ? h("div", { className: clsx(styles["dshc-alert"], styles.warn) },
+                    backendMessage(preview.connectionMessage), h(Btn, { onClick: props.onConnection }, t("import.connection"))) : null,
+                h("p", { className: styles["dshc-sub"] }, t("import.scope")),
+                preview.ignored ? h("p", null, t("import.ignored", { n: preview.ignored })) : null,
+                h("div", { className: styles["dshc-import-actions"] },
+                    h(Btn, { variant: "ghost", disabled: busy || !eligible.length, onClick: () => setSelected(eligible.slice(0, 20).map(row => row.id)) }, t("import.select")),
+                    h(Btn, { variant: "ghost", disabled: busy || !selected.length, onClick: () => setSelected([]) }, t("import.clear"))
+                ),
+                h("div", { className: styles["dshc-import-rows"] }, preview.rows.map(row => {
+                    const result = results[row.id], status = result?.status || row.status;
+                    const checked = selected.includes(row.id);
+                    const done = status === "imported" || status === "duplicate";
+                    return h("div", { key: row.id, className: styles["dshc-import-row"] },
+                        h("div", { className: styles["dshc-import-pick"] },
+                            h(Chk, { label: row.summary, checked,
+                                disabled: busy || row.status !== "ready" || done || (!checked && selected.length >= 20),
+                                onChange: next => setSelected(prev => next ? prev.concat(row.id) : prev.filter(id => id !== row.id)) }),
+                            h("span", { className: clsx(styles["dshc-tag"], importStatusTone[status]) }, t("import." + status))
+                        ),
+                        h("p", { className: styles["dshc-mono"] }, importDate(row)),
+                        row.recurring ? h("p", null, t("import.recurring", { n: row.exceptions })) : null,
+                        !done && row.conflicts ? h("p", { className: styles["dshc-import-warning"] }, t("import.conflicts", { n: row.conflicts })) : null,
+                        !done ? row.warnings.concat(row.errors).map((message, i) => h("p", { key: i, className: styles["dshc-import-warning"] }, backendMessage(message))) : null,
+                        result?.message ? h("p", { role: "alert" }, backendMessage(result.message)) : null
+                    );
+                })),
+                count.length ? h("p", { role: "status" }, t("import.results", {
+                    ok: count.filter(row => row.status === "imported").length,
+                    duplicate: count.filter(row => row.status === "duplicate").length,
+                    failed: count.filter(row => row.status === "failed").length
+                })) : null,
+                failed.length ? h("p", { className: styles["dshc-sub"] }, t("import.retryHint")) : null,
+                !eligible.length && !count.length ? h("p", null, t("import.noReady")) : null
+            ) : null;
+            return h("section", { className: styles.workspacePage, "aria-label": title, "aria-busy": busy },
+                h("div", { className: styles.pageInner },
+                    h("div", { className: styles.pageHeader },
+                        h("h2", { className: styles.pageHeading }, title),
+                        h(IconButton, { label: t("import.close"), icon: "close", disabled: busy, onClick: props.onClose })
+                    ),
+                    h("p", { className: styles.pageIntro }, t("import.intro")),
+                    fields,
+                    error ? h("p", { className: clsx(styles["dshc-alert"], styles.error), role: "alert" }, error) : null,
+                    previewCard
+                )
+            );
         }
+        const NO_EVENTS = [];
+
         function CalendarPanel(props) {
             useUILanguage();
             const compact = props.compact === true;
+            const workbench = props.workbench === true;
+            const workspaceId = useId();
+            const viewId = useId();
             const [view, setView] = useState(loadStoredView);
             const [anchor, setAnchor] = useState(() => new Date());
+            const [showCalendar, setShowCalendar] = useState(true);
             const [demo, setDemo] = useState(false);
             const [reloadToken, setReloadToken] = useState(0);
             const [selected, setSelected] = useState(null);
@@ -1944,11 +1749,16 @@ __stardustUpdatesGuard(React, "dsh-calendar.import", { dirty: !!content.trim(), 
             const [configured, setConfigured] = useState(null);
             const [conn, setConn] = useState(null);
             const [connOpen, setConnOpen] = useState(false);
-            const [importOpen, setImportOpen] = useState(false), [importBusy, setImportBusy] = useState(false);
-            const [availabilityOpen,setAvailabilityOpen]=useState(false),[availabilityBusy,setAvailabilityBusy]=useState(false);
+            const [tool, setTool] = useState("schedule");
+            const [importBusy, setImportBusy] = useState(false);
+            const [availabilityBusy, setAvailabilityBusy] = useState(false);
+            const [connectionBusy, setConnectionBusy] = useState(false);
+            const importOpen = tool === "import";
+            const availabilityOpen = tool === "availability";
+            const connectionOpen = tool === "connection";
             const layerOpen = draft !== null || selected !== null || connOpen === true;
-// Update protection: dsh-calendar
-__stardustUpdatesGuard(React, "dsh-calendar", { busy: busy || importBusy || layerOpen || importOpen || availabilityOpen || availabilityBusy });
+            // Update protection: dsh-calendar
+            __stardustUpdatesGuard(React, "dsh-calendar", { busy: busy || layerOpen || importOpen || availabilityOpen || connectionOpen });
 
             const rootRef = useRef(null);
             /** 让 Launcher 知道本面板里有没有浮层：宿主 Portal 的 Esc 不能被面板级监听抢走。 */
@@ -1990,6 +1800,7 @@ __stardustUpdatesGuard(React, "dsh-calendar", { busy: busy || importBusy || laye
                     if (top === "draft") {
                         setDraft(null);
                         setFormError(null);
+                        setConfirmDelete(false);
                     }
                     else if (top === "conn")
                         setConnOpen(false);
@@ -2022,10 +1833,13 @@ __stardustUpdatesGuard(React, "dsh-calendar", { busy: busy || importBusy || laye
             const data = useCalendarData(range, reloadToken, demo);
             const reload = () => setReloadToken((n) => n + 1);
             /** 渲染用的事件：把乐观改期叠加在服务器数据之上。 */
-            const visibleEvents = useMemo(() => data.events.map((event) => {
+            const eventsWithMoves = useMemo(() => data.events.map((event) => {
                 const override = overrides[event.uid];
                 return override === undefined ? event : Object.assign({}, event, override);
             }), [data.events, overrides]);
+            const visibleEvents = showCalendar || demo ? eventsWithMoves : NO_EVENTS;
+            const { count: conflicts, conflicted } = useMemo(() => conflictSummary(visibleEvents), [visibleEvents]);
+            const source = conn?.configured ? conn.calendar || connectionSummary(conn) : null;
             /**
              * 改期成功后把焦点还给同一个日程。
              *
@@ -2199,7 +2013,7 @@ __stardustUpdatesGuard(React, "dsh-calendar", { busy: busy || importBusy || laye
                     setDraft(null);
                     setSelected(null);
                     reload();
-                    notify(form.uid === undefined ? "已创建" : "已保存");
+                    notify(form.uid === undefined ? calendarText("已创建", "Event created") : calendarText("已保存", "Event saved"));
                 }
                 catch (error) {
                     setFormError(backendMessage(error));
@@ -2219,156 +2033,214 @@ __stardustUpdatesGuard(React, "dsh-calendar", { busy: busy || importBusy || laye
                     setSelected(null);
                     setConfirmDelete(false);
                     reload();
-                    notify("已删除");
+                    setDraft(null);
+                    setFormError(null);
+                    notify(calendarText("已删除", "Event deleted"));
                 }
                 catch (error) {
-                    setBanner(backendMessage(error));
+                    if (draft) setFormError(backendMessage(error));
+                    else setBanner(backendMessage(error));
                 }
                 finally {
                     setBusy(false);
                 }
             };
-            const toolbar = compact ? (h("div", { className: "dshc-toolbar" }, [
-                h("h3", { className: "dshc-title", key: "title" }, t("section.title")),
-                h("div", { className: "dshc-tabs", key: "tabs" }, VIEWS.map((name) => h("button", {
-                    key: name, type: "button", className: "dshc-tab" + (view === name ? " on" : ""),
-                    onClick: () => { setView(name); storeView(name); }
-                }, t("view." + name)))),
-                h("span", { className: "dshc-spacer", key: "spacer" }),
-                h("span", { className: "dshc-monthhead", key: "period" }, title),
-                h(Btn, { key: "prev", onClick: () => step(-1), "aria-label": t("action.prev") }, "\u2039"),
-                h(Btn, { key: "today", onClick: () => setAnchor(new Date()) }, t("action.today")),
-                h(Btn, { key: "next", onClick: () => step(1), "aria-label": t("action.next") }, "\u203a"),
-                h(Btn, { key: "conn", disabled: configured === null, onClick: () => setConnOpen(true) }, t("conn.button")),
-                h(Btn, { key: "import", disabled: demo === true || importBusy, onClick: () => setImportOpen(value => !value) }, t("import.open")),
-                h(Btn,{key:'availability',disabled:demo || configured!==true,onClick:()=>setAvailabilityOpen(v=>!v)},calendarText('找空闲时段','Find available time')),
-                demo === true
-                    ? h(Btn, { key: "exitdemo", onClick: () => setDemo(false) }, t("action.exitDemo"))
-                    : h(Btn, { key: "reload", onClick: reload }, t("action.refresh")),
-                h(Btn, { key: "new", variant: "primary", disabled: demo === true, onClick: () => setDraft(draftAt(anchor)) }, t("action.new"))
-            ])) : h('div',{className:'calendar-toolbar'},
- h('div',{className:'calendar-period'},h(W.IconButton,{icon:'left',label:t('action.prev'),onClick:()=>step(-1)}),h('strong',null,title),h(W.IconButton,{icon:'right',label:t('action.next'),onClick:()=>step(1)}),h(W.Button,{onClick:()=>setAnchor(new Date())},t('action.today'))),
- h('div',{className:'calendar-view-controls',role:'group','aria-label':calendarText('日历视图','Calendar view')},VIEWS.map(name=>h(W.Button,{key:name,'aria-pressed':view === name,onClick:()=>{setView(name);storeView(name);}},t('view.'+name))),demo?h(W.Button,{onClick:()=>setDemo(false)},t('action.exitDemo')):h(W.IconButton,{icon:'refresh',label:t('action.refresh'),onClick:reload})));;
-            const body = () => {
-                if (demo === false && configured === false) {
-                    return h(W.Empty, {
-                        icon: "calendar",
-                        title: t("state.notConfigured"),
-                        action: h(React.Fragment, null, [
-                            h(Btn, { key: "cfg", variant: "primary", onClick: () => setConnOpen(true) }, t("conn.button")),
-                            h(Btn, { key: "demo", onClick: () => setDemo(true) }, t("action.demo"))
-                        ])
-                    }, h("p", null, t("state.notConfiguredHint")));
-                }
-                if (configured === null)
-                    return h("div", { className: "dshc-grid" }, Array.from({ length: 7 }, (_, i) => h("div", { className: "dshc-skel", key: i })));
-                if (data.loading === true && data.events.length === 0) {
-                    return h("div", { className: "dshc-grid" }, Array.from({ length: 14 }, (_, i) => h("div", { className: "dshc-skel", key: i })));
-                }
-                const viewNode = view === "week"
-                    ? h(WeekView, { anchor, events: visibleEvents, onPick: openEvent, onCreateAt: createAt, onReschedule: demo === true ? undefined : reschedule })
-                    : view === "agenda"
-                        ? h(AgendaView, { events: visibleEvents, onPick: openEvent, onCreateAt: createAt })
-                        : h(MonthView, { anchor, events: visibleEvents, onPick: openEvent, onCreateAt: createAt });
-                // 空范围只给一行说明 + 下一步；出错时不冒充「没有日程」，把解释权留给错误条。
-                const emptyHint = demo === false && view !== "agenda" && data.loading !== true && data.events.length === 0
-                    && (data.error === null || data.error === undefined);
-                return emptyHint
-                    ? h(React.Fragment, null, h("p", { className: "dshc-emptyhint", role: "status" }, calendarText("这段时间没有日程。点日期格或「新建日程」开始。", "Nothing scheduled in this range. Click a date or use New event.")), viewNode)
-                    : viewNode;
+            const toolBusy = importBusy || availabilityBusy || connectionBusy;
+            const backToSchedule = () => setTool("schedule");
+            const showAvailability = () => {
+                if (configured === true) setTool("availability");
+                else connectFirst();
             };
-            const openEvent = (event) => { setConfirmDelete(false); setSelected(event); };
             const createAt = (day, hour) => {
-                if (demo === true) {
+                if (demo) {
                     notify(t("demo.banner"));
                     return;
                 }
+                setConfirmDelete(false);
+                setFormError(null);
                 setDraft(draftAt(day, hour));
             };
-            // 浮层面板不是 W.Page，拿不到 ui/workbench-ui 的样式表；W.Button 之类会变成裸控件。
-            // 这里补一份 kit 自己的 stylesheet（唯一规范源），不再另画一套按钮。
-            const content = h("div", { ref: rootRef, className: "dshc-root" + (compact === true ? " dshw" : "") }, [
-                compact === true ? h("style", { key: "kit-styles" }, W.styles) : null,
-                h("div", { className: "dshc-shell" }, [
-                    banner !== null ? h("div", { className: "dshc-alert demo", role: "status", "aria-live": "polite" }, banner) : null,
-                    undo !== null
-                        ? h("div", { className: "dshc-undo", role: "status", "aria-live": "polite" }, [
-                            h("span", { key: "text" }, t("move.saved") + "：" + (undo.summary || "")),
-                            h("button", { key: "undo", type: "button", className: "dshc-undo-btn", onClick: undoMove }, t("move.undo"))
-                        ])
-                        : null,
-                    demo === true ? h("div", { className: "dshc-alert demo" }, t("demo.banner")) : null,
-                    data.error !== null && data.error !== undefined && demo === false && configured !== false
-                        ? h("div", { className: "dshc-alert error" }, [
-                            h("span", null, backendMessage(data.error) || t("error.load")),
-                            h("span", { className: "dshc-spacer" }),
-                            h(Btn, { onClick: reload }, t("action.retry"))
-                        ])
-                        : null,
-                    compact === true ? toolbar : h("div", null, [toolbar]),
-                    importOpen ? h(IcsImportPanel, { key: "ics-import", onBusy: setImportBusy, onClose: () => setImportOpen(false), onConnection: () => setConnOpen(true), onImported: reload }) : null,
-                    availabilityOpen ? h(AvailabilityPanel,{key:'availability',anchor,onBusy:setAvailabilityBusy,onClose:()=>setAvailabilityOpen(false),onChoose:slot=>{setAvailabilityOpen(false);setAnchor(new Date(slot.start));setFormError(null);setDraft({...draftOfEvent({start:slot.start,end:slot.end,allDay:false}),uid:undefined});}}) : null,
-                    body(),
-                    h("div", { className: "dshc-footer" }, [
-                        h("span", null, t("count.events", { n: data.events.length }) + (data.events.some((e) => e.isOccurrence) ? " · " + t("count.occurrences", { n: data.events.filter((e) => e.isOccurrence).length }) : "")),
-                        h("span", null, demo === true ? "" : (conn !== null && conn !== undefined && conn.configured === true ? t("conn.current", { summary: connectionSummary(conn) }) : ""))
-                    ])
-                ]),
-                selected !== null
-                    ? h(EventDrawer, {
-                        readOnly: demo === true,
-                        event: selected,
-                        events: data.events,
-                        busy,
-                        confirmDelete,
-                        setConfirmDelete,
-                        onClose: () => { setSelected(null); setConfirmDelete(false); },
-                        onEdit: async (event) => {
-                            if (!isRecurring(event) || demo) {
-                                setSelected(null);
-                                setDraft(draftOfEvent(event));
-                                return;
-                            }
-                            setBusy(true);
-                            try {
-                                const value = await api("event", { uid: event.uid });
-                                setSelected(null);
-                                setDraft({ ...draftOfEvent(value.event), isSeries: true });
-                            }
-                            catch (error) {
-                                setBanner(backendMessage(error));
-                            }
-                            finally {
-                                setBusy(false);
-                            }
-                        },
-                        onDelete: remove
-                    })
-                    : null,
-                draft !== null
-                    ? h(EventForm, { draft, events: data.events, busy, error: formError, onCancel: () => { setDraft(null); setFormError(null); }, onSubmit: submit })
-                    : null,
-                connOpen === true
-                    ? h(ConnectionForm, {
-                        connection: conn,
-                        onClose: () => setConnOpen(false),
-                        onSaved: (value) => {
-                            if (value && value.connection)
-                                setConn(value.connection);
-                            setConnOpen(false);
-                            setDemo(false);
-                            reload();
-                            notify(t("conn.savedToast"));
-                        }
-                    })
-                    : null
-            ]);
-if(compact) return content;
-return h(W.Page,{workbench:props.workbench===true,title:t('section.title'),subtitle:calendarText('查看日程、安排时间和管理导入。','View events, plan time and manage imports.'),className:'calendar-workbench',actions:h(React.Fragment,null,
- h(W.Button,{icon:'link',disabled:configured===null,onClick:()=>setConnOpen(true)},calendarText('日历连接','Calendar connection')),
- h(W.Button,{icon:'upload',disabled:demo || importBusy,onClick:()=>setImportOpen(value=>!value)},t('import.open')),
- h(W.Button,{disabled:demo || configured===null,onClick:()=>configured===true?setAvailabilityOpen(v=>!v):connectFirst()},calendarText('找空闲时段','Find available time')),
- h(W.Button,{variant:'primary',disabled:demo || configured===null,title:configured===true?undefined:calendarText('请先连接日历','Connect a calendar first'),onClick:()=>configured===true?setDraft(draftAt(anchor)):connectFirst()},t('action.new')))},h('style',null,CALENDAR_WORKBENCH_CSS),content);
+            const startDraft = () => configured === true ? createAt(anchor) : connectFirst();
+            const finishConnection = value => {
+                if (value?.connection) setConn(value.connection);
+                setConnOpen(false);
+                if (connectionOpen) backToSchedule();
+                setDemo(false);
+                setShowCalendar(true);
+                reload();
+                notify(t("conn.savedToast"));
+            };
+            const openEvent = event => {
+                setConfirmDelete(false);
+                setFormError(null);
+                if (workbench && !demo && !isRecurring(event)) {
+                    setDraft(draftOfEvent(event));
+                } else {
+                    setSelected(event);
+                }
+            };
+            const closeReview = () => {
+                setSelected(null);
+                setConfirmDelete(false);
+            };
+            const closeDraft = () => {
+                setDraft(null);
+                setFormError(null);
+                setConfirmDelete(false);
+            };
+            const editEvent = async event => {
+                if (!isRecurring(event) || demo) {
+                    closeReview();
+                    setDraft(draftOfEvent(event));
+                    return;
+                }
+                setBusy(true);
+                try {
+                    const value = await api("event", { uid: event.uid });
+                    closeReview();
+                    setDraft({ ...draftOfEvent(value.event), isSeries: true });
+                } catch (error) {
+                    setBanner(backendMessage(error));
+                } finally {
+                    setBusy(false);
+                }
+            };
+            const selectView = name => { setView(name); storeView(name); };
+            const views = h(Segments, {
+                id: viewId, label: calendarText("日历视图", "Calendar view"),
+                items: VIEWS.map(value => ({ value, label: t("view." + value) })), value: view, onChange: selectView
+            });
+            const period = h("div", { className: styles.period },
+                view !== "agenda" ? h(Btn, { onClick: () => setAnchor(new Date()) }, t("action.today")) : null,
+                view !== "agenda" ? h(IconButton, { icon: "left", label: t("action.prev"), onClick: () => step(-1) }) : null,
+                view !== "agenda" ? h(IconButton, { icon: "right", label: t("action.next"), onClick: () => step(1) }) : null,
+                h("strong", { className: styles["dshc-monthhead"] }, title)
+            );
+            const refresh = demo
+                ? h(Btn, { onClick: () => setDemo(false) }, t("action.exitDemo"))
+                : h(IconButton, { icon: "refresh", label: t("action.refresh"), onClick: reload });
+            const availabilityLabel = calendarText("找空闲时段", "Find available time");
+            const compactToolbar = compact ? h("header", { className: styles["dshc-toolbar"] },
+                h("h2", { className: styles["dshc-title"] }, t("section.title")),
+                tool === "schedule" ? period : null,
+                tool === "schedule" ? views : null,
+                h("span", { className: styles["dshc-spacer"] }),
+                h(Btn, { disabled: configured === null || toolBusy, onClick: () => setConnOpen(true) }, t("conn.button")),
+                h(Btn, { disabled: demo || toolBusy, onClick: () => importOpen ? backToSchedule() : setTool("import") }, t("import.open")),
+                h(Btn, { disabled: demo || configured !== true || toolBusy, onClick: () => availabilityOpen ? backToSchedule() : showAvailability() }, availabilityLabel),
+                refresh,
+                h(Btn, { variant: "primary", disabled: demo || toolBusy, onClick: () => createAt(anchor) }, t("action.new"))
+            ) : null;
+            const topbar = !compact ? h("header", { className: styles.topbar },
+                h("div", { className: styles.brand },
+                    h("span", { className: styles.brandMark }, h(CalendarIcon)),
+                    h("h1", null, t("section.title"))
+                ),
+                h(Segments, {
+                    id: workspaceId, label: t("section.title"), value: tool, disabled: toolBusy,
+                    items: [
+                        { value: "schedule", label: calendarText("日程", "Schedule") },
+                        { value: "availability", label: availabilityLabel, disabled: demo || configured === null },
+                        { value: "import", label: t("import.open"), disabled: demo },
+                        { value: "connection", label: calendarText("日历连接", "CalDAV"), disabled: configured === null }
+                    ],
+                    onChange: next => next === "availability" ? showAvailability() : setTool(next)
+                }),
+                h("div", { className: styles.topActions },
+                    h("span", { className: styles.zone }, Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"),
+                    h(Btn, { variant: "primary", icon: "plus", disabled: demo || configured === null || toolBusy, onClick: startDraft }, t("action.new"))
+                )
+            ) : null;
+
+            const renderCalendar = () => {
+                if (!demo && configured === false) {
+                    return h(EmptyState, {
+                        title: t("state.notConfigured"),
+                        action: h(React.Fragment, null,
+                            h(Btn, { variant: "primary", onClick: () => setConnOpen(true) }, t("conn.button")),
+                            h(Btn, { onClick: () => setDemo(true) }, t("action.demo"))
+                        )
+                    }, h("p", null, t("state.notConfiguredHint")));
+                }
+                if (configured === null || (data.loading && data.events.length === 0)) {
+                    return h("div", { className: styles["dshc-grid"], "aria-busy": true },
+                        Array.from({ length: configured === null ? 7 : 14 }, (_, key) => h("div", { className: styles["dshc-skel"], key })));
+                }
+                const calendarProps = { anchor, events: visibleEvents, conflicted, onPick: openEvent, onCreateAt: createAt };
+                const calendar = view === "week"
+                    ? h(WeekView, { ...calendarProps, onReschedule: demo ? undefined : reschedule })
+                    : view === "agenda" ? h(AgendaView, calendarProps) : h(MonthView, calendarProps);
+                const message = !demo && !showCalendar
+                    ? calendarText("当前日历已隐藏。", "The connected calendar is hidden.")
+                    : !demo && view !== "agenda" && !data.loading && data.events.length === 0 && !data.error
+                        ? calendarText("这段时间没有日程。点日期格或「新建日程」开始。", "Nothing scheduled in this range. Click a date or use New event.")
+                        : null;
+                return h(React.Fragment, null,
+                    message ? h("p", { className: styles["dshc-emptyhint"], role: "status" }, message) : null,
+                    calendar
+                );
+            };
+            const schedule = tool === "schedule" ? h("div", { className: styles.schedule },
+                compact ? null : h(ScheduleRail, {
+                    anchor, onPick: setAnchor, source, showing: showCalendar, onVisibilityChange: setShowCalendar,
+                    conflicts, workbench, loading: configured === null
+                }),
+                h("div", { className: styles.scheduleMain },
+                    compact ? null : h("div", { className: styles.calendarToolbar }, period,
+                        h("div", { className: styles.period }, views, refresh)),
+                    data.error && !demo && configured !== false ? h("div", { className: clsx(styles["dshc-alert"], styles.error), role: "alert" },
+                        backendMessage(data.error) || t("error.load"),
+                        h("span", { className: styles["dshc-spacer"] }),
+                        h(Btn, { onClick: reload }, t("action.retry"))
+                    ) : null,
+                    h("div", { className: styles.calendarSurface },
+                        h("div", { id: viewId + "-" + view + "-panel", role: "tabpanel", "aria-labelledby": viewId + "-" + view }, renderCalendar())
+                    ),
+                    h("footer", { className: styles["dshc-footer"] },
+                        h("span", null, t("count.events", { n: visibleEvents.length }) +
+                            (visibleEvents.some(event => event.isOccurrence) ? " · " + t("count.occurrences", { n: visibleEvents.filter(event => event.isOccurrence).length }) : "")),
+                        compact && source ? h("span", null, t("conn.current", { summary: source })) : null
+                    )
+                )
+            ) : null;
+            const workspacePage = importOpen
+                ? h(IcsImportPanel, { onBusy: setImportBusy, onClose: backToSchedule, onConnection: () => setConnOpen(true), onImported: reload })
+                : availabilityOpen ? h(AvailabilityPanel, {
+                    anchor, onBusy: setAvailabilityBusy, onClose: backToSchedule,
+                    onChoose: slot => {
+                        backToSchedule();
+                        setAnchor(new Date(slot.start));
+                        setConfirmDelete(false);
+                        setFormError(null);
+                        setDraft(draftOfEvent({ start: slot.start, end: slot.end, allDay: false }));
+                    }
+                }) : connectionOpen ? h(ConnectionForm, {
+                    inline: true, connection: conn, onClose: backToSchedule, onSaved: finishConnection, onBusy: setConnectionBusy
+                }) : schedule;
+            const original = draft?.uid && !draft.isSeries ? data.events.find(event => event.uid === draft.uid) : undefined;
+            return h("section", { ref: rootRef, className: styles["dshc-root"], "data-main": workbench, "data-compact": compact },
+                h("div", { className: styles["dshc-shell"] },
+                    topbar, compactToolbar,
+                    banner ? h("div", { className: styles["dshc-alert"], role: "status" }, banner) : null,
+                    undo ? h("div", { className: styles["dshc-undo"], role: "status" },
+                        h("span", null, t("move.saved") + " · " + (undo.summary || "")),
+                        h(Btn, { onClick: undoMove }, t("move.undo"))
+                    ) : null,
+                    demo ? h("div", { className: clsx(styles["dshc-alert"], styles.demo) }, t("demo.banner")) : null,
+                    compact ? workspacePage : h("div", { className: styles.workspacePanel,
+                        id: workspaceId + "-" + tool + "-panel", role: "tabpanel", "aria-labelledby": workspaceId + "-" + tool
+                    }, workspacePage)
+                ),
+                selected ? h(EventReview, {
+                    event: selected, readOnly: demo, events: data.events, busy, confirmDelete, setConfirmDelete,
+                    onClose: closeReview, onEdit: editEvent, onDelete: remove
+                }) : null,
+                draft ? h(EventForm, {
+                    draft, events: eventsWithMoves, busy, error: formError, source, original,
+                    onCancel: closeDraft, onSubmit: submit, onDelete: remove, confirmDelete, setConfirmDelete
+                }) : null,
+                connOpen ? h(ConnectionForm, { connection: conn, onClose: () => setConnOpen(false), onSaved: finishConnection }) : null
+            );
         }
         /** 月份平移：先跳到本月 1 号再加月，避免 1 月 31 日 +1 个月变成 3 月 3 日。 */
         function addMonthShift(date, delta) {
@@ -2378,11 +2250,19 @@ return h(W.Page,{workbench:props.workbench===true,title:t('section.title'),subti
             return new Date(shifted.getFullYear(), shifted.getMonth(), Math.min(date.getDate(), lastDay));
         }
         /** 设置页里的那一节。 */
-        function CalendarSection({workbench=false}={}) { return h(CalendarPanel,{workbench}); }
+        function CalendarSection({ workbench = false } = {}) { return h(CalendarPanel, { workbench }); }
         /** 对话页右下角的小按钮 + 悬浮面板（自己挂 root，不占用宿主槽位）。 */
         function Launcher() {
-const [activePanel,setActivePanel]=useState(null);
-useEffect(()=>{let layout;try{layout=calendarHostContext?.get?.('layout') || calendarHostContext?.layout;}catch{}if(!layout?.panelInfo)return;const update=()=>setActivePanel(layout.panelInfo.getSnapshot().activePanelId);update();return layout.panelInfo.subscribe(update);},[]);
+            const [activePanel, setActivePanel] = useState(null);
+            useEffect(() => {
+                let layout;
+                try { layout = calendarHostContext?.get?.("layout") || calendarHostContext?.layout; } catch {}
+                const panelInfo = layout?.panelInfo;
+                if (!panelInfo) return;
+                const update = () => setActivePanel(panelInfo.getSnapshot().activePanelId);
+                update();
+                return panelInfo.subscribe(update);
+            }, []);
             useUILanguage();
             const [open, setOpen] = useState(false);
             const [layerOpen, setLayerOpen] = useState(false);
@@ -2390,7 +2270,7 @@ useEffect(()=>{let layout;try{layout=calendarHostContext?.get?.('layout') || cal
                 if (open !== true)
                     return () => { };
                 const onKey = (event) => {
-                    if (event.key !== "Escape" || event.isComposing === true)
+                    if (event.key !== "Escape" || event.isComposing === true || event.defaultPrevented)
                         return;
                     // 浮层交给 CalendarPanel 的层栈；宿主 Portal 的 Esc 交给宿主组件。
                     if (layerOpen === true)
@@ -2400,26 +2280,30 @@ useEffect(()=>{let layout;try{layout=calendarHostContext?.get?.('layout') || cal
                 document.addEventListener("keydown", onKey);
                 return () => document.removeEventListener("keydown", onKey);
             }, [open, layerOpen]);
-            const calendarIcon = h("svg", { width: 18, height: 18, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" }, [
-                h("rect", { key: "r", x: 3, y: 5, width: 18, height: 16, rx: 3 }),
-                h("path", { key: "l", d: "M3 10h18M8 3v4M16 3v4" })
-            ]);
-            if(activePanel) return null;
-return h("div", null, [
+            if (activePanel) return null;
+            return h("div", null,
                 h("button", {
                     type: "button",
-                    className: "dshc-fab" + (open === true ? " on" : ""),
+                    className: styles["dshc-fab"],
+                    "aria-expanded": open,
                     title: t("nav.title"),
                     "aria-label": t("nav.title"),
                     onClick: () => setOpen((value) => !value)
-                }, calendarIcon),
-                open === true ? h("div", { className: "dshc-float" }, h(CalendarPanel, { compact: true, onLayerChange: setLayerOpen })) : null
-            ]);
+                }, h(CalendarIcon, { size: 18 })),
+                open === true ? h("div", { className: styles["dshc-float"] }, h(CalendarPanel, { compact: true, onLayerChange: setLayerOpen })) : null
+            );
         }
         // ───────────────────────────── 挂载 ─────────────────────────────
         const inject = ["slots", "locale"];
         function apply(ctx) {
-calendarHostContext=ctx;W.register(ctx,{id:'dsh-calendar.workbench',label:()=>t('nav.title'),icon:'calendar',component:CalendarSection,order:58});
+            calendarHostContext = ctx;
+            const id = "dsh-calendar.workbench";
+            ctx.slots.inject("main", () => ctx.slots.register({
+                name: "main", key: id, inject: () => ({ workbench: true })
+            }, CalendarSection));
+            ctx.slots.inject("sidebar.panellist", () => ctx.slots.register({
+                name: "sidebar.panellist", id, order: 58, label: () => t("nav.title")
+            }, CalendarIcon));
 
             // 语言要在任何 t() 之前定下来（与 dsh-email 同款契约）。
             try {
@@ -2434,8 +2318,7 @@ calendarHostContext=ctx;W.register(ctx,{id:'dsh-calendar.workbench',label:()=>t(
                     const style = document.createElement("style");
                     style.dataset.plugin = "dsh-calendar";
                     style.dataset.pluginCss = id;
-                    style.textContent = CSS + CSS_EXTRA + ".dshc-import{margin:12px 0;padding:14px;border:1px solid var(--dsw-alias-border-l2,#d5d9df);border-radius:12px;min-width:0}.dshc-import h3{margin:0 0 8px}.dshc-import label{display:block;font-size:12px;margin:10px 0}.dshc-import input[type=file],.dshc-import textarea,.dshc-import select{display:block;box-sizing:border-box;width:100%;max-width:100%;margin-top:5px;border:1px solid var(--dsw-alias-border-l2,#ccc);border-radius:8px;padding:7px;color:inherit;background:var(--dsw-alias-bg-layer-1,#fff)}.dshc-import textarea{resize:vertical;font:12px/1.5 monospace}.dshc-import-actions{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.dshc-import-rows{max-height:480px;overflow:auto}.dshc-import-row{padding:10px 4px;border-bottom:1px solid var(--dsw-alias-border-l2,#ddd);overflow-wrap:anywhere}.dshc-import-row p{font-size:12px;margin:5px 0}.dshc-import .dshc-import-pick{display:flex;align-items:flex-start;gap:8px}.dshc-import-pick input{margin-top:2px;flex-shrink:0}.dshc-import-warning{color:var(--dsw-alias-state-warn-primary,#886200)}";
-                    style.textContent += "@media(max-width:700px){[role=dialog]:has(.dshc-root){width:100%!important;max-width:100%!important;flex-direction:column!important}[role=dialog]:has(.dshc-root)>nav+div{min-width:0;width:100%}[role=dialog]:has(.dshc-root)>nav+div>div:has(.dshc-root){padding:12px!important;min-width:0}[role=dialog]:has(.dshc-root) nav{width:100%!important;flex-basis:auto!important;border-right:0;max-height:170px;overflow:auto}[role=dialog]:has(.dshc-root) nav>div:has(>button){display:flex;flex-direction:row!important;flex-wrap:wrap;flex-shrink:0;gap:4px}}";
+                    style.textContent = CSS;
                     document.head.appendChild(style);
                     return () => { style.remove(); };
                 }, "dsh-calendar: styles");
