@@ -24,9 +24,9 @@
 <details>
 <summary>查看实际示例</summary>
 
-![workbench example](https://raw.githubusercontent.com/STARDUSTLC666/dsh-calendar/main/docs/assets/intro/screen-zh.webp)
+![Calendar 的浅色 Arc 浮岛周视图](https://raw.githubusercontent.com/STARDUSTLC666/dsh-calendar/main/docs/assets/intro/screen-zh.webp)
 
-图片来自验证环境的真实界面或示例 PPTX 渲染，使用示例数据。
+截图来自 DeepSeek Harness 0.2.2-rc.3 中的 Calendar 0.16.0，使用示例日程。
 
 </details>
 

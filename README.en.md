@@ -24,9 +24,9 @@
 <details>
 <summary>See a workbench example</summary>
 
-![workbench example](https://raw.githubusercontent.com/STARDUSTLC666/dsh-calendar/main/docs/assets/intro/screen-en.webp)
+![Calendar week view in dark Raycast Spotlight layout](https://raw.githubusercontent.com/STARDUSTLC666/dsh-calendar/main/docs/assets/intro/screen-en.webp)
 
-Actual interface with controlled validation data; the PPTX image is a rendered sample when shown.
+Calendar 0.16.0 running in DeepSeek Harness 0.2.2-rc.3 with sample events.
 
 </details>
 
