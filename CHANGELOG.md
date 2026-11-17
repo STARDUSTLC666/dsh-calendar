@@ -1,5 +1,10 @@
 # 更新记录
 
+## 0.18.1 (2026-11-18)
+
+- 同步 `@stardustlc/dsh-updates` 0.2.1：恢复 Suite 整包统一更新（移除独立拆包迁移），保留整包与独立插件的原地热更新与失败自动回滚。
+- Sync `@stardustlc/dsh-updates` 0.2.1: restore unified Suite bundle updates (removing standalone conversion) while retaining in-place hot reload and automatic rollback.
+
 ## 0.18.0 (2026-11-18)
 
 - 新增五种界面风格切换（`harness` 原生清透、`cream` 米白纸感、`claude` Claude 暖书卷、`pixel8bit` 8-Bit 像素、`mint` 晴空薄荷），与四种日历布局、事件配色、Portal 弹窗/下拉菜单、悬浮按钮及快捷命令面板（`Ctrl+Shift+K`）协同同步；移除纯黑深色底，统一为通透石板灰（`#1f232b` / `#272c36`）。
