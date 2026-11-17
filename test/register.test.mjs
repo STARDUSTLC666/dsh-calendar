@@ -85,6 +85,37 @@ test('dispose 触发时卸载全部工具', () => {
   assert.equal(registered.length, 0)
 })
 
+test('Cordis 4 ctx.effect 卸载回调触发时同样卸载全部工具并清理子服务引用', () => {
+  const registered = []
+  const cleanups = []
+  const childCleanups = []
+  const ctx = {
+    tools: {
+      register(definition) {
+        registered.push(definition)
+        return () => {
+          const index = registered.indexOf(definition)
+          if (index >= 0) registered.splice(index, 1)
+        }
+      },
+    },
+    effect(fn) {
+      cleanups.push(fn())
+      return () => {}
+    },
+    inject(services, callback) {
+      if (services[0] === 'llm' || services[0] === 'attachments') {
+        callback({ [services[0]]: {}, effect(fn) { childCleanups.push(fn()) } })
+      }
+    },
+  }
+  apply(ctx, { provider: 'custom', username: 'u', password: 'p', caldavUrl: 'https://x/' })
+  assert.equal(registered.length, 7)
+  assert.equal(childCleanups.length, 2)
+  for (const cleanup of [...childCleanups, ...cleanups].reverse()) cleanup()
+  assert.equal(registered.length, 0)
+})
+
 test('必填参数缺失抛中文错误（create 缺 summary）', async () => {
   const create = buildCalendarTools({})[1]
   await assert.rejects(

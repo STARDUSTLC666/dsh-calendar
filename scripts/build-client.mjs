@@ -9,6 +9,24 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const read = path => readFileSync(path, 'utf8').replace(/\r\n/g, '\n')
 const require = createRequire(import.meta.url)
 
+function compactPostcssRoot(astRoot) {
+  astRoot.walkComments(comment => comment.remove())
+  astRoot.walk(node => {
+    node.raws.before = node.parent.type === 'root' ? '\n' : ''
+    if (node.type === 'decl') node.raws.between = ':'
+    if (node.nodes) {
+      node.raws.between = ''
+      node.raws.after = ''
+      node.raws.semicolon = false
+    }
+  })
+  return astRoot.toString().trim()
+}
+
+const themeStylesheet = join(root, 'templates/themes-and-motion.css')
+const compiledThemes = await postcss().process(read(themeStylesheet), { from: themeStylesheet })
+const themeCss = compactPostcssRoot(compiledThemes.root)
+
 const stylesheet = join(root, 'templates/calendar.module.css')
 let classNames
 const compiled = await postcss([
@@ -22,17 +40,9 @@ const compiled = await postcss([
 
 // Keep the stylesheet in the Loader script, so the plugin works under a mounted
 // DSH URL without a second asset route. Keep one line per top-level CSS rule.
-compiled.root.walkComments(comment => comment.remove())
-compiled.root.walk(node => {
-  node.raws.before = node.parent.type === 'root' ? '\n' : ''
-  if (node.type === 'decl') node.raws.between = ':'
-  if (node.nodes) {
-    node.raws.between = ''
-    node.raws.after = ''
-    node.raws.semicolon = false
-  }
-})
-const css = compiled.root.toString().trim()
+const css = (themeCss + '\n' + compactPostcssRoot(compiled.root)).replace(/[`$\\]/g, '\\$&')
+const styleKit = read(join(root, 'templates/style-switcher.js'))
+  .replace(/^export\s+(?=(?:const|function)\s)/gm, '')
 const kit = read(join(root, 'templates/workbench-ui.js'))
 const directory = join(root, 'templates/panels')
 const panels = readdirSync(directory).filter(name => name.endsWith('.js')).sort()
@@ -61,4 +71,4 @@ const CSS = \`${css}\`;
 `
 
 mkdirSync(join(root, 'lib'), { recursive: true })
-writeFileSync(join(root, 'lib/client.js'), header + client.replace(marker, () => kit + '\n' + panels) + '\n})();\n')
+writeFileSync(join(root, 'lib/client.js'), header + client.replace(marker, () => styleKit + '\n' + kit + '\n' + panels) + '\n})();\n')
