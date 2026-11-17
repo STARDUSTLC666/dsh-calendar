@@ -1,5 +1,10 @@
 # 更新记录
 
+## 0.16.1 (2026-11-17)
+
+- 在工作台单独检查和安装兼容版本。自动安装默认关闭，可为该插件开启空闲时的稳定补丁更新。
+- Check and install compatible versions separately from the workbench. Automatic installation is off by default. Enable it for this plugin to apply stable patches while idle.
+
 ## 0.16.0 (2026-11-16)
 
 - 新增 DSH 原生、Arc 浮岛、Raycast 聚光和 Bento 卡片四种布局，可选用设计稿的默认蓝、极光紫、余烬橙和薄荷绿。配色随宿主切换深浅色，浏览器记住布局和配色。

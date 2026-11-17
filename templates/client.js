@@ -2301,7 +2301,8 @@ __stardustUpdatesGuard(React, "dsh-calendar.import", { dirty: !!content.trim(), 
                     demo ? h("div", { className: clsx(styles["dshc-alert"], styles.demo) }, t("demo.banner")) : null,
                     compact ? workspacePage : h("div", { className: styles.workspacePanel,
                         id: workspaceId + "-" + tool + "-panel", role: "tabpanel", "aria-labelledby": workspaceId + "-" + tool
-                    }, workspacePage)
+                    }, workspacePage, workbench && typeof __stardustUpdatesFooter === "function"
+                        ? __stardustUpdatesFooter(React, "dsh-calendar") : null)
                 ),
                 selected ? h(EventReview, {
                     event: selected, readOnly: demo, events: data.events, busy, confirmDelete, setConfirmDelete,
