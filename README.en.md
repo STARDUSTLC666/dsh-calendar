@@ -25,9 +25,9 @@
 <details>
 <summary>See a workbench example</summary>
 
-![Calendar week view in dark Raycast Spotlight layout](https://raw.githubusercontent.com/STARDUSTLC666/dsh-calendar/main/docs/assets/intro/screen-en.webp)
+![Calendar month view in Mint theme with DSH native layout](https://raw.githubusercontent.com/STARDUSTLC666/dsh-calendar/main/docs/assets/intro/screen-en.webp)
 
-Calendar 0.16.0 running in DeepSeek Harness 0.2.2-rc.3 with sample events.
+Calendar 0.18.1 running in DeepSeek Harness 0.2.2-rc.3 (Mint theme) with sample events.
 
 </details>
 

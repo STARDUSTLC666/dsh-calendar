@@ -25,9 +25,9 @@
 <details>
 <summary>查看实际示例</summary>
 
-![Calendar 的浅色 Arc 浮岛周视图](https://raw.githubusercontent.com/STARDUSTLC666/dsh-calendar/main/docs/assets/intro/screen-zh.webp)
+![Calendar 的薄荷主题 DSH 原生月视图](https://raw.githubusercontent.com/STARDUSTLC666/dsh-calendar/main/docs/assets/intro/screen-zh.webp)
 
-截图来自 DeepSeek Harness 0.2.2-rc.3 中的 Calendar 0.16.0，使用示例日程。
+截图来自 DeepSeek Harness 0.2.2-rc.3 中的 Calendar 0.18.1（薄荷主题），使用示例日程。
 
 </details>
 
