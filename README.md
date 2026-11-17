@@ -2,7 +2,7 @@
 
 # Calendar
 
-**看清日程，找到当前日历里合适的空闲时间。**
+**DeepSeek Harness 原生日历工作台：管理 CalDAV 日程、查找空闲时段、预览导入 ICS，支持多套布局与五种界面主题切换。**
 
 [![npm](https://img.shields.io/npm/v/dsh-calendar)](https://www.npmjs.com/package/dsh-calendar) [![downloads](https://raw.githubusercontent.com/STARDUSTLC666/dsh-suite/npm-downloads/assets/dsh-calendar-downloads.svg)](https://www.npmjs.com/package/dsh-calendar) [![total downloads](https://raw.githubusercontent.com/STARDUSTLC666/dsh-suite/npm-downloads/assets/dsh-calendar-total-downloads.svg)](https://www.npmjs.com/package/dsh-calendar)
 
@@ -17,9 +17,10 @@
 
 ## 功能
 
-- 用月、周或议程视图安排日程。
+- 用月、周或议程视图安排日程，支持周视图拖拽改期、iCloud 日历自动发现及从文字/截图智能草稿填写。
 - 按时长、工作日与缓冲查找空闲候选。
 - 先核对新建草稿或 ICS 导入预览，再确认写入。
+- 内置多套布局、事件配色与五种界面主题切换（原生清透 / 米白纸感 / Claude 暖书卷 / 8-Bit 像素 / 晴空薄荷），深色模式采用柔和石板灰。
 
 <details>
 <summary>查看实际示例</summary>
@@ -38,7 +39,7 @@
 dsh plugin --profile desktop add dsh-calendar
 ```
 
-网页版把 `desktop` 改为 `web`；安装后重启对应的 DSH。宿主要求以包声明 `>=0.2.1-rc.3` 为准。
+网页版把 `desktop` 改为 `web`；安装后重启对应的 DSH。宿主要求以包声明 `>=0.2.2-rc.3` 为准。
 
 ## 开始使用
 

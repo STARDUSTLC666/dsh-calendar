@@ -2,7 +2,7 @@
 
 # Calendar
 
-**See your schedule and find time in your calendar.**
+**DeepSeek Harness native calendar workbench: manage CalDAV schedules, find open slots, preview ICS imports, and switch layouts, palettes, and five UI themes.**
 
 [![npm](https://img.shields.io/npm/v/dsh-calendar)](https://www.npmjs.com/package/dsh-calendar) [![downloads](https://raw.githubusercontent.com/STARDUSTLC666/dsh-suite/npm-downloads/assets/dsh-calendar-downloads.svg)](https://www.npmjs.com/package/dsh-calendar) [![total downloads](https://raw.githubusercontent.com/STARDUSTLC666/dsh-suite/npm-downloads/assets/dsh-calendar-total-downloads.svg)](https://www.npmjs.com/package/dsh-calendar)
 
@@ -17,9 +17,10 @@
 
 ## Features
 
-- Plan with month, week and agenda views.
+- Plan with month, week and agenda views, week drag-to-reschedule, iCloud calendar discovery, and reviewed smart event drafts from text or screenshots.
 - Find candidates using duration, weekdays and buffers.
 - Review event drafts or ICS imports before confirming writes.
+- Harmonized layouts, event palettes, and five switchable UI themes (Native Airy, Warm Cream, Claude Warmth, Bright 8-Bit, and Airy Mint) with breathable slate dark mode.
 
 <details>
 <summary>See a workbench example</summary>
@@ -38,7 +39,7 @@ Open **Plugins** in the DSH desktop app and install `dsh-calendar`. If the CLI i
 dsh plugin --profile desktop add dsh-calendar
 ```
 
-For the web profile, replace `desktop` with `web`. Restart that DSH profile after installation. The package’s DSH requirement is `>=0.2.1-rc.3`.
+For the web profile, replace `desktop` with `web`. Restart that DSH profile after installation. The package’s DSH requirement is `>=0.2.2-rc.3`.
 
 ## Start using it
 
