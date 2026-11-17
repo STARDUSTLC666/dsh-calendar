@@ -112,7 +112,7 @@ window.__ModuleLoader__.load({ id: "dsh-calendar", factory: (require) => {
                 "hint.clientId.google": "OAuth 客户端 ID，类型选「桌面应用」即可",
                 "hint.refreshToken.google": "用下面步骤里的 OAuth Playground 换一次，长期有效",
                 "hint.tokenUrl": "留空即用 Google 默认地址",
-                "hint.caldavUrl.icloud": "形如 https://caldav.icloud.com/<数字ID>/calendars/<日历ID>/ —— 数字 ID 在与日历同级的设置里能看到",
+                "hint.caldavUrl.icloud": "已知集合地址时可以手动填写。公开订阅链接不能用于写入。",
                 "hint.username.icloud": "你的 Apple ID 邮箱",
                 "hint.password.icloud": "必须用 App 专用密码，不是 Apple ID 登录密码",
                 "hint.host.nextcloud": "含 https://，结尾不要带 /",
@@ -122,11 +122,11 @@ window.__ModuleLoader__.load({ id: "dsh-calendar", factory: (require) => {
                 "hint.caldavUrl.custom": "完整日历集合 URL，结尾的 / 别丢",
                 "hint.username.custom": "登录账号 / 邮箱",
                 "steps.google": ["在 Google Cloud 控制台新建项目，并启用「Google Calendar API」", "「凭据」→ 创建凭据 → OAuth 客户端 ID，类型选「桌面应用」，拿到 clientId 与 clientSecret", "打开 OAuth Playground（齿轮里勾 Use your own OAuth credentials，填上面的 clientId / clientSecret），授权 scope https://www.googleapis.com/auth/calendar，换取 refreshToken", "日历 ID 一般就是你的 Gmail 地址；四格填完点「测试连接」"],
-                "steps.icloud": ["到 appleid.apple.com → 登录与安全 → App 专用密码，生成一个（形如 xxxx-xxxx-xxxx-xxxx）", "iCloud 网页版日历 → 左下角齿轮 → 日历设置，找到你要连的那本日历的 CalDAV 地址", "账号填 Apple ID 邮箱，密码填上一步的 App 专用密码"],
+                "steps.icloud": ["在 Apple 账户的「登录与安全」中生成 App 专用密码", "填写 Apple 账户和 App 专用密码，点击「发现日历」", "选择日历，再测试并保存连接"],
                 "steps.nextcloud": ["服务器地址填 https://cloud.example.com（结尾不带 /）", "用户名 = 登录名；日历名在「日历」应用左侧能看到，个人日历默认叫 personal", "密码用 App 密码或登录密码，填完点「测试连接」"],
                 "steps.custom": ["在服务商后台找到你日历的集合 URL（以 / 结尾），例如 https://cloud.example.com/remote.php/dav/calendars/用户名/日历名/", "账号填登录名，密码填授权码 / App 密码，填完点「测试连接」"],
                 "conn.googleHint": "Google 必须用 OAuth：clientSecret 与 refreshToken 由一次授权换成，README 里有换取步骤；Google 不接受应用专用密码。",
-                "conn.icloudHint": "iCloud 用 App 专用密码（appleid.apple.com → 登录与安全）；日历集合 URL 形如 https://caldav.icloud.com/<数字ID>/calendars/<日历ID>/，可在 iCloud 网页版日历设置里找到。",
+                "conn.icloudHint": "用 Apple 账户和 App 专用密码发现日历。",
                 "conn.nextcloudHint": "Nextcloud 填服务器地址 + 用户名 + 日历名即可，密码用 App 密码或登录密码。",
                 "conn.customHint": "自建 CalDAV 直接给完整日历集合 URL（结尾的 / 别丢），形如 https://cloud.example.com/remote.php/dav/calendars/用户名/日历名/。"
             },
@@ -210,7 +210,7 @@ window.__ModuleLoader__.load({ id: "dsh-calendar", factory: (require) => {
                 "hint.clientId.google": "an OAuth client ID; the desktop-app type works",
                 "hint.refreshToken.google": "exchange it once in the OAuth Playground step below; it lasts",
                 "hint.tokenUrl": "leave empty to use Google's default",
-                "hint.caldavUrl.icloud": "looks like https://caldav.icloud.com/<numeric id>/calendars/<calendar id>/",
+                "hint.caldavUrl.icloud": "Enter a collection URL if you already have one. Public subscription links are read-only.",
                 "hint.username.icloud": "your Apple ID email",
                 "hint.password.icloud": "an app-specific password, not your Apple ID password",
                 "hint.host.nextcloud": "include https:// and drop any trailing /",
@@ -220,11 +220,11 @@ window.__ModuleLoader__.load({ id: "dsh-calendar", factory: (require) => {
                 "hint.caldavUrl.custom": "the full collection URL — keep the trailing slash",
                 "hint.username.custom": "login account / email",
                 "steps.google": ["Create a project in the Google Cloud console and enable the Google Calendar API", "Credentials → Create credentials → OAuth client ID, type Desktop app; copy clientId and clientSecret", "Open the OAuth Playground (gear icon: Use your own OAuth credentials, paste clientId/clientSecret), authorize scope https://www.googleapis.com/auth/calendar and exchange a refreshToken", "The calendar ID is usually your Gmail address; then hit Test connection"],
-                "steps.icloud": ["Go to appleid.apple.com → Sign-In and Security → App-Specific Passwords and create one (xxxx-xxxx-xxxx-xxxx)", "In iCloud web Calendar → gear → Calendar settings, find the CalDAV URL of the calendar you want", "Fill your Apple ID email and that app-specific password"],
+                "steps.icloud": ["Create an app-specific password in your Apple Account under Sign-In and Security", "Enter your Apple Account and app-specific password, then select Discover calendars", "Choose a calendar, then test and save your connection"],
                 "steps.nextcloud": ["Server: https://cloud.example.com (no trailing slash)", "Username = your login; the calendar name is shown in the Calendar app (personal by default)", "Use an app password or your login password, then hit Test connection"],
                 "steps.custom": ["Find your calendar collection URL in the provider's settings (it ends with /), e.g. https://cloud.example.com/remote.php/dav/calendars/user/calendar/", "Fill the login account and an app password / token, then Test connection"],
                 "conn.googleHint": "Google requires OAuth: exchange clientSecret and refreshToken once (see the README); Google does not accept app passwords.",
-                "conn.icloudHint": "iCloud uses an app-specific password (appleid.apple.com → Sign-In and Security); the collection URL looks like https://caldav.icloud.com/<numeric id>/calendars/<calendar id>/.",
+                "conn.icloudHint": "Discover calendars using your Apple Account and an app-specific password.",
                 "conn.nextcloudHint": "Nextcloud needs the server URL, username and calendar name; any app password works.",
                 "conn.customHint": "For a self-hosted CalDAV give the full collection URL (keep the trailing slash), e.g. https://cloud.example.com/remote.php/dav/calendars/user/calendar/."
             }
@@ -234,6 +234,31 @@ window.__ModuleLoader__.load({ id: "dsh-calendar", factory: (require) => {
         var activeLocaleService = null;
         // Backend guidance is localized separately from event titles and source content.
         const BACKEND_EN = {
+            "请先选择 iCloud 服务商。": "Select iCloud as the calendar provider.",
+            "请填写有效的 Apple 账户。": "Enter a valid Apple Account.",
+            "iCloud 认证失败，请检查 Apple 账户与 App 专用密码。": "iCloud sign-in failed. Check your Apple Account and app-specific password.",
+            "无法连接 iCloud，请检查网络或代理后重试。": "Could not connect to iCloud. Check your network or proxy and retry.",
+            "iCloud 日历发现请求失败。": "iCloud calendar discovery failed.",
+            "iCloud 日历发现已取消或超时。": "iCloud calendar discovery was cancelled or timed out.",
+            "发现日历时收到不受信任的 iCloud 地址。": "Calendar discovery received an untrusted iCloud address.",
+            "没有找到可选择的 iCloud 日历。": "No iCloud calendars are available to select.",
+            "iCloud 未返回日历账户地址。": "iCloud did not return a calendar account address.",
+            "iCloud 未返回日历目录。": "iCloud did not return a calendar directory.",
+            "iCloud 返回了无法读取的日历列表。": "iCloud returned an unreadable calendar list.",
+            "iCloud 返回的日历列表过大。": "The iCloud calendar list is too large.",
+            "请在 DSH 中配置日程解析模型。": "Configure a DSH model to extract event details.",
+            "请选择可用的 DSH 模型。": "Select an available DSH model.",
+            "请选择支持图片输入的 DSH 模型。": "Select a DSH model with image input.",
+            "请粘贴日程文字或选择截图。": "Paste event text or choose a screenshot.",
+            "请使用 PNG、JPEG 或 WebP 截图。": "Use a PNG, JPEG, or WebP screenshot.",
+            "截图超过 2 MiB，请裁剪后重试。": "The screenshot exceeds 2 MiB. Crop it and try again.",
+            "日程解析已取消或超时。": "Event extraction was cancelled or timed out.",
+            "无法识别当前时区。": "The current time zone could not be resolved.",
+            "无法读取截图附件。": "Could not read the screenshot.",
+            "无法使用所选 DSH 模型，请检查模型设置后重试。": "Could not use the selected DSH model. Check the model settings and retry.",
+            "模型未完成日程解析，请重试。": "The model did not finish extracting event details. Try again.",
+            "模型未返回可用的日程草稿。": "The model did not return a usable event draft.",
+            "未从材料中识别到日程。": "No event could be identified in the supplied material.",
             '系列含已取消、额外或单独改期的场次，不能整体改开始时间、全天类型或重复规则；请在原日历客户端编辑，现有日程未改动。': 'This series has cancelled, extra or rescheduled occurrences. Change its start time, all-day type or recurrence rule in the original calendar app. No event was changed.',
             '这是整个重复系列。请先向用户说明影响，确认后显式传 scope="series"；当前不支持只改某一次。': 'This action changes the entire recurring series. Explain its impact, then use scope="series" after confirmation. Editing just one occurrence is unsupported.',
             '这是整个重复系列。请先向用户说明影响，确认后显式传 scope="series"；当前不支持只删某一次。': 'This action deletes the entire recurring series. Explain its impact, then use scope="series" after confirmation. Deleting just one occurrence is unsupported.',
@@ -363,16 +388,17 @@ window.__ModuleLoader__.load({ id: "dsh-calendar", factory: (require) => {
         }
         /** 调插件自己的路由；错误码原样带出，方便上层区分「没配置」与「服务器拒绝」。 */
         const API_TIMEOUT_MS = 15000;
-        async function api(action, payload, signal) {
+        async function api(action, payload, signal, route = ROUTE) {
             const init = { credentials: "same-origin", method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(Object.assign({ action }, payload)) };
             // 请求必须有上限：挂起的 Promise 会让乐观覆盖一直盖着、撤销条永不出现，
             // 表现就是「界面改了、服务器没改」而用户以为成功。超时按失败处理（调用方会回滚并对账）。
             if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") {
-                if (action === 'availability') init.signal = AbortSignal.timeout(25000);
+                if (action === "suggest") init.signal = AbortSignal.timeout(65000);
+                else if (action === "availability" || action === "discoverICloud" || action === "models") init.signal = AbortSignal.timeout(25000);
                 else init.signal = AbortSignal.timeout(API_TIMEOUT_MS);
             }
             if (signal) init.signal = init.signal && typeof AbortSignal.any === 'function' ? AbortSignal.any([init.signal, signal]) : signal;
-            const res = await fetch(ROUTE, init);
+            const res = await fetch(route, init);
             let body = null;
             try {
                 body = await res.json();
@@ -1243,7 +1269,7 @@ window.__ModuleLoader__.load({ id: "dsh-calendar", factory: (require) => {
         /** 每个服务商要填哪些格子。顺序就是表单里的顺序。 */
         const PROVIDER_FIELDS = {
             google: ["calendarId", "clientId", "clientSecret", "refreshToken", "tokenUrl", "proxyUrl"],
-            icloud: ["caldavUrl", "username", "password", "proxyUrl"],
+            icloud: ["username", "password", "proxyUrl"],
             nextcloud: ["host", "user", "username", "calendar", "password", "proxyUrl"],
             custom: ["caldavUrl", "username", "password", "proxyUrl"]
         };
@@ -1306,6 +1332,7 @@ window.__ModuleLoader__.load({ id: "dsh-calendar", factory: (require) => {
             const [form, setForm] = useState(() => connectionDraftOf(connection));
             const [busy, setBusy] = useState("");
             const [result, setResult] = useState(null);
+            const [calendars, setCalendars] = useState([]);
             const maySave = connection?.settingsAvailable !== false;
             useEffect(() => {
                 onBusy?.(busy !== "");
@@ -1317,6 +1344,20 @@ __stardustUpdatesGuard(React, "dsh-calendar.connection", { dirty: JSON.stringify
             const patch = (fields) => {
                 setForm((prev) => Object.assign({}, prev, fields));
                 setResult(null);
+            };
+            const iCloud = form.provider === "icloud";
+            const savedICloudPassword = connection?.provider === "icloud" && connection.hasPassword
+                && (form.username || "").trim().toLowerCase() === (connection.username || "").trim().toLowerCase();
+            const mayDiscover = (form.username || "").trim() !== "" && (!!form.password?.trim() || savedICloudPassword);
+            const canConnect = !!form.provider && (!iCloud || (mayDiscover && !!form.caldavUrl?.trim()));
+            const changeProvider = provider => {
+                if (provider === form.provider) return;
+                setCalendars([]);
+                patch(provider === "icloud" || iCloud ? { provider, caldavUrl: "", password: "" } : { provider });
+            };
+            const changeField = (key, value) => {
+                if (iCloud && ["username", "password", "proxyUrl"].includes(key)) setCalendars([]);
+                patch(iCloud && key === "username" ? { username: value, caldavUrl: "", password: "" } : { [key]: value });
             };
             const visible = PROVIDER_FIELDS[form.provider] || [];
             const payload = () => {
@@ -1337,6 +1378,18 @@ __stardustUpdatesGuard(React, "dsh-calendar.connection", { dirty: JSON.stringify
                 else if (form.provider !== "" && connection && form.provider !== connection.provider)
                     out.authMethod = "basic";
                 return out;
+            };
+            const discover = async () => {
+                setBusy("discover");
+                setResult(null);
+                setCalendars([]);
+                try {
+                    const value = await api("discoverICloud", payload());
+                    setCalendars(value.calendars);
+                    setResult({ ok: true, text: calendarText("请选择要连接的日历。", "Choose the calendar you want to connect.") });
+                }
+                catch (error) { setResult({ ok: false, text: backendMessage(error) }); }
+                finally { setBusy(""); }
             };
             const test = async () => {
                 setBusy("test");
@@ -1367,6 +1420,24 @@ __stardustUpdatesGuard(React, "dsh-calendar.connection", { dirty: JSON.stringify
                 }
             };
             const title = t("conn.title");
+            const renderField = key => {
+                const secret = SECRET_FIELDS.includes(key);
+                const saved = { password: "hasPassword", clientSecret: "hasClientSecret", refreshToken: "hasRefreshToken" }[key];
+                const mayKeep = iCloud && key === "password" ? savedICloudPassword : saved && connection?.[saved];
+                const hintKey = FIELD_HINT[form.provider]?.[key];
+                return h("div", {
+                    key, className: clsx(styles["dshc-field"], ["caldavUrl", "tokenUrl", "proxyUrl"].includes(key) && styles.fullField)
+                },
+                    h("label", { htmlFor: formId + "-" + key }, t(FIELD_LABEL[key])),
+                    h(Txt, {
+                        id: formId + "-" + key, type: secret ? "password" : "text", disabled: busy !== "",
+                        value: form[key] || "", placeholder: mayKeep ? t("conn.keep") : "",
+                        onChange: event => changeField(key, event.target.value)
+                    }),
+                    hintKey ? h("div", { className: styles["dshc-sub"] }, t(hintKey)) : null
+                );
+            };
+            const calendarLabel = calendarText("选择日历", "Choose a calendar");
             const body = h(React.Fragment, null,
                 h("p", { className: styles.pageIntro }, t("conn.intro")),
                 h("p", { className: styles.pageIntro }, t("conn.credentials")),
@@ -1378,7 +1449,7 @@ __stardustUpdatesGuard(React, "dsh-calendar.connection", { dirty: JSON.stringify
                         options: [{ id: "", label: t("conn.needProvider") }].concat(PROVIDER_NAMES.map(id => ({
                             id, label: { google: "Google CalDAV OAuth", icloud: "iCloud", nextcloud: "Nextcloud", custom: t("provider.custom") }[id]
                         }))),
-                        onChange: provider => patch({ provider })
+                        onChange: changeProvider
                     })
                 ),
                 PROVIDER_HINT[form.provider] ? h("p", { className: styles.pageIntro }, t(PROVIDER_HINT[form.provider])) : null,
@@ -1389,22 +1460,25 @@ __stardustUpdatesGuard(React, "dsh-calendar.connection", { dirty: JSON.stringify
                         key: link.href, href: link.href, target: "_blank", rel: "noreferrer", className: styles["dshc-link"]
                     }, t(link.key))))
                 ) : null,
-                h("div", { className: styles.formGrid }, visible.map(key => {
-                    const secret = SECRET_FIELDS.includes(key);
-                    const saved = { password: "hasPassword", clientSecret: "hasClientSecret", refreshToken: "hasRefreshToken" }[key];
-                    const hintKey = FIELD_HINT[form.provider]?.[key];
-                    return h("div", {
-                        key, className: clsx(styles["dshc-field"], ["caldavUrl", "tokenUrl", "proxyUrl"].includes(key) && styles.fullField)
-                    },
-                        h("label", { htmlFor: formId + "-" + key }, t(FIELD_LABEL[key])),
-                        h(Txt, {
-                            id: formId + "-" + key, type: secret ? "password" : "text", disabled: busy !== "",
-                            value: form[key] || "", placeholder: saved && connection?.[saved] ? t("conn.keep") : "",
-                            onChange: event => patch({ [key]: event.target.value })
-                        }),
-                        hintKey ? h("div", { className: styles["dshc-sub"] }, t(hintKey)) : null
-                    );
-                })),
+                h("div", { className: styles.formGrid }, visible.map(renderField)),
+                iCloud ? h("div", { className: styles["dshc-field"] },
+                    h("div", null, h(Btn, { onClick: discover, disabled: busy !== "" || !mayDiscover },
+                        busy === "discover" ? calendarText("正在发现…", "Discovering…") : calendarText("发现日历", "Discover calendars")
+                    )),
+                    calendars.length > 0 ? h(Picker, {
+                        id: formId + "-icloud-calendars", label: calendarLabel,
+                        value: calendars.some(calendar => calendar.url === form.caldavUrl) ? form.caldavUrl : "",
+                        options: [{ id: "", label: calendarLabel }].concat(calendars.map((calendar, index) => ({
+                            id: calendar.url,
+                            label: calendar.name || calendarText("日历 ", "Calendar ") + (index + 1)
+                        }))),
+                        disabled: busy !== "", onChange: caldavUrl => patch({ caldavUrl })
+                    }) : null,
+                    h("details", { className: styles["dshc-steps"] },
+                        h("summary", null, calendarText("手动填写日历地址", "Enter a calendar URL manually")),
+                        renderField("caldavUrl")
+                    )
+                ) : null,
                 result ? h("div", {
                     className: clsx(styles["dshc-alert"], result.ok ? styles.success : styles.error), role: result.ok ? "status" : "alert"
                 }, (result.ok ? "✓ " : t("conn.fail") + "：") + result.text) : null,
@@ -1412,8 +1486,8 @@ __stardustUpdatesGuard(React, "dsh-calendar.connection", { dirty: JSON.stringify
             );
             const actions = h("div", { className: styles["dshc-actions"] },
                 h(Btn, { variant: "ghost", onClick: onClose, disabled: busy !== "" }, t("action.cancel")),
-                h(Btn, { onClick: test, disabled: busy !== "" || !form.provider }, busy === "test" ? t("conn.testing") : t("conn.test")),
-                h(Btn, { variant: "primary", onClick: save, disabled: busy !== "" || !form.provider || !maySave }, busy === "save" ? t("conn.saving") : t("conn.save"))
+                h(Btn, { onClick: test, disabled: busy !== "" || !canConnect }, busy === "test" ? t("conn.testing") : t("conn.test")),
+                h(Btn, { variant: "primary", onClick: save, disabled: busy !== "" || !canConnect || !maySave }, busy === "save" ? t("conn.saving") : t("conn.save"))
             );
             if (inline) return h("section", { className: styles.workspacePage, "aria-label": title, "aria-busy": !!busy },
                 h("div", { className: styles.pageInner },
@@ -2301,8 +2375,12 @@ __stardustUpdatesGuard(React, "dsh-calendar.import", { dirty: !!content.trim(), 
                     demo ? h("div", { className: clsx(styles["dshc-alert"], styles.demo) }, t("demo.banner")) : null,
                     compact ? workspacePage : h("div", { className: styles.workspacePanel,
                         id: workspaceId + "-" + tool + "-panel", role: "tabpanel", "aria-labelledby": workspaceId + "-" + tool
-                    }, workspacePage, workbench && typeof __stardustUpdatesFooter === "function"
-                        ? __stardustUpdatesFooter(React, "dsh-calendar") : null)
+                    }, workbench && tool !== "schedule" && typeof __stardustUpdatesFooter === "function"
+                        ? h("div", { className: styles.workspaceScroll },
+                            workspacePage,
+                            h("div", { className: clsx(styles.pageInner, styles.pageUpdates) },
+                                __stardustUpdatesFooter(React, "dsh-calendar")))
+                        : workspacePage)
                 ),
                 selected ? h(EventReview, {
                     event: selected, readOnly: demo, events: data.events, busy, confirmDelete, setConfirmDelete,

@@ -133,9 +133,20 @@ test('从 Google 切到 iCloud 时测试与保存都改用 Basic，不继承 OAu
   try {
     const select = win.document.querySelector('select');
     await react.act(async () => { select.value = 'icloud'; select.dispatchEvent(new win.Event('change', { bubbles: true })); });
+    const fields = ['username', 'password', 'caldavUrl'];
+    const values = ['synthetic@example.test', 'fixture-app-password', 'https://caldav.icloud.com/1/calendars/work/'];
+    for (const [index, field] of fields.entries()) {
+      const input = win.document.querySelector('input[id$="-' + field + '"]');
+      assert.ok(input, field);
+      await react.act(async () => {
+        Object.getOwnPropertyDescriptor(win.HTMLInputElement.prototype, 'value').set.call(input, values[index]);
+        input.dispatchEvent(new win.Event('input', { bubbles: true }));
+      });
+    }
     for (const label of ['测试连接', '保存并启用']) {
       const button = [...win.document.querySelectorAll('button')].find(node => node.textContent === label);
       assert.ok(button, label);
+      assert.equal(button.disabled, false, label);
       await react.act(async () => button.click());
       assert.equal(apiCalls.at(-1).body.authMethod, 'basic', `${label} 必须使用新服务商的认证方式`);
       assert.equal(apiCalls.at(-1).body.provider, 'icloud');

@@ -14,6 +14,38 @@ import { toCalendarConfig, toSettingsBase, validateSettingsValue } from '../lib/
 import { attachSettings } from '../lib/index.js';
 import { readConnectionFile, writeConnectionFile } from '../lib/store.js';
 
+test('iCloud discovery rejects a stored password from another account without contacting the network', async t => {
+  let requested = false;
+  t.mock.method(globalThis, 'fetch', async () => { requested = true; throw new Error('Unexpected request'); });
+  const backend = new CalendarSettingsBackend({
+    config: { provider: 'icloud', username: 'previous@example.test', password: 'fixture-only' },
+  });
+  const response = makeRes();
+  await backend.handle(makeReq({ body: {
+    action: 'discoverICloud', provider: 'icloud', username: 'new@example.test',
+  } }), response);
+  assert.equal(response.state.status, 400);
+  assert.equal(requested, false);
+  assert.match(response.state.raw, /密码未填写/);
+  assert.doesNotMatch(response.state.raw, /fixture-only/);
+});
+
+test('the smart draft endpoint only previews and will not dispatch create or cross-origin requests', async () => {
+  const model = { routes: async () => [], suggest: async () => ({ summary: 'Draft title' }) };
+  const service = fakeService();
+  const backend = new CalendarSettingsBackend({ draftModel: () => model, serviceFactory: () => service });
+  const res = makeRes();
+  await backend.handle(makeReq({ body: { action: 'suggest' } }), res, true);
+  assert.equal(res.state.body.value.summary, 'Draft title');
+  const forbidden = makeRes();
+  await backend.handle(makeReq({ body: { action: 'suggest' }, headers: { origin: 'https://example.test' } }), forbidden, true);
+  assert.equal(forbidden.state.status, 403);
+  const invalid = makeRes();
+  await backend.handle(makeReq({ body: { action: 'create' } }), invalid, true);
+  assert.equal(invalid.state.status, 400);
+  assert.deepEqual(service.calls, []);
+});
+
 /** 造一个最小 req：POST body 走异步迭代器（handle 里就是 for await 读的）。 */
 function makeReq(options = {}) {
   const method = options.method ?? 'POST';

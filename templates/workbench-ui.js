@@ -104,7 +104,9 @@ function Picker({ id, label, value, options, onChange, disabled, compact = false
 
 function Segments({ id, label, items, value, onChange, disabled }) {
     if (PRIM?.SegmentedControl) {
-        return h(PRIM.SegmentedControl, { id, label, value, options: items, onChange, disabled, className: styles.segments });
+        // The host positions the active pill by equal grid tracks. The
+        // fallback flex layout would make its width and offsets diverge.
+        return h(PRIM.SegmentedControl, { id, label, value, options: items, onChange, disabled });
     }
     return h("div", { className: styles.segments, role: "tablist", "aria-label": label },
         items.map(item => h("button", {

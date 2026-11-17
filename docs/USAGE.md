@@ -28,7 +28,7 @@ Harness 0.1.7 及以上通过宿主设置服务写入 profile 中的 `calendar` 
 
 各服务商要点：
 
-- **iCloud**：`caldavUrl` 形如 `https://caldav.icloud.com/<数字ID>/calendars/<日历ID>/`，密码用 [App 专用密码](https://appleid.apple.com/)
+- **iCloud**：填写 Apple 账户和 [App 专用密码](https://account.apple.com/)，点击「发现日历」，选择日历后测试并保存。
 - **Nextcloud / 自建**：服务器地址 + 用户名 + 日历名（自建则给完整集合 URL，结尾的 `/` 别丢），密码用 App 密码
 - **Google**：必须 OAuth，Google 不接受任何 Basic 密码；需要 `clientId` / `clientSecret` / `refreshToken` / `calendarId`
 
@@ -46,6 +46,10 @@ Harness 0.1.7 及以上通过宿主设置服务写入 profile 中的 `calendar` 
 - `proxyUrl`：可选 HTTP 代理地址（如 http://127.0.0.1:7890）；令牌刷新和 CalDAV 请求共用该代理。可直连时无需填写。
 - `calendarId`：google 专用，日历 ID（通常是你的邮箱）
 - `host` / `user` / `calendar`：nextcloud 专用
+
+## 从文字或截图新建日程
+
+在日历工作台打开「新建日程 → 从文字或截图填写」。粘贴通知文字，或添加 2 MiB 以内的 PNG、JPEG、WebP 截图。选择 DSH 模型后点「生成草稿」，截图需要支持图片输入的模型。模型收到的是这一栏的材料，解析后的时间按浏览器时区显示。核对并补齐编辑表单，点「保存」后才会写入所选日历。
 
 ## 导入 ICS 日程
 
@@ -146,7 +150,7 @@ node scripts/google-oauth.mjs --client-id 你的clientId --client-secret 你的c
     # password 推荐用环境变量 DSH_CALENDAR_PASSWORD
 ```
 
-iCloud 需要完整日历集合 URL（含你的用户 ID 与日历 ID），在 icloud.com 的日历 CalDAV 设置里可找到具体日历地址。
+iCloud 的手动 YAML 配置需要完整的日历集合 URL。也可以在工作台的「连接设置」中发现并选择日历，由面板保存地址。
 
 ### Nextcloud 示例
 
@@ -220,7 +224,7 @@ Nextcloud / 自定义 Basic 服务：检查账号、密码或服务要求的应�
 - 单次实例的读取与改/删：calendar_list 展开时识别 RECURRENCE-ID 覆盖实例（单独改期/改标题的实例按覆盖后的时间与字段返回，被 EXDATE 排除原时间的覆盖实例仍会返回）；calendar_update / calendar_delete 仍针对整个重复系列（按 uid 操作），无法只修改或删除某一次发生。
 - OAuth 凭据需要事先取得：支持刷新令牌认证，但不提供浏览器登录 UI / 登录 CLI，也不把运行时令牌写回配置文件。
 - 时区规则：带 TZID（命名时区）的事件输出会转成 UTC（Z）；全天边界、夏令时等复杂时区规则不做精细化处理。
-- 日历发现：iCloud 需手动填完整日历集合 URL；不做 principal 自动发现与多日历选择。
+- 每个日历连接使用一个集合。iCloud 连接页可以发现账号中的日历，再选择其中一个。
 - 取消/超时：工具使用 timeoutMs（60 秒），并向令牌刷新与 DAV 网络请求透传宿主 AbortSignal；并发调用独立取消。
 
 ## 开发

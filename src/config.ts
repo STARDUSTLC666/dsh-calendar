@@ -207,8 +207,7 @@ export function buildCaldavUrl(config: CalendarConfig, provider: CalendarProvide
 
   if (provider === 'icloud') {
     throw new ConfigError(
-      'dsh-calendar 的 provider=icloud 需要完整日历集合 URL：请在 icloud.com 的日历设置里找到具体日历的 CalDAV 地址，' +
-      '填入 profile 的 cordis.patch.yml 覆盖 calendar 行的 caldavUrl（形如 ' + ICLOUD_CALDAV_URL + '/<用户ID>/calendars/<日历ID>/）后重启。',
+      'dsh-calendar 的 provider=icloud 需要日历集合 URL（caldavUrl）。请在日历的“连接设置”里点“发现日历”，选择日历后保存。',
     )
   }
 

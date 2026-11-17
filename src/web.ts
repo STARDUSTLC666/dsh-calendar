@@ -16,12 +16,15 @@
 import { resolveConfig, type CalendarConfig } from './config.js'
 import { CalendarSettingsSchema, SETTINGS_NAMESPACE, draftToConfig, validateSettingsValue, type CalendarSettingsValue } from './settings.js'
 import { CalendarService } from './caldav.js'
+import { discoverICloud } from './icloud.js'
 import { asRecord, assertIsoTime, assertTimeRange, isoNoMillis, optionalString, sortEvents } from './tools.js'
 import type { CalendarEvent } from './ical.js'
 import type { AvailabilityInput, AvailabilityResult } from './availability.js'
+import { DRAFT_BODY_LIMIT, type DraftModel } from './quick-draft.js'
 
 /** 面板与浏览器说话的同源路由。 */
 export const SETTINGS_ROUTE = '/_dsh/dsh-calendar/settings'
+export const DRAFT_ROUTE = '/_dsh/dsh-calendar/draft'
 
 /** 回环主机名白名单；带端口会被拆掉，IPv6 字面量保留方括号。 */
 const LOCAL_HOSTNAMES = new Set(['localhost', '127.0.0.1', '::1', '[::1]'])
@@ -157,6 +160,7 @@ export interface CalendarSettingsBackendOptions {
   /** 测试用：替换「保存前的连接测试」。 */
   probeFactory?: (config: CalendarConfig) => Promise<{ count: number; sample: string[] }>
   env?: NodeJS.ProcessEnv
+  draftModel?: () => DraftModel | undefined
   settings?: CalendarSettingsFace
   /** 宿主 ctx：用来懒接入 settings 服务（不赌子 fiber 的时序）。 */
   ctx?: any
@@ -349,7 +353,7 @@ export class CalendarSettingsBackend {
   }
 
   /** 路由入口。GET = 读状态，POST = 动作（list/create/update/delete）。 */
-  async handle(req: any, res: any): Promise<void> {
+  async handle(req: any, res: any, draft = false): Promise<void> {
     // 每次请求前试一次：settings 服务晚到、或上一个实例刚卸载，都能在这一刻补上。
     this.ensureSettings()
     const remote = String(req.socket?.remoteAddress ?? '')
@@ -364,7 +368,7 @@ export class CalendarSettingsBackend {
       return
     }
     if (req.method !== 'POST') {
-      this.responseJson(res, 200, { ok: true, value: this.status() })
+      this.responseJson(res, draft ? 405 : 200, draft ? { ok: false } : { ok: true, value: this.status() })
       return
     }
     const post = postVerdict(headers)
@@ -379,8 +383,9 @@ export class CalendarSettingsBackend {
     const disconnect = () => { if (!res.writableEnded) requestController.abort(new Error('空闲查询已取消')) }
     res.once?.('close', disconnect)
     try {
-      const body = await readJsonBody(req)
-      const value = await this.dispatch(asRecord(body), requestController.signal)
+      const body = asRecord(await readJsonBody(req, draft ? DRAFT_BODY_LIMIT : undefined))
+      const value = draft ? await this.dispatchDraft(body, requestController.signal)
+        : await this.dispatch(body, requestController.signal)
       this.responseJson(res, 200, { ok: true, value })
     } catch (error) {
       if (res.destroyed) return
@@ -389,10 +394,29 @@ export class CalendarSettingsBackend {
     } finally { res.off?.('close', disconnect) }
   }
 
+  private async dispatchDraft(body: Record<string, unknown>, signal: AbortSignal): Promise<unknown> {
+    const model = this.options.draftModel?.()
+    if (body.action === 'models') return { models: model ? await model.routes(signal) : [] }
+    if (body.action !== 'suggest' || !model) throw new Error('请在 DSH 中配置日程解析模型。')
+    return model.suggest(body, signal)
+  }
+
   /** 动作分发。每个动作自己校验参数，错误信息面向用户（中文，面板直接显示）。 */
   private async dispatch(body: Record<string, unknown>, signal?: AbortSignal): Promise<unknown> {
     const action = typeof body.action === 'string' ? body.action : ''
     if (action === 'status' || action === 'connection') return this.connection()
+    if (action === 'discoverICloud') {
+      const draft = connectionDraft(body)
+      const current = this.configOf()
+      const { config } = this.proposed(draft)
+      if (config.provider !== 'icloud') throw new Error('请先选择 iCloud 服务商。')
+      const sameAccount = current.provider === 'icloud'
+        && config.username?.trim().toLowerCase() === current.username?.trim().toLowerCase()
+      const password = typeof draft.password === 'string' && draft.password.trim()
+        ? draft.password : sameAccount ? current.password : undefined
+      const env = sameAccount ? this.options.env ?? process.env : {}
+      return { calendars: await discoverICloud({ ...config, password }, env, signal) }
+    }
     if (action === 'testConnection') {
       const { config } = this.proposed(connectionDraft(body))
       const probe = await this.probe(config)
@@ -452,13 +476,13 @@ export class CalendarSettingsBackend {
 }
 
 /** POST body 读取：上限 256 KiB，超限或非 JSON 直接拒绝。 */
-async function readJsonBody(req: any): Promise<unknown> {
+async function readJsonBody(req: any, limit = 256 * 1024): Promise<unknown> {
   const chunks: Buffer[] = []
   let size = 0
   for await (const chunk of req) {
     const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk))
     size += buf.length
-    if (size > 256 * 1024) throw new Error('请求体过大')
+    if (size > limit) throw new Error('请求体过大')
     chunks.push(buf)
   }
   const text = Buffer.concat(chunks).toString('utf8').trim()
@@ -527,11 +551,22 @@ function clampInt(value: unknown, fallback: number, min: number, max: number): n
 export function installCalendarSettingsWeb(ctx: any, backend: CalendarSettingsBackend): void {
   ctx.inject(['webServer'], (webCtx: any) => {
     webCtx.effect(() => {
-      return webCtx.webServer.register({
+      const unmount = webCtx.webServer.register({
         kind: 'exact',
         path: SETTINGS_ROUTE,
         handler: (req: any, res: any) => backend.handle(req, res),
       })
+      try {
+        const unmountDraft = webCtx.webServer.register({
+          kind: 'exact',
+          path: DRAFT_ROUTE,
+          handler: (req: any, res: any) => backend.handle(req, res, true),
+        })
+        return () => { unmountDraft(); unmount() }
+      } catch (error) {
+        unmount()
+        throw error
+      }
     }, 'dsh-calendar: web routes')
   })
 }

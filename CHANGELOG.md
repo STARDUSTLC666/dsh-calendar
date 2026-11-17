@@ -1,5 +1,14 @@
 # 更新记录
 
+## 0.17.0 (2026-11-17)
+
+- iCloud 连接支持填写 Apple 账户与 App 专用密码后发现日历，选择集合后测试并保存。发现过程兼容中国区节点。
+- 修复工作台工具栏选中指示块的错位。
+- 新建日程支持用 DSH 模型从文字或截图填写草稿。用户核对并保存后才写入日历。
+- Discover iCloud calendars with an Apple Account and app-specific password, including China-region routing. Select, test, and save the collection.
+- Align the active segment indicator with the workbench toolbar.
+- Fill an editable new-event draft from text or a screenshot using a DSH model. Review and save to create the event.
+
 ## 0.16.1 (2026-11-17)
 
 - 在工作台单独检查和安装兼容版本。自动安装默认关闭，可为该插件开启空闲时的稳定补丁更新。

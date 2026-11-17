@@ -16,6 +16,7 @@ import { CalendarSettingsBackend, installCalendarSettingsWeb, CONNECTION_KEYS, h
 import { connectionFile, readConnectionFile, writeConnectionFile } from './store.js'
 import { Config as ConfigSchema, liveConfig } from './host-config.js'
 import { CalendarImportBackend, installCalendarImport } from './import-web.js'
+import { nativeDraftModel } from './quick-draft.js'
 import { entryIdOf, installLegacySettingsImport, isFormsProvider, isLegacyProvider, settingsProviderOf } from './host-settings.js'
 
 /** 宿主用 entry 的 Config 生成设置表单：0.1.7 起这就是「注册设置项」的方式。 */
@@ -173,12 +174,22 @@ export function apply(ctx: CalendarPluginContext, config?: CalendarConfig | null
 
   // 面板路由挂上即用：settings 服务由 backend 在第一个请求上懒接入（见 web.ts 的
   // ensureSettings），所以这里不依赖任何子 fiber 的时序，也不会因为重复 apply 而失效。
+  let llm: any, attachments: any
+  ctx.inject?.(['llm'], service => {
+    llm = service.llm
+    service.on?.('dispose', () => { llm = undefined })
+  })
+  ctx.inject?.(['attachments'], service => {
+    attachments = service.attachments
+    service.on?.('dispose', () => { attachments = undefined })
+  })
   const backend = new CalendarSettingsBackend({
     config: configOf,
     ctx,
     settings: attached.face,
     settingsBase: toSettingsBase(cfg),
     settingsNs: attached.ns,
+    draftModel: () => llm ? nativeDraftModel(llm, attachments) : undefined,
     ...(attached.reason !== undefined ? { settingsReason: attached.reason } : {}),
   })
   try {

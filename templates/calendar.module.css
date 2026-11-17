@@ -480,6 +480,10 @@
 .dshc-alert.demo { color: var(--dsw-alias-state-business-primary); }
 
 .workspacePage { flex: 1; min-width: 0; min-height: 0; overflow: auto; padding: 20px 18px 32px; }
+.workspaceScroll { flex: 1; min-width: 0; min-height: 0; overflow: auto; }
+.workspaceScroll > .workspacePage { overflow: visible; }
+.pageUpdates { padding: 0 18px 24px; }
+.draftControls { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .pageInner { max-width: 820px; margin-inline: auto; min-width: 0; }
 .pageHeading { margin: 0 0 4px; font-size: 17px; font-weight: 600; }
 .pageIntro { margin: 0 0 14px; color: var(--dsw-alias-label-secondary); }

@@ -17,8 +17,10 @@ import { type CalendarConfig } from './config.js';
 import { type CalendarSettingsValue } from './settings.js';
 import type { CalendarEvent } from './ical.js';
 import type { AvailabilityInput, AvailabilityResult } from './availability.js';
+import { type DraftModel } from './quick-draft.js';
 /** 面板与浏览器说话的同源路由。 */
 export declare const SETTINGS_ROUTE = "/_dsh/dsh-calendar/settings";
+export declare const DRAFT_ROUTE = "/_dsh/dsh-calendar/draft";
 /** Host 头裁决：undefined = 放行，否则给出拒绝原因。 */
 export declare function hostVerdict(host: unknown): string | undefined;
 /** 写操作裁决：undefined = 放行，否则给出状态码与原因。 */
@@ -85,6 +87,7 @@ export interface CalendarSettingsBackendOptions {
         sample: string[];
     }>;
     env?: NodeJS.ProcessEnv;
+    draftModel?: () => DraftModel | undefined;
     settings?: CalendarSettingsFace;
     /** 宿主 ctx：用来懒接入 settings 服务（不赌子 fiber 的时序）。 */
     ctx?: any;
@@ -149,7 +152,8 @@ export declare class CalendarSettingsBackend {
     private probe;
     private responseJson;
     /** 路由入口。GET = 读状态，POST = 动作（list/create/update/delete）。 */
-    handle(req: any, res: any): Promise<void>;
+    handle(req: any, res: any, draft?: boolean): Promise<void>;
+    private dispatchDraft;
     /** 动作分发。每个动作自己校验参数，错误信息面向用户（中文，面板直接显示）。 */
     private dispatch;
 }

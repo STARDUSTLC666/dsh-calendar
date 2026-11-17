@@ -204,8 +204,7 @@ test('apply：0.1.7 宿主上照常注册 7 个工具，不再抛 register is no
     console.warn = originalWarn;
   }
   assert.equal(ctx.registered.length, 7);
-  assert.equal(ctx.routes.length, 1, '面板路由照常挂上');
-  assert.equal(ctx.routes[0].path, SETTINGS_ROUTE);
+  assert.deepEqual(ctx.routes.map(route => route.path), [SETTINGS_ROUTE, '/_dsh/dsh-calendar/draft']);
   assert.equal(provider.state.configured.length, 1, '自带设置页要登记 auto:false，宿主才不会再生成一页');
   assert.equal(provider.state.configured[0].presentation.auto, false);
   assert.deepEqual(warnings, [], '接上宿主表单时不该有退化告警：' + JSON.stringify(warnings));

@@ -1,6 +1,9 @@
 function EventForm({ draft, events, onCancel, onSubmit, busy, error, source, original, onDelete, confirmDelete, setConfirmDelete }) {
     const formId = useId();
     const [form, setForm] = useState(draft);
+    const [smartOpen, setSmartOpen] = useState(false);
+    const [smartBusy, setSmartBusy] = useState(false);
+    const [smartFilled, setSmartFilled] = useState(false);
     // Update protection: dsh-calendar.event
     __stardustUpdatesGuard(React, "dsh-calendar.event", { dirty: JSON.stringify(form) !== JSON.stringify(draft), busy: !!busy });
 
@@ -9,7 +12,11 @@ function EventForm({ draft, events, onCancel, onSubmit, busy, error, source, ori
     const isEdit = draft.uid !== undefined;
     const pseudo = asPseudoEvent(form);
     const conflicts = !pseudo ? [] : events.filter(event => event.uid !== form.uid && overlaps(event, pseudo));
-    const canSave = form.summary.trim() !== "" && !!pseudo && Date.parse(pseudo.end) >= Date.parse(pseudo.start);
+    const canSave = !smartBusy && form.summary.trim() !== "" && !!pseudo && Date.parse(pseudo.end) >= Date.parse(pseudo.start);
+    const fillDraft = fields => {
+        patch({ ...fields, sourceRange: undefined });
+        setSmartFilled(true);
+    };
     const field = (key, label, control) => h("div", { className: styles["dshc-field"] },
         h("label", { htmlFor: formId + "-" + key }, label), control
     );
@@ -27,6 +34,14 @@ function EventForm({ draft, events, onCancel, onSubmit, busy, error, source, ori
 
     const body = h(React.Fragment, null,
         source ? h("p", { className: styles.draftHint }, calendarText("目标日历：", "Target calendar: ") + source) : null,
+        !isEdit ? h("details", { className: styles["dshc-steps"], onToggle: event => setSmartOpen(event.currentTarget.open) },
+            h("summary", null, calendarText("从文字或截图填写", "Fill from text or screenshot")),
+            smartOpen ? h(CalendarDraftInput, { onFill: fillDraft, onBusy: setSmartBusy }) : null
+        ) : null,
+        smartFilled ? h("p", { role: "status", className: styles.draftHint }, calendarText(
+            "已填入草稿。请核对日期、时间和地点，补齐空白后保存。",
+            "Draft fields filled. Check the date, time, and location and fill any blanks before saving."
+        )) : null,
         draft.isSeries ? h("p", { className: styles["dshc-alert"] }, t("form.series")) : null,
         error ? h("div", { className: clsx(styles["dshc-alert"], styles.error), role: "alert" }, error) : null,
         conflicts.length ? h("div", { className: clsx(styles["dshc-alert"], styles.warn), role: "status" },

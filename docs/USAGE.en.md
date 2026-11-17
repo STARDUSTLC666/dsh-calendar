@@ -34,9 +34,13 @@ Use calendar service credentials here, not a DSH model API key. Google uses OAut
 
 Per-provider notes:
 
-- **iCloud**: `caldavUrl` looks like `https://caldav.icloud.com/<numeric id>/calendars/<calendar id>/`; use an [app-specific password](https://appleid.apple.com/)
+- **iCloud**: enter your Apple Account and an [app-specific password](https://account.apple.com/). Select **Discover calendars**, choose a calendar, then test and save the connection.
 - **Nextcloud / self-hosted**: server URL + username + calendar name (self-hosted: the full collection URL, keep the trailing slash) and an app password
 - **Google**: OAuth only — Google rejects every Basic password, including app passwords; needs `clientId` / `clientSecret` / `refreshToken` / `calendarId`
+
+## Create an event from text or a screenshot
+
+In the calendar workbench, open **New event → Fill from text or screenshot**. Paste a notice or add a PNG, JPEG, or WebP screenshot up to 2 MiB. Select a DSH model, then choose **Generate draft**. Screenshots require a model with image input. The selected model receives the supplied material and fills times in the browser's time zone. Review the fields and select **Save** to create the event.
 
 ## Import ICS events
 
@@ -120,7 +124,7 @@ Access tokens are cached in memory and checked before each DAV request, with ref
     # password 推荐用环境变量 DSH_CALENDAR_PASSWORD
 ```
 
-iCloud needs the full calendar collection URL (with your user ID and calendar ID); you can find the specific calendar address in the calendar CalDAV settings on icloud.com.
+Manual iCloud YAML configuration requires a full collection URL. The workbench connection page can discover your calendars and save the address you select.
 
 ### Nextcloud example
 
@@ -196,7 +200,7 @@ Input and output are uniformly ISO 8601. Timed events are output in UTC (e.g. `2
 - Single-instance reads vs edit/delete: calendar_list honors RECURRENCE-ID overrides when expanding (an occurrence separately rescheduled/retitled is returned with the override time and fields, including when the original instant is EXDATE-excluded); calendar_update / calendar_delete still operate on the whole recurring series (by uid) and cannot modify or delete just one occurrence.
 - OAuth credentials must be obtained beforehand: refresh-token authentication is supported, but there is no browser login UI / login CLI and runtime tokens are not written back to configuration.
 - Timezone rules: events with TZID (named timezone) are output converted to UTC (Z); all-day boundaries, DST, and other complex timezone rules are not handled finely.
-- Calendar discovery: iCloud requires manually filling the full calendar collection URL; no principal auto-discovery or multi-calendar selection.
+- A connection uses one calendar collection. For iCloud, discover the account's calendars and choose the one to connect.
 - Cancellation/timeout: tools use `timeoutMs` (60 seconds) and forward the host AbortSignal into token refresh and DAV network requests. Concurrent calls cancel independently.
 
 ## Development
