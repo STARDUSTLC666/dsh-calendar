@@ -52,7 +52,7 @@ function MiniCalendar({ anchor, onPick }) {
         grid.current?.querySelectorAll("button")[next]?.focus();
     }
 
-    return h("div", { className: styles.miniCalendar, "data-dsh-card": "" },
+    return h("div", { className: styles.miniCalendar },
         h("div", { className: styles.miniHeading },
             h("h2", null, formatMonthTitle(month)),
             h("div", { className: styles.period },

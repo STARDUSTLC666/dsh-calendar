@@ -1,14 +1,5 @@
 # 更新记录
 
-## 0.18.0 (2026-11-18)
-
-- 新增五种界面风格切换（`harness` 原生清透、`cream` 米白纸感、`claude` Claude 暖书卷、`pixel8bit` 8-Bit 像素、`mint` 晴空薄荷），与四种日历布局、事件配色、Portal 弹窗/下拉菜单、悬浮按钮及快捷命令面板（`Ctrl+Shift+K`）协同同步；移除纯黑深色底，统一为通透石板灰（`#1f232b` / `#272c36`）。
-- 升级全量矢量 SVG 图标与小按钮微动效（`refresh`、`plus`/`close`、`trash`、`down`、`check`/`copy`）、8-Bit 阶梯按压反馈、日程卡片聚光悬浮及 `prefers-reduced-motion` 无障碍支持。
-- 深度适配 DeepSeek Harness `>=0.2.2-rc.3`：提升 `engines.dsh` 至 `>=0.2.2-rc.3`、按需加载宿主 UI 原语并提供 jsdom 兜底、浮层标记 `data-window-drag-exclude`，以及补齐 Cordis 4 `ctx.effect` 热重载/卸载清理。
-- Add a 5-preset `[data-dsh-style]` switcher (`harness`, `cream`, `claude`, `pixel8bit`, `mint`) harmonized with calendar layouts, event palettes, portaled dialogs/menus, the floating launcher, and quick-action commands, replacing pitch-black dark surfaces with breathable slate (`#1f232b` / `#272c36`).
-- Upgrade icons to crisp stroke SVGs with `data-dsh-icon` micro-animations, stepped 8-bit press physics, card/chip spotlight transitions, and `prefers-reduced-motion` support.
-- Deeply adapt to DeepSeek Harness `>=0.2.2-rc.3` (`engines.dsh >=0.2.2-rc.3`, lazy host UI primitives with jsdom fallbacks, `data-window-drag-exclude`, and Cordis 4 `ctx.effect` unload cleanup).
-
 ## 0.17.0 (2026-11-17)
 
 - iCloud 连接支持填写 Apple 账户与 App 专用密码后发现日历，选择集合后测试并保存。发现过程兼容中国区节点。

@@ -3,8 +3,8 @@
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  color: var(--dsw-alias-label-primary, #0f1115);
-  background: var(--dsw-alias-bg-base, #ffffff);
+  color: var(--dsw-alias-label-primary);
+  background: var(--dsw-alias-bg-base);
   font: 13px/1.5 var(--ds-font-family-text, system-ui, sans-serif);
 }
 
@@ -217,7 +217,6 @@
   height: 26px;
   padding: 0;
   border: 0;
-  box-shadow: none;
   border-radius: var(--dsw-radius-sm);
   background: transparent;
   color: var(--dsw-alias-label-primary);
@@ -320,7 +319,6 @@
   cursor: pointer;
 }
 .dshc-cell:hover { background: color-mix(in srgb, var(--dsw-alias-label-primary) 4%, var(--dsw-alias-bg-base)); }
-.dshc-cell:active { scale: 1 !important; translate: 0px 0px !important; }
 .dshc-cell.out { background: var(--dsw-alias-bg-layer-1); }
 .dshc-daynum { margin-bottom: 4px; font-size: 12px; }
 .dshc-daynum b { display: inline-grid; min-width: 22px; height: 22px; place-items: center; font-weight: 500; }
@@ -380,7 +378,6 @@
   height: 44px;
   padding: 0;
   border: 0;
-  box-shadow: none;
   border-block-end: 0.5px solid var(--dsw-alias-border-l2);
   background: transparent;
   cursor: pointer;
@@ -713,8 +710,8 @@ textarea.dshc-input { min-height: 64px; resize: vertical; }
 }
 
 @media (hover: hover) {
-  .dshc-root :is(.dshc-chip, .dshc-row, .card, .slotCard, .miniCalendar) { position: relative; }
-  .dshc-root :is(.dshc-slot, .dshc-chip, .dshc-row, .card, .slotCard, .miniCalendar)::after {
+  .layoutSpotlight :is(.dshc-chip, .card, .slotCard, .miniCalendar) { position: relative; }
+  .layoutSpotlight :is(.dshc-slot, .dshc-chip, .card, .slotCard, .miniCalendar)::after {
     content: "";
     position: absolute;
     inset: 0;
@@ -722,55 +719,16 @@ textarea.dshc-input { min-height: 64px; resize: vertical; }
     pointer-events: none;
     background: radial-gradient(
       260px circle at var(--calendar-spotlight-x, -999px) var(--calendar-spotlight-y, -999px),
-      color-mix(in srgb, var(--dsw-alias-accent, var(--dsw-alias-state-business-primary, #4176e6)) 12%, transparent),
+      color-mix(in srgb, var(--dsw-alias-accent) 12%, transparent),
       transparent 70%
     );
     opacity: 0;
   }
-  .dshc-root :is(.dshc-slot, .dshc-chip, .dshc-row, .card, .slotCard, .miniCalendar):hover::after { opacity: 1; }
+  .layoutSpotlight :is(.dshc-slot, .dshc-chip, .card, .slotCard, .miniCalendar):hover::after { opacity: 1; }
 }
 
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
-  .dshc-root :is(.dshc-slot, .dshc-chip, .dshc-row, .card, .slotCard, .miniCalendar)::after { transition: opacity 0.25s ease; }
-  .dshc-root:not([data-dsh-style="pixel8bit"]) .dshc-chip:hover { translate: 1px -0.5px; }
-  .dshc-root:not([data-dsh-style="pixel8bit"]) .dshc-slot:not(.dragging):not(.dshc-ghost):hover {
-    box-shadow: var(--dsh-card-hover-shadow, 0 4px 12px rgba(15, 23, 42, 0.08));
-  }
-}
-
-.dshc-root[data-dsh-style="pixel8bit"] .hourSlot {
-  border: 0 !important;
-  border-block-end: 1px dashed var(--dsw-alias-border-l1) !important;
-  box-shadow: none !important;
-  translate: none !important;
-}
-
-.dshc-root[data-dsh-style="pixel8bit"] .miniDay:not([aria-pressed="true"]) {
-  border: 1px solid transparent !important;
-  box-shadow: none !important;
-}
-
-.dshc-root[data-dsh-style="pixel8bit"] .paletteChoices .dshc-btn.paletteSwatch {
-  border: 1px solid #1e2826;
-  box-shadow: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .dshc-float,
-  .dshc-undo {
-    opacity: 1;
-    translate: 0px 0px;
-    transition:
-      opacity 180ms var(--dsh-ease-out, ease-out),
-      translate 180ms var(--dsh-ease-out, ease-out);
-  }
-  @starting-style {
-    .dshc-float,
-    .dshc-undo {
-      opacity: 0;
-      translate: 0px 6px;
-    }
-  }
+  .layoutSpotlight :is(.dshc-slot, .dshc-chip, .card, .slotCard, .miniCalendar)::after { transition: opacity 0.25s ease; }
 }
 
 .layoutCards :is(.calendarSurface, .workspacePage) {

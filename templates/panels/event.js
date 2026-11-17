@@ -82,7 +82,7 @@ function EventForm({ draft, events, onCancel, onSubmit, busy, error, source, ori
         original ? h(DeleteEventButton, { event: original, busy, confirmDelete, setConfirmDelete, onDelete }) : null,
         original ? h("span", { className: styles["dshc-spacer"] }) : null,
         h(Btn, { variant: "ghost", onClick: onCancel, disabled: busy }, t("action.cancel")),
-        h(Btn, { variant: "primary", icon: busy ? undefined : "check", onClick: () => onSubmit(form), disabled: busy || !canSave || confirmDelete, "aria-busy": busy }, busy ? "…" : t("action.save"))
+        h(Btn, { variant: "primary", onClick: () => onSubmit(form), disabled: busy || !canSave || confirmDelete, "aria-busy": busy }, busy ? "…" : t("action.save"))
     );
     return h(Dlg, {
         open: true, onClose: onCancel, closeLabel: calendarText("关闭", "Close"),
@@ -94,22 +94,18 @@ function CopyEventId({ uid }) {
     const [copied, setCopied] = useState(false);
     const timer = useRef(null);
     useEffect(() => () => clearTimeout(timer.current), []);
-    return h(Btn, {
-        icon: copied ? "check" : "copy",
-        "data-copied": copied ? "true" : undefined,
-        onClick: async () => {
-            if (!await copyText(uid)) return;
-            clearTimeout(timer.current);
-            setCopied(true);
-            timer.current = setTimeout(() => setCopied(false), 1600);
-        }
-    }, copied ? t("action.copied") : t("action.copy"));
+    return h(Btn, { onClick: async () => {
+        if (!await copyText(uid)) return;
+        clearTimeout(timer.current);
+        setCopied(true);
+        timer.current = setTimeout(() => setCopied(false), 1600);
+    } }, copied ? t("action.copied") : t("action.copy"));
 }
 
 function DeleteEventButton({ event, busy, readOnly, confirmDelete, setConfirmDelete, onDelete }) {
     return confirmDelete
-        ? h(Btn, { variant: "danger", icon: "trash", disabled: busy || readOnly, onClick: () => onDelete(event) }, t("action.confirmDelete"))
-        : h(Btn, { variant: "danger", icon: "trash", disabled: busy || readOnly, onClick: () => setConfirmDelete(true) }, t("action.delete"));
+        ? h(Btn, { variant: "danger", disabled: busy || readOnly, onClick: () => onDelete(event) }, t("action.confirmDelete"))
+        : h(Btn, { variant: "danger", disabled: busy || readOnly, onClick: () => setConfirmDelete(true) }, t("action.delete"));
 }
 
 function EventReview({ event, onClose, onEdit, onDelete, busy, confirmDelete, setConfirmDelete, events, readOnly }) {

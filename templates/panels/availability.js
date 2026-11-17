@@ -100,7 +100,7 @@ function AvailabilityPanel({ anchor, onChoose, onClose, onBusy }) {
             "按当前连接的日历查找，不代表其他日历或参会者空闲。选择候选只填写新建草稿。",
             "Checks the connected calendar, not other calendars or attendees. Choosing a time only fills a new-event draft."
         )),
-        h("form", { className: styles.card, "data-dsh-card": "", onSubmit: search },
+        h("form", { className: styles.card, onSubmit: search },
             h("div", { className: styles.formGrid },
                 field("from", text("开始日期", "Start date"), "date"),
                 field("to", text("结束日期（包含当天）", "End date (inclusive)"), "date"),
@@ -128,11 +128,11 @@ function AvailabilityPanel({ anchor, onChoose, onClose, onBusy }) {
             )
         ),
         error ? h("p", { className: clsx(styles["dshc-alert"], styles.error), role: "alert" }, error) : null,
-        result ? h("div", { className: styles.card, "data-dsh-card": "", "aria-live": "polite" },
+        result ? h("div", { className: styles.card, "aria-live": "polite" },
             h("p", { className: styles["dshc-sub"] }, text("读取于 ", "Checked at ") + format(result.checkedAt) +
                 text("，已核对 ", " · Checked ") + result.busyEventCount +
                 text(" 个占用日程。候选尚未预约，可相互重叠。", " busy events. Candidates are not reserved and may overlap.")),
-            result.count ? h("ol", { className: styles.slotGrid }, result.slots.map(slot => h("li", { className: styles.slotCard, "data-dsh-card": "", key: slot.start },
+            result.count ? h("ol", { className: styles.slotGrid }, result.slots.map(slot => h("li", { className: styles.slotCard, key: slot.start },
                 h("span", { className: styles.slotRange }, format(slot.start) + " — " + format(slot.end)),
                 h(Btn, { variant: "primary", onClick: () => onChoose(slot) }, text("用此时段新建", "Create with this time"))
             ))) : h("p", { role: "status" }, text(
