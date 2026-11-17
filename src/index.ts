@@ -37,6 +37,7 @@ const CONNECTION_FIELDS: readonly string[] = [...CONNECTION_KEYS]
 /** 插件所需的最小 ctx 面（社区插件不依赖宿主内部类型）。 */
 export interface CalendarPluginContext {
   tools: { register(definition: CalendarToolDefinition): () => void }
+  effect?(callback: () => () => void): unknown
   on?(event: string, listener: () => void): () => void
   /** 设置页面板需要挂路由；隔离环境（测试/headless）可以没有。 */
   inject?(services: string[], callback: (ctx: any) => void): void
@@ -177,11 +178,15 @@ export function apply(ctx: CalendarPluginContext, config?: CalendarConfig | null
   let llm: any, attachments: any
   ctx.inject?.(['llm'], service => {
     llm = service.llm
-    service.on?.('dispose', () => { llm = undefined })
+    const clearLlm = () => { llm = undefined }
+    service.effect?.(() => clearLlm)
+    service.on?.('dispose', clearLlm)
   })
   ctx.inject?.(['attachments'], service => {
     attachments = service.attachments
-    service.on?.('dispose', () => { attachments = undefined })
+    const clearAttachments = () => { attachments = undefined }
+    service.effect?.(() => clearAttachments)
+    service.on?.('dispose', clearAttachments)
   })
   const backend = new CalendarSettingsBackend({
     config: configOf,
@@ -199,10 +204,19 @@ export function apply(ctx: CalendarPluginContext, config?: CalendarConfig | null
     console.warn('dsh-calendar: 面板路由未挂载：' + (error instanceof Error ? error.message : String(error)))
   }
 
+  let cleaned = false
+  const cleanupTools = () => {
+    if (cleaned) return
+    cleaned = true
+    for (const dispose of disposers) {
+      if (typeof dispose === 'function') dispose()
+    }
+  }
+  if (typeof ctx.effect === 'function') {
+    ctx.effect(() => cleanupTools)
+  }
   if (typeof ctx.on === 'function') {
-    ctx.on('dispose', () => {
-      for (const dispose of disposers) dispose()
-    })
+    ctx.on('dispose', cleanupTools)
   }
 }
 

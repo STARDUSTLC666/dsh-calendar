@@ -690,7 +690,7 @@ window.__ModuleLoader__.load({ id: "dsh-calendar", factory: (require) => {
             else if (event.isOccurrence)
                 meta.push(t("repeat.occurrence"));
             return h("button", {
-                type: "button", className: clsx(styles["dshc-row"], conflicted && styles.conflicted), onClick: () => onClick(event)
+                type: "button", className: clsx(styles["dshc-row"], conflicted && styles.conflicted), "data-dsh-row": "", onClick: () => onClick(event)
             },
                 h("span", { className: styles["dshc-time"] }, event.allDay ? t("format.allday") : (hhmm(startDate(event)) + "–" + hhmm(endDate(event)))),
                 h("span", { className: styles["dshc-main"] },
@@ -1826,9 +1826,10 @@ __stardustUpdatesGuard(React, "dsh-calendar.import", { dirty: !!content.trim(), 
             const [tool, setTool] = useState("schedule");
             const [layout, setLayout] = useState(loadCalendarLayout);
             const [palette, setPalette] = useState(loadCalendarPalette);
-            const dark = useCalendarDarkMode(workbench);
-            const appearance = useMemo(() => workbench ? calendarAppearance(layout, palette, dark ? "dark" : "light") : undefined,
-                [workbench, layout, palette, dark]);
+            const [dshStyle, setDshStyle] = useDshStyle(React);
+            const dark = useCalendarDarkMode(workbench && dshStyle === "harness");
+            const appearance = useMemo(() => workbench ? calendarAppearance(layout, palette, dark ? "dark" : "light", dshStyle) : undefined,
+                [workbench, layout, palette, dark, dshStyle]);
             const [utility, setUtility] = useState(null);
             const [importBusy, setImportBusy] = useState(false);
             const [availabilityBusy, setAvailabilityBusy] = useState(false);
@@ -2202,7 +2203,7 @@ __stardustUpdatesGuard(React, "dsh-calendar.import", { dirty: !!content.trim(), 
             );
             const refresh = demo
                 ? h(Btn, { onClick: () => setDemo(false) }, t("action.exitDemo"))
-                : h(IconButton, { icon: "refresh", label: t("action.refresh"), onClick: reload });
+                : h(IconButton, { icon: "refresh", label: t("action.refresh"), "aria-busy": data.loading || undefined, onClick: reload });
             const availabilityLabel = calendarText("找空闲时段", "Find available time");
             const quickLabel = calendarText("日历快捷操作", "Calendar quick actions");
             const quickKey = workbench && document.documentElement.dataset.platform === "darwin" ? "⌘⇧K" : "Ctrl+Shift+K";
@@ -2226,6 +2227,11 @@ __stardustUpdatesGuard(React, "dsh-calendar.import", { dirty: !!content.trim(), 
                     id: option.id,
                     label: calendarText("切换布局 · ", "Switch layout · ") + option.label,
                     run: () => selectLayout(option.id)
+                })),
+                ...DSH_STYLES.map(preset => ({
+                    id: "style-" + preset.id,
+                    label: calendarText("切换风格 · " + preset.zh, "Switch style · " + preset.en),
+                    run: () => setDshStyle(preset.id)
                 }))
             ] : [];
             function onWorkbenchKeyDown(event) {
@@ -2250,6 +2256,7 @@ __stardustUpdatesGuard(React, "dsh-calendar.import", { dirty: !!content.trim(), 
                 tool === "schedule" ? period : null,
                 tool === "schedule" ? views : null,
                 h("span", { className: styles["dshc-spacer"] }),
+                h(StyleSwitcher, { style: dshStyle, onChange: setDshStyle, lang: UI_LANG, compact: true }),
                 h(Btn, { disabled: configured === null || toolBusy, onClick: () => setConnOpen(true) }, t("conn.button")),
                 h(Btn, { disabled: demo || toolBusy, onClick: () => importOpen ? backToSchedule() : setTool("import") }, t("import.open")),
                 h(Btn, { disabled: demo || configured !== true || toolBusy, onClick: () => availabilityOpen ? backToSchedule() : showAvailability() }, availabilityLabel),
@@ -2279,6 +2286,7 @@ __stardustUpdatesGuard(React, "dsh-calendar.import", { dirty: !!content.trim(), 
                         onClick: () => setUtility("commands"), "aria-keyshortcuts": "Control+Shift+K Meta+Shift+K"
                     }, h("kbd", { className: styles.triggerKey }, quickKey)) : null,
                     h(Btn, { variant: "primary", icon: "plus", disabled: !canCreate, onClick: startDraft }, t("action.new")),
+                    h(StyleSwitcher, { style: dshStyle, onChange: setDshStyle, lang: UI_LANG, compact: true }),
                     workbench ? h(CalendarLayoutPicker, { layout, options: layoutOptions, onChange: selectLayout }) : null,
                     workbench ? h(CalendarPalettePicker, { palette, dark, onChange: selectPalette }) : null
                 )
@@ -2361,14 +2369,14 @@ __stardustUpdatesGuard(React, "dsh-calendar.import", { dirty: !!content.trim(), 
             const original = draft?.uid && !draft.isSeries ? data.events.find(event => event.uid === draft.uid) : undefined;
             const page = h("section", {
                 ref: rootRef, className: clsx(styles["dshc-root"], workbench && LAYOUT_CLASSES[layout]),
-                "data-main": workbench, "data-compact": compact, style: appearance,
-                onPointerMove: workbench && layout === "spotlight" ? moveCalendarSpotlight : undefined,
+                "data-main": workbench, "data-compact": compact, "data-dsh-style": dshStyle, style: appearance,
+                onPointerMove: workbench ? moveCalendarSpotlight : undefined,
                 tabIndex: workbench ? 0 : undefined, onKeyDown: workbench ? onWorkbenchKeyDown : undefined
             },
                 h("div", { className: styles["dshc-shell"] },
                     topbar, compactToolbar,
                     banner ? h("div", { className: styles["dshc-alert"], role: "status" }, banner) : null,
-                    undo ? h("div", { className: styles["dshc-undo"], role: "status" },
+                    undo ? h("div", { className: styles["dshc-undo"], role: "status", "data-window-drag-exclude": "" },
                         h("span", null, t("move.saved") + " · " + (undo.summary || "")),
                         h(Btn, { onClick: undoMove }, t("move.undo"))
                     ) : null,
@@ -2420,6 +2428,7 @@ __stardustUpdatesGuard(React, "dsh-calendar.import", { dirty: !!content.trim(), 
                 return panelInfo.subscribe(update);
             }, []);
             useUILanguage();
+            const [dshStyle] = useDshStyle(React);
             const [open, setOpen] = useState(false);
             const [layerOpen, setLayerOpen] = useState(false);
             useEffect(() => {
@@ -2441,12 +2450,14 @@ __stardustUpdatesGuard(React, "dsh-calendar.import", { dirty: !!content.trim(), 
                 h("button", {
                     type: "button",
                     className: styles["dshc-fab"],
+                    "data-dsh-style": dshStyle,
+                    "data-window-drag-exclude": "",
                     "aria-expanded": open,
                     title: t("nav.title"),
                     "aria-label": t("nav.title"),
                     onClick: () => setOpen((value) => !value)
                 }, h(CalendarIcon, { size: 18 })),
-                open === true ? h("div", { className: styles["dshc-float"] }, h(CalendarPanel, { compact: true, onLayerChange: setLayerOpen })) : null
+                open === true ? h("div", { className: styles["dshc-float"], "data-dsh-style": dshStyle, "data-window-drag-exclude": "" }, h(CalendarPanel, { compact: true, onLayerChange: setLayerOpen })) : null
             );
         }
         // ───────────────────────────── 挂载 ─────────────────────────────

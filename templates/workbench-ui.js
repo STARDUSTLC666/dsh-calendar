@@ -1,43 +1,44 @@
-let PRIM;
-try {
-    PRIM = require("@deepseek-ai/dsh-client-ui-primitives");
-} catch {
-    // Compatibility path for partial hosts that don't seed the browser module.
-    PRIM = {};
+let primCache;
+function getPrim() {
+    if (primCache !== undefined) return primCache;
+    try {
+        primCache = require("@deepseek-ai/dsh-client-ui-primitives") || {};
+    } catch {
+        // Lazy compatibility path for standalone jsdom tests or partial hosts.
+        primCache = {};
+    }
+    return primCache;
 }
+const PRIM = new Proxy({}, {
+    get(_target, prop) {
+        return getPrim()?.[prop];
+    }
+});
 
-const hostIcons = {
-    left: "IconChevronLeftOutlineMedium",
-    right: "IconChevronRightOutlineMedium",
-    down: "IconChevronDownOutlineMedium",
-    close: "IconCloseOutlineMedium",
-    refresh: "IconRefreshOutlineMedium",
-    plus: "IconPlusOutlineMedium",
-    search: "IconSearchOutlineMedium",
-    clock: "IconClockOutlineMedium",
-    check: "IconCheckOutlineMedium",
-    warning: "IconWarningTriangleOutlineMedium"
+const CALENDAR_ICON_PATHS = {
+    ...DSH_ICON_PATHS,
+    warning: ["M12 3 2 20h20Z", "M12 9v5M12 17h.01"],
 };
-const fallbackIcons = { left: "‹", right: "›", down: "⌄", close: "×", refresh: "↻", plus: "+", search: "⌕", clock: "◷", check: "✓", warning: "!" };
 
-function CalendarIcon({ size = 16 }) {
+const StyleSwitcher = createStyleSwitcherComponent(React, require);
+
+function CalendarIcon({ size = 16, ...props }) {
     return h("svg", {
         width: size, height: size, viewBox: "0 0 24 24", fill: "none",
-        stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", "aria-hidden": true, focusable: false
+        stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round",
+        "aria-hidden": true, focusable: false, "data-dsh-icon": "calendar", ...props
     },
         h("rect", { x: 3, y: 5, width: 18, height: 16, rx: 3 }),
         h("path", { d: "M3 10h18M8 3v4M16 3v4" })
     );
 }
 
-function Icon({ name, size = 16 }) {
-    const NativeIcon = PRIM?.[hostIcons[name]];
-    return NativeIcon
-        ? h(NativeIcon, { size, "aria-hidden": true })
-        : h("span", { className: styles.fallbackIcon, "data-glyph": fallbackIcons[name], "aria-hidden": true });
+function Icon({ name = "calendar", size = 16, ...props }) {
+    return renderDshIcon(React, { name, size, paths: CALENDAR_ICON_PATHS, ...props });
 }
 
 function Btn({ variant = "outline", size = "sm", icon, className, children, ...props }) {
+    const P = getPrim();
     const nativeVariant = variant === "danger" ? "ghost" : variant;
     const button = {
         type: "button",
@@ -45,8 +46,8 @@ function Btn({ variant = "outline", size = "sm", icon, className, children, ...p
         className: clsx(styles["dshc-btn"], styles[nativeVariant], variant === "danger" && styles.danger, className)
     };
     const glyph = icon ? h(Icon, { name: icon }) : null;
-    return PRIM?.Button
-        ? h(PRIM.Button, { ...button, variant: nativeVariant, size, icon: glyph }, children)
+    return P?.Button
+        ? h(P.Button, { ...button, variant: nativeVariant, size, icon: glyph }, children)
         : h("button", button, glyph, children);
 }
 
@@ -55,8 +56,9 @@ function IconButton({ label, icon, className, ...props }) {
 }
 
 function Txt({ className, icon, ...props }) {
-    const input = PRIM?.Input
-        ? h(PRIM.Input, { ...props, icon, className: clsx(styles.fieldControl, className) })
+    const P = getPrim();
+    const input = P?.Input
+        ? h(P.Input, { ...props, icon, className: clsx(styles.fieldControl, className) })
         : h("input", { type: "text", ...props, className: clsx(styles["dshc-input"], className) });
     if (props.type !== "date" && props.type !== "time") return input;
     return h("span", { className: styles.temporalField }, input,
@@ -67,8 +69,9 @@ function Txt({ className, icon, ...props }) {
 }
 
 function Chk({ checked, disabled, label, onChange, className, title }) {
+    const P = getPrim();
     const classes = clsx(styles["dshc-check"], className);
-    if (PRIM?.Checkbox) return h(PRIM.Checkbox, { checked, disabled, label, onChange, className: classes, title });
+    if (P?.Checkbox) return h(P.Checkbox, { checked, disabled, label, onChange, className: classes, title });
     return h("label", { className: classes, title },
         h("input", { type: "checkbox", checked, disabled, onChange: event => onChange(event.target.checked) }),
         h("span", null, label)
@@ -77,18 +80,21 @@ function Chk({ checked, disabled, label, onChange, className, title }) {
 
 function Picker({ id, label, value, options, onChange, disabled, compact = false }) {
     const [open, setOpen] = useState(false);
-    if (!PRIM?.Menu) {
+    const [dshStyle] = useDshStyle(React);
+    const P = getPrim();
+    if (!P?.Menu) {
         return h("select", {
             id, "aria-label": label, className: clsx(styles["dshc-input"], compact && styles.toolbarPicker),
             value, disabled, onChange: event => onChange(event.target.value)
         },
             options.map(option => h("option", { key: option.id, value: option.id }, option.label)));
     }
+    const HostMenu = resolveHostPrimitives(React, require).Menu;
     const selected = options.find(option => option.id === value);
     const expanded = open && !disabled;
     // Menu composes the host's MenuSurface and owns positioning/keyboard focus.
-    return h(PRIM.Menu, {
-        open: expanded, portal: true, compact: true, autoFocus: true, minWidthFromAnchor: true,
+    return h(HostMenu, {
+        open: expanded, dshStyle, portal: true, compact: true, autoFocus: true, minWidthFromAnchor: true,
         className: compact ? styles.toolbarPicker : styles.picker, listClassName: styles.menu,
         anchor: h(Btn, {
             id, disabled, className: compact ? styles.layoutTrigger : styles.pickerTrigger,
@@ -103,10 +109,11 @@ function Picker({ id, label, value, options, onChange, disabled, compact = false
 }
 
 function Segments({ id, label, items, value, onChange, disabled }) {
-    if (PRIM?.SegmentedControl) {
+    const P = getPrim();
+    if (P?.SegmentedControl) {
         // The host positions the active pill by equal grid tracks. The
         // fallback flex layout would make its width and offsets diverge.
-        return h(PRIM.SegmentedControl, { id, label, value, options: items, onChange, disabled });
+        return h(P.SegmentedControl, { id, label, value, options: items, onChange, disabled });
     }
     return h("div", { className: styles.segments, role: "tablist", "aria-label": label },
         items.map(item => h("button", {
@@ -138,7 +145,7 @@ function EmptyState({ title, children, action }) {
     );
 }
 
-function FallbackDialog({ title, onClose, children, review }) {
+function FallbackDialog({ title, onClose, children, review, dshStyle }) {
     const panel = useRef(null);
     useEffect(() => {
         const previous = document.activeElement;
@@ -159,24 +166,37 @@ function FallbackDialog({ title, onClose, children, review }) {
     }
     return h("div", {
         className: review ? styles["dshc-overlay"] : styles["dshc-modalwrap"],
+        "data-dsh-style": dshStyle,
+        "data-dsh-portal-synced": "true",
         onMouseDown: event => { if (event.target === event.currentTarget) onClose(); }
     }, h("section", {
         className: clsx(styles.dialog, review ? styles["dshc-drawer"] : styles["dshc-modal"]),
-        ref: panel, role: "dialog", "aria-modal": true, "aria-label": title, tabIndex: -1, onKeyDown: trapTab
+        ref: panel, role: "dialog", "aria-modal": true, "aria-label": title, tabIndex: -1, onKeyDown: trapTab,
+        "data-dsh-style": dshStyle, "data-window-drag-exclude": "", "data-dsh-portal-synced": "true"
     }, children));
 }
 
 function Dlg({ open, onClose, title, closeLabel = title, children, footer, review = false }) {
     const appearance = React.useContext(getCalendarAppearanceContext());
+    const [dshStyle] = useDshStyle(React);
+    const P = getPrim();
     if (!open) return null;
-    const frame = h("div", { key: "frame", className: styles.dialogFrame, style: appearance, "data-dshc-scope": "1" },
+    const frame = h("div", {
+        key: "frame",
+        ref: createOverlaySyncRef(dshStyle),
+        className: styles.dialogFrame,
+        style: appearance,
+        "data-dshc-scope": "1",
+        "data-dsh-style": dshStyle,
+        "data-window-drag-exclude": ""
+    },
         h("header", { className: styles.dialogHeader },
             h("h2", null, title), h(IconButton, { icon: "close", label: closeLabel, onClick: onClose })
         ),
         h("div", { className: styles.dialogBody }, children),
         footer ? h("footer", { className: styles.dialogFooter }, footer) : null
     );
-    return PRIM?.Modal
-        ? h(PRIM.Modal, { open, onClose, title, headless: true, className: styles.dialog }, frame)
-        : h(FallbackDialog, { title, onClose, review }, frame);
+    return P?.Modal
+        ? h(P.Modal, { open, onClose, title, headless: true, className: styles.dialog }, frame)
+        : h(FallbackDialog, { title, onClose, review, dshStyle }, frame);
 }

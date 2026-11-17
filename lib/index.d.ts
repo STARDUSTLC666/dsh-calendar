@@ -21,6 +21,7 @@ export interface CalendarPluginContext {
     tools: {
         register(definition: CalendarToolDefinition): () => void;
     };
+    effect?(callback: () => () => void): unknown;
     on?(event: string, listener: () => void): () => void;
     /** 设置页面板需要挂路由；隔离环境（测试/headless）可以没有。 */
     inject?(services: string[], callback: (ctx: any) => void): void;
