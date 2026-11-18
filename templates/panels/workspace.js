@@ -184,99 +184,236 @@ function CalendarConflicts({ events, onPick, onClose }) {
     });
 }
 
-function CalendarWorkflowGuide() {
-    const [copiedId, setCopiedId] = useState("");
-    const [statusText, setStatusText] = useState("");
-    const timer = useRef(null);
-    const lastMsg = useRef("");
+const CALENDAR_TOUR_KEY = "dsh-calendar.tour.v1";
+let calendarTourSessionDone = false;
 
-    useEffect(() => () => {
-        if (timer.current) clearTimeout(timer.current);
+function readCalendarTourDone(storageKey = CALENDAR_TOUR_KEY) {
+    if (calendarTourSessionDone && storageKey === CALENDAR_TOUR_KEY) return true;
+    try {
+        return typeof window !== "undefined" && window.localStorage?.getItem(storageKey) === "done";
+    } catch {
+        return false;
+    }
+}
+
+function writeCalendarTourDone(storageKey = CALENDAR_TOUR_KEY) {
+    if (storageKey === CALENDAR_TOUR_KEY) calendarTourSessionDone = true;
+    try {
+        if (typeof window !== "undefined") window.localStorage?.setItem(storageKey, "done");
+    } catch { /* ignore */ }
+}
+
+function computeTourLayout(target, preferredSide, cardEl) {
+    const vw = (typeof window !== "undefined" && window.innerWidth) || 1280;
+    const vh = (typeof window !== "undefined" && window.innerHeight) || 800;
+    const cw = cardEl?.offsetWidth || 320;
+    const ch = cardEl?.offsetHeight || 196;
+    const pad = 5;
+    const gap = 12;
+    const raw = target?.getBoundingClientRect?.();
+    if (!target) {
+        return {
+            spotlight: null,
+            side: "center",
+            left: Math.max(12, Math.round((vw - cw) / 2)),
+            top: Math.max(12, Math.round((vh - ch) / 2)),
+            arrowX: 28,
+            arrowY: 24
+        };
+    }
+    const hasBox = Boolean(raw && (raw.width > 0 || raw.height > 0));
+    const rect = hasBox ? raw : { left: 120, top: 72, width: 140, height: 32 };
+    const spotlight = {
+        left: Math.round(rect.left - pad),
+        top: Math.round(rect.top - pad),
+        width: Math.round(rect.width + pad * 2),
+        height: Math.round(rect.height + pad * 2)
+    };
+    const spaceBottom = vh - spotlight.top - spotlight.height;
+    const spaceTop = spotlight.top;
+    const spaceRight = vw - spotlight.left - spotlight.width;
+    const spaceLeft = spotlight.left;
+    let side = preferredSide || "bottom";
+    if (side === "right" && spaceRight < cw + gap + 12) {
+        side = spaceBottom >= ch + gap + 12 ? "bottom" : spaceLeft >= cw + gap + 12 ? "left" : "top";
+    } else if (side === "left" && spaceLeft < cw + gap + 12) {
+        side = spaceRight >= cw + gap + 12 ? "right" : "bottom";
+    } else if (side === "bottom" && spaceBottom < ch + gap + 12 && spaceTop > spaceBottom) {
+        side = "top";
+    } else if (side === "top" && spaceTop < ch + gap + 12 && spaceBottom > spaceTop) {
+        side = "bottom";
+    }
+    let left = spotlight.left;
+    let top = spotlight.top + spotlight.height + gap;
+    if (side === "top") top = spotlight.top - ch - gap;
+    else if (side === "right") { left = spotlight.left + spotlight.width + gap; top = spotlight.top; }
+    else if (side === "left") { left = spotlight.left - cw - gap; top = spotlight.top; }
+    left = Math.round(Math.max(12, Math.min(vw - cw - 12, left)));
+    top = Math.round(Math.max(12, Math.min(vh - ch - 12, top)));
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    return {
+        spotlight,
+        side,
+        left,
+        top,
+        arrowX: Math.round(Math.max(18, Math.min(cw - 18, centerX - left))),
+        arrowY: Math.round(Math.max(18, Math.min(ch - 18, centerY - top)))
+    };
+}
+
+function CoachmarkTour({ rootRef, steps = [], step = 0, manual = false, style = "harness", appearance, lang = "zh", activeKey = "", layout: rawLayout, setLayout, onStep, onClose, onCopyPrompt }) {
+    const activeStyle = normalizeDshStyle(style);
+    const layerRef = useRef(null);
+    const cardRef = useRef(null);
+    const nextBtnRef = useRef(null);
+    const copyTimerRef = useRef(null);
+    const lastStatusRef = useRef("");
+    const [copied, setCopied] = useState(false);
+    const [statusMsg, setStatusMsg] = useState("");
+    const titleId = (typeof useId === "function" ? useId() : "dsh-calendar-tour") + "-title";
+    const isEn = String(lang).startsWith("en");
+    const l = (zh, en) => (isEn ? en : zh);
+    const current = steps[Math.max(0, Math.min(steps.length - 1, step))] || {};
+    const layout = rawLayout && typeof rawLayout === "object" && rawLayout.side
+        ? rawLayout
+        : { spotlight: null, side: current.side || "bottom", left: 24, top: 76, arrowX: 28, arrowY: 24 };
+
+    useEffect(() => {
+        const node = layerRef.current;
+        if (!node) return undefined;
+        try {
+            node.setAttribute?.("popover", "manual");
+            node.showPopover?.();
+        } catch { /* ignore */ }
+        return () => {
+            if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+            try { node.hidePopover?.(); } catch { /* ignore */ }
+        };
     }, []);
 
-    const prompts = [
-        {
-            id: "slots-45",
-            label: calendarText("帮我找本周下午两个 45 分钟空闲时段", "Find two 45-minute afternoon slots this week"),
-            prompt: calendarText(
-                "帮我找本周下午两个 45 分钟空闲时段，工作时间按 13:30–18:00，前后预留 15 分钟缓冲，先列出候选不要直接创建。",
-                "Find two 45-minute free slots this week in the afternoon (13:30–18:00) with a 15-minute buffer, and list the candidates first without creating an event."
-            )
-        },
-        {
-            id: "today-agenda",
-            label: calendarText("汇总今天的会议议程并提醒冲突", "Summarize today's agenda and flag conflicts"),
-            prompt: calendarText(
-                "汇总今天的会议议程并提醒冲突，按时间顺序列出每场日程的起止时间与地点。",
-                "Summarize today's meeting agenda in chronological order with locations, and highlight any scheduling overlaps."
-            )
-        },
-        {
-            id: "focus-blocks",
-            label: calendarText("梳理下周日程密度与两小时整块空档", "Review next week's load & 2h focus blocks"),
-            prompt: calendarText(
-                "读取我下周的日历安排，指出会议最密集的一天，并标出可用于深度工作的两小时整块空闲。",
-                "Read my schedule for next week, identify the busiest day, and list 2-hour uninterrupted blocks for deep work."
-            )
-        }
-    ];
+    useEffect(() => {
+        setCopied(false);
+        setStatusMsg("");
+    }, [step]);
 
-    async function handleCopy(item) {
-        const ok = await copyText(item.prompt);
-        if (timer.current) clearTimeout(timer.current);
-        let msg = ok
-            ? calendarText("已复制对话指令，可直接粘贴到 DSH 对话框。", "Copied prompt — paste it into DSH chat.")
-            : calendarText("无法访问剪贴板，请手动复制指令。", "Clipboard access unavailable.");
-        if (msg === lastMsg.current) msg += "\u00A0";
-        lastMsg.current = msg;
-        setCopiedId(ok ? item.id : "");
-        setStatusText(msg);
-        timer.current = setTimeout(() => {
-            setCopiedId("");
-            setStatusText("");
-        }, 2200);
+    useEffect(() => {
+        function measure() {
+            const scope = rootRef?.current || (typeof document !== "undefined" ? document : null);
+            if (!scope || typeof scope.querySelector !== "function") return;
+            const target = (current.selector && scope.querySelector(current.selector))
+                || (current.fallback && scope.querySelector(current.fallback))
+                || null;
+            setLayout?.(computeTourLayout(target, current.side, cardRef.current));
+        }
+        measure();
+        const raf = typeof requestAnimationFrame === "function" ? requestAnimationFrame(measure) : null;
+        if (typeof window === "undefined" || typeof window.addEventListener !== "function") {
+            return () => { if (raf && typeof cancelAnimationFrame === "function") cancelAnimationFrame(raf); };
+        }
+        window.addEventListener("resize", measure, { passive: true });
+        window.addEventListener("scroll", measure, true);
+        return () => {
+            if (raf && typeof cancelAnimationFrame === "function") cancelAnimationFrame(raf);
+            window.removeEventListener("resize", measure);
+            window.removeEventListener("scroll", measure, true);
+        };
+    }, [step, activeKey, current.selector, current.fallback, current.side]);
+
+    useEffect(() => {
+        if (!manual) return;
+        (nextBtnRef.current || cardRef.current?.querySelector?.("[data-tour-next]"))?.focus?.();
+    }, [manual, step]);
+
+    async function handleCopy() {
+        if (!current.prompt) return;
+        const ok = onCopyPrompt ? await onCopyPrompt(current.prompt) : await copyText(current.prompt);
+        if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+        let msg = ok !== false ? l("已复制指令", "Copied prompt") : l("复制失败", "Copy failed");
+        if (msg === lastStatusRef.current) msg += "\u00A0";
+        lastStatusRef.current = msg;
+        setCopied(ok !== false);
+        setStatusMsg(msg);
+        copyTimerRef.current = setTimeout(() => {
+            setCopied(false);
+            setStatusMsg("");
+        }, 1800);
     }
 
-    return h("details", { className: styles.workflowGuide },
-        h("summary", { className: styles.workflowSummary },
-            h("span", { className: styles.workflowTitle }, calendarText(
-                "三步用起来：连接日历 → 查空档发邀约 → 让助手巡检日程",
-                "How it works: Connect calendar → Copy free slots → Ask assistant to review"
-            )),
-            h("span", { className: styles.workflowBadge }, calendarText("含一键对话指令", "1-click chat prompts"))
-        ),
-        h("div", { className: styles.workflowBody },
-            h("ol", { className: styles.workflowSteps },
-                h("li", null, calendarText(
-                    "连接日历：在「日历连接」测试并启用 iCloud / Google / Nextcloud / 自建 CalDAV，也可先点「查看示例」。",
-                    "Connect calendar: Test and save iCloud, Google, Nextcloud, or CalDAV in Connection, or try the read-only sample first."
-                )),
-                h("li", null, calendarText(
-                    "查空档发邀约：按 F 打开「找空闲时段」，查出候选后点「复制空闲时段文案」一键发到微信、钉钉、Slack 或邮件。",
-                    "Share free slots: Press F to open Find available time, then click Copy free slots summary for WeChat, Slack, or email."
-                )),
-                h("li", null, calendarText(
-                    "让助手巡检日程：支持从文字/截图生成草稿，或点击下方指令气泡复制到 DSH 对话框。",
-                    "Review with assistant: Extract drafts from text/screenshots, or click a prompt chip below to copy for DSH chat."
-                ))
-            ),
-            h("div", { className: styles.promptRow },
-                h("span", { className: styles["dshc-sub"] }, calendarText("点按复制对话指令：", "Copy a chat prompt:")),
-                h("div", { className: styles.promptChips }, prompts.map(item => {
-                    const isCopied = copiedId === item.id;
-                    return h("button", {
-                        key: item.id,
-                        type: "button",
-                        className: styles.promptChip,
-                        "data-copied": isCopied ? "true" : undefined,
-                        onClick: () => handleCopy(item)
-                    },
-                        h(Icon, { name: isCopied ? "check" : "copy", size: 13 }),
-                        h("span", null, item.label)
-                    );
-                })),
-                h("span", { className: styles.copyStatus, role: "status" }, statusText)
-            )
-        )
-    );
+    const isLast = step >= steps.length - 1;
+    function finish() { onClose?.(manual); }
+    function onKeyDown(event) {
+        if (event.isComposing || event.nativeEvent?.isComposing) return;
+        if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); finish(); }
+        else if (event.key === "ArrowRight" && !isLast) { event.preventDefault(); onStep?.(step + 1, true); }
+        else if (event.key === "ArrowLeft" && step > 0) { event.preventDefault(); onStep?.(step - 1, true); }
+    }
+
+    return h("div", {
+        ref: layerRef,
+        className: styles.tourLayer,
+        style: appearance,
+        "data-dsh-style": activeStyle,
+        "data-calendar-tour": current.id || String(step),
+        "data-window-drag-exclude": ""
+    },
+        layout.spotlight
+            ? h("div", {
+                className: styles.tourSpotlight,
+                "data-tour-spotlight": current.id || String(step),
+                "aria-hidden": "true",
+                style: {
+                    left: layout.spotlight.left + "px",
+                    top: layout.spotlight.top + "px",
+                    width: layout.spotlight.width + "px",
+                    height: layout.spotlight.height + "px"
+                }
+            })
+            : h("div", { className: styles.tourBackdropFallback, "aria-hidden": "true" }),
+        h("div", {
+            ref: cardRef,
+            role: "dialog",
+            "aria-modal": "false",
+            "aria-labelledby": titleId,
+            tabIndex: -1,
+            onKeyDown,
+            className: styles.tourCard,
+            "data-side": layout.side,
+            "data-tour-card": current.id || String(step),
+            style: {
+                left: layout.left + "px",
+                top: layout.top + "px",
+                "--arrow-x": layout.arrowX + "px",
+                "--arrow-y": layout.arrowY + "px"
+            }
+        },
+            h("span", { className: styles.tourArrow, "data-tour-arrow": layout.side, "aria-hidden": "true" }),
+            h("div", { className: styles.tourHead },
+                h("div", { className: styles.tourStepMeta },
+                    h("span", { className: styles.tourStepBadge }, (step + 1) + " / " + steps.length),
+                    h("span", { className: styles.tourDots, "aria-hidden": "true" },
+                        steps.map((item, idx) => h("span", { key: item.id || idx, className: styles.tourDot, "data-active": idx === step ? "true" : undefined })))),
+                h("button", { type: "button", className: styles.tourSkip, onClick: finish }, l("跳过", "Skip"))),
+            h("h2", { id: titleId, className: styles.tourTitle }, current.title),
+            h("p", { className: styles.tourDesc }, current.desc),
+            current.prompt ? h("div", { className: styles.tourInlineAction },
+                h(Btn, {
+                    variant: "outline",
+                    icon: copied ? "check" : "copy",
+                    "data-copy-prompt": current.prompt,
+                    "data-copied": copied ? "true" : undefined,
+                    onClick: () => { void handleCopy(); }
+                }, copied ? l("已复制", "Copied") : (current.promptLabel || l("复制对话指令", "Copy prompt"))),
+                h("span", { className: styles.copyStatus, role: "status" }, statusMsg)) : null,
+            h("div", { className: styles.tourFooter },
+                step > 0
+                    ? h(Btn, { variant: "ghost", onClick: () => onStep?.(step - 1, true), "data-tour-prev": "" }, l("上一步", "Back"))
+                    : h("span", null),
+                h("div", { className: styles.tourNav },
+                    h(Btn, {
+                        ref: nextBtnRef,
+                        variant: "primary",
+                        "data-tour-next": "",
+                        onClick: () => (isLast ? finish() : onStep?.(step + 1, true))
+                    }, isLast ? l("完成引导", "Done") : l("下一步", "Next"))))));
 }

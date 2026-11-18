@@ -19,7 +19,7 @@
 
 - Plan with month, week and agenda views, week drag-to-reschedule, iCloud calendar discovery, and reviewed smart event drafts from text or screenshots.
 - Find candidates using duration, weekdays and buffers, and click **Copy free slots summary** to paste formatted meeting options straight into WeChat, DingTalk, Slack, or email.
-- Expand the compact workflow bar at the top of the workbench to copy 1-click DSH chat prompts.
+- Launch the interactive **? Tour** spotlight coachmark guide from the topbar (with first-visit auto-open and 1-click assistant prompt copy).
 - Review event drafts or ICS imports before confirming writes.
 - Harmonized layouts, event palettes, and five switchable UI themes (Native Airy, Warm Cream, Claude Warmth, Bright 8-Bit, and Airy Mint) with breathable slate dark mode.
 
@@ -48,7 +48,7 @@ For the web profile, replace `desktop` with `web`. Restart that DSH profile afte
 
 1. **Connect your calendar**: Open **Calendar** in the sidebar, choose iCloud, Google, Nextcloud, or custom CalDAV in **Connection**, run **Test connection**, and save (or click **See a sample** first).
 2. **Find & share free slots**: Open **Find available time** (shortcut `F`), set duration, working hours, and buffers, then click **Copy free slots summary** to paste clean time options into WeChat, DingTalk, Slack, or email—or click **Create with this time** to open a pre-filled draft.
-3. **Review with your assistant**: Extract drafts from messages or screenshots in **New event**, preview `.ics` files before importing, or expand the top workflow guide to copy ready-made DSH chat prompts:
+3. **Review with your assistant**: Extract drafts from messages or screenshots in **New event**, preview `.ics` files before importing, or open **? Tour** in the topbar to copy ready-made DSH chat prompts:
 
 - `Find two 45-minute free slots this week in the afternoon (13:30–18:00) with a 15-minute buffer, and list the candidates first without creating an event.`
 - `Summarize today's meeting agenda in chronological order with locations, and highlight any scheduling overlaps.`

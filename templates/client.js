@@ -1834,6 +1834,8 @@ __stardustUpdatesGuard(React, "dsh-calendar.import", { dirty: !!content.trim(), 
             const [importBusy, setImportBusy] = useState(false);
             const [availabilityBusy, setAvailabilityBusy] = useState(false);
             const [connectionBusy, setConnectionBusy] = useState(false);
+            const [tour, setTour] = useState({ open: false, step: 0, manual: false });
+            const [tourLayout, setTourLayout] = useState(null);
             const importOpen = tool === "import";
             const availabilityOpen = tool === "availability";
             const connectionOpen = tool === "connection";
@@ -1842,6 +1844,23 @@ __stardustUpdatesGuard(React, "dsh-calendar.import", { dirty: !!content.trim(), 
             __stardustUpdatesGuard(React, "dsh-calendar", { busy: busy || layerOpen || importOpen || availabilityOpen || connectionOpen });
 
             const rootRef = useRef(null);
+            const triggerRef = useRef(null);
+            const layerOpenRef = useRef(layerOpen);
+            layerOpenRef.current = layerOpen;
+            useEffect(() => {
+                if (!workbench || compact || readCalendarTourDone()) return undefined;
+                const timer = setTimeout(() => {
+                    if (!readCalendarTourDone() && !layerOpenRef.current) {
+                        setTour({ open: true, step: 0, manual: false });
+                    }
+                }, 280);
+                return () => clearTimeout(timer);
+            }, [workbench, compact]);
+            useEffect(() => {
+                if (layerOpen && tour.open) {
+                    setTour(prev => ({ ...prev, open: false }));
+                }
+            }, [layerOpen, tour.open]);
             /** 让 Launcher 知道本面板里有没有浮层：宿主 Portal 的 Esc 不能被面板级监听抢走。 */
             useEffect(() => {
                 const notify = typeof props.onLayerChange === "function" ? props.onLayerChange : null;
@@ -2212,12 +2231,58 @@ __stardustUpdatesGuard(React, "dsh-calendar.import", { dirty: !!content.trim(), 
             const selectPalette = value => { setPalette(value); storeCalendarPreference(CALENDAR_PALETTE_KEY, value); };
             const reviewConflicts = () => setUtility("conflicts");
             const canCreate = !demo && configured !== null && !toolBusy;
+            const closeTour = (restoreFocus = false) => {
+                writeCalendarTourDone();
+                setTour(prev => ({ ...prev, open: false }));
+                if (restoreFocus) {
+                    setTimeout(() => {
+                        (triggerRef.current || rootRef.current?.querySelector?.("[data-calendar-tour-trigger]"))?.focus?.();
+                    }, 0);
+                }
+            };
+            const tourSteps = [
+                {
+                    id: "connection",
+                    selector: '[data-segment-id="connection"], [id$="-connection"]',
+                    fallback: '[data-tour="calendar-workspace-tabs"]',
+                    side: "bottom",
+                    title: calendarText("连接日历账号（iCloud / Google / CalDAV）", "Connect your calendar (iCloud / Google / CalDAV)"),
+                    desc: calendarText("在「日历连接」配置 iCloud、Google OAuth、Nextcloud 或自建 CalDAV，先测试连接再保存；也可先点「查看示例」体验。", "Configure iCloud, Google OAuth, Nextcloud, or custom CalDAV in Connection—test first, then save, or explore the sample.")
+                },
+                {
+                    id: "views",
+                    selector: '[data-tour="calendar-views"]',
+                    fallback: '[data-segment-id="schedule"], [id$="-schedule"]',
+                    side: "bottom",
+                    title: calendarText("日 / 周 / 月视图切换与拖拽改期", "Agenda / Week / Month views & drag to reschedule"),
+                    desc: calendarText("按 M / W / A 快速切换月、周或议程视图；周视图支持上下拖拽改时间、左右跨天，并提供 5 秒一键撤销。", "Press M / W / A to switch Month, Week, or Agenda views; drag events in Week view to reschedule or resize with 5-second undo.")
+                },
+                {
+                    id: "availability",
+                    selector: '[data-segment-id="availability"], [id$="-availability"]',
+                    fallback: '[data-tour="calendar-workspace-tabs"]',
+                    side: "bottom",
+                    title: calendarText("查找空闲时段并一键复制候选时间", "Find free slots & copy meeting options"),
+                    desc: calendarText("按 F 打开「找空闲时段」，查出候选后点「复制空闲时段文案」直接发微信/钉钉/邮件，或复制下方指令交给助手：", "Press F for Find available time and click Copy free slots summary for chat/email—or copy this assistant prompt:"),
+                    prompt: calendarText("帮我查一下本周工作时间的空闲时段，整理成可发送的会议候选时间", "Find my free working-hour slots this week and format meeting options"),
+                    promptLabel: calendarText("复制查空档指令", "Copy free-slots prompt")
+                },
+                {
+                    id: "smart-draft",
+                    selector: '[data-tour="calendar-new-event"]',
+                    fallback: ".topbar",
+                    side: "bottom",
+                    title: calendarText("冲突检查与从文字 / 截图智能建日程", "Conflict checks & smart drafts from text or screenshots"),
+                    desc: calendarText("新建日程时可粘贴通知文字或拖入截图自动生成草稿，保存前会检测时间重叠并在侧栏汇总冲突。", "Paste message text or drop a screenshot in New event to generate a reviewed draft, with automatic overlap detection before saving.")
+                }
+            ];
             const commandActions = workbench ? [
                 { id: "create", key: "n", label: t("action.new"), run: startDraft, disabled: !canCreate },
                 { id: "availability", key: "f", label: availabilityLabel, run: showAvailability, disabled: demo || configured === null },
                 { id: "conflicts", label: calendarText("查看日程冲突", "Review scheduling conflicts"), run: reviewConflicts, disabled: conflicts === 0 },
                 { id: "import", label: t("import.open"), run: () => setTool("import"), disabled: demo },
                 { id: "connection", label: t("conn.title"), run: () => setTool("connection"), disabled: configured === null },
+                { id: "tour", label: calendarText("使用引导", "Interactive guide"), run: () => setTour({ open: true, step: 0, manual: true }) },
                 ...VIEWS.map(name => ({
                     id: name, key: name[0],
                     label: calendarText("切换到" + t("view." + name) + "视图", "Switch to " + t("view." + name)),
@@ -2270,6 +2335,7 @@ __stardustUpdatesGuard(React, "dsh-calendar.import", { dirty: !!content.trim(), 
                 ),
                 h(Segments, {
                     id: workspaceId, label: t("section.title"), value: tool, disabled: toolBusy,
+                    "data-tour": "calendar-workspace-tabs",
                     items: [
                         { value: "schedule", label: calendarText("日程", "Schedule") },
                         { value: "availability", label: availabilityLabel, disabled: demo || configured === null },
@@ -2280,12 +2346,23 @@ __stardustUpdatesGuard(React, "dsh-calendar.import", { dirty: !!content.trim(), 
                 }),
                 h("div", { className: styles.topActions },
                     h("span", { className: styles.zone }, Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"),
+                    h(Btn, {
+                        ref: triggerRef,
+                        variant: "ghost",
+                        className: styles.tourTrigger,
+                        "data-tour-trigger": "",
+                        "data-calendar-tour-trigger": "",
+                        "aria-label": calendarText("使用引导", "Interactive guide"),
+                        "aria-expanded": Boolean(tour.open && !layerOpen),
+                        title: calendarText("使用引导", "Interactive guide"),
+                        onClick: () => (tour.open && !layerOpen ? closeTour(true) : setTour({ open: true, step: 0, manual: true }))
+                    }, calendarText("? 引导", "? Tour")),
                     workbench ? h(Btn, {
                         className: styles.commandTrigger, icon: "search", disabled: toolBusy,
                         "aria-label": quickLabel, title: quickLabel + " (" + quickKey + ")",
                         onClick: () => setUtility("commands"), "aria-keyshortcuts": "Control+Shift+K Meta+Shift+K"
                     }, h("kbd", { className: styles.triggerKey }, quickKey)) : null,
-                    h(Btn, { variant: "primary", icon: "plus", disabled: !canCreate, onClick: startDraft }, t("action.new")),
+                    h(Btn, { variant: "primary", icon: "plus", "data-tour": "calendar-new-event", disabled: !canCreate, onClick: startDraft }, t("action.new")),
                     h(StyleSwitcher, { style: dshStyle, onChange: setDshStyle, lang: UI_LANG, compact: true }),
                     workbench ? h(CalendarLayoutPicker, { layout, options: layoutOptions, onChange: selectLayout }) : null,
                     workbench ? h(CalendarPalettePicker, { palette, dark, onChange: selectPalette }) : null
@@ -2331,7 +2408,7 @@ __stardustUpdatesGuard(React, "dsh-calendar.import", { dirty: !!content.trim(), 
             },
                 h("div", { className: styles.scheduleMain },
                     compact ? null : h("div", { className: styles.calendarToolbar }, period,
-                        h("div", { className: styles.period }, views,
+                        h("div", { className: styles.period, "data-tour": "calendar-views" }, views,
                             workbench && conflicts > 0 ? h(Btn, {
                                 className: styles.toolbarConflicts, icon: "warning", onClick: reviewConflicts
                             }, calendarText("查看日程冲突", "Review conflicts")) : null,
@@ -2375,7 +2452,6 @@ __stardustUpdatesGuard(React, "dsh-calendar.import", { dirty: !!content.trim(), 
             },
                 h("div", { className: styles["dshc-shell"] },
                     topbar, compactToolbar,
-                    !compact ? h(CalendarWorkflowGuide) : null,
                     banner ? h("div", { className: styles["dshc-alert"], role: "status" }, banner) : null,
                     undo ? h("div", { className: styles["dshc-undo"], role: "status", "data-window-drag-exclude": "" },
                         h("span", null, t("move.saved") + " · " + (undo.summary || "")),
@@ -2388,6 +2464,25 @@ __stardustUpdatesGuard(React, "dsh-calendar.import", { dirty: !!content.trim(), 
                     workbench && typeof __stardustUpdatesFooter === "function"
                         ? __stardustUpdatesFooter(React, "dsh-calendar") : null
                 ),
+                !compact && !layerOpen && tour.open ? h(CoachmarkTour, {
+                    rootRef,
+                    steps: tourSteps,
+                    step: tour.step,
+                    manual: tour.manual,
+                    style: dshStyle,
+                    appearance,
+                    lang: UI_LANG,
+                    activeKey: tool + ":" + view,
+                    layout: tourLayout,
+                    setLayout: setTourLayout,
+                    onStep: (nextStep, isManual) => setTour({ open: true, step: nextStep, manual: Boolean(isManual) }),
+                    onClose: closeTour,
+                    onCopyPrompt: async promptText => {
+                        const ok = await copyText(promptText);
+                        if (ok) notify(calendarText("已复制对话指令，可直接粘贴到聊天框", "Copied prompt — paste it into chat"));
+                        return ok;
+                    }
+                }) : null,
                 selected ? h(EventReview, {
                     event: selected, readOnly: demo, events: data.events, busy, confirmDelete, setConfirmDelete,
                     onClose: closeReview, onEdit: editEvent, onDelete: remove

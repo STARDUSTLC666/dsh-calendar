@@ -6,7 +6,7 @@ import { JSDOM } from 'jsdom';
 const ROOT_URL = new URL('../', import.meta.url);
 const PKG = JSON.parse(readFileSync(new URL('package.json', ROOT_URL), 'utf8'));
 const SOURCE = readFileSync(new URL('lib/client.js', ROOT_URL), 'utf8').replace(/\r\n/g, '\n');
-const EXPOSE = 'module.exports.__themeProbe = { CalendarPanel, Launcher, ConnectionForm, DSH_STYLES, writeDshStyle, readDshStyle, calendarAppearance, CSS };';
+const EXPOSE = 'module.exports.__themeProbe = { CalendarPanel, Launcher, ConnectionForm, CoachmarkTour, computeTourLayout, DSH_STYLES, writeDshStyle, readDshStyle, calendarAppearance, CSS };';
 if (!SOURCE.includes('return module.exports;')) {
   throw new Error('client.js export contract changed');
 }
@@ -216,7 +216,7 @@ test('floating Launcher and SVG micro-animation icons expose data-window-drag-ex
   }
 });
 
-test('collapsible workflow guide, 1-click chat prompt chips, marker CSS rules, and >=0.2.2-rc.3 docs stay compliant', async () => {
+test('CoachmarkTour (? 引导), spotlight + directional arrow, inline prompt copy, modal auto-close, and >=0.2.2-rc.3 docs work end-to-end', async () => {
   const refZh = readFileSync(new URL('docs/REFERENCE.zh.md', ROOT_URL), 'utf8');
   const refEn = readFileSync(new URL('docs/REFERENCE.en.md', ROOT_URL), 'utf8');
   const workbenchDoc = readFileSync(new URL('docs/WORKBENCH.md', ROOT_URL), 'utf8');
@@ -224,7 +224,7 @@ test('collapsible workflow guide, 1-click chat prompt chips, marker CSS rules, a
   assert.match(refZh, />=0\.2\.2-rc\.3/);
   assert.match(refEn, />=0\.2\.2-rc\.3/);
 
-  const { win, react, probe, render } = await mountEnv();
+  const { win, react, probe, render } = await mountEnv({ withHostModal: true });
   let copiedPrompt = '';
   Object.defineProperty(win.navigator, 'clipboard', {
     value: { async writeText(val) { copiedPrompt = String(val); } },
@@ -232,31 +232,102 @@ test('collapsible workflow guide, 1-click chat prompt chips, marker CSS rules, a
   });
   try { Object.defineProperty(globalThis, 'navigator', { value: win.navigator, configurable: true }); } catch {}
 
+  let popoverShown = 0;
+  let popoverHidden = 0;
+  win.HTMLElement.prototype.showPopover = function showPopover() { popoverShown += 1; };
+  win.HTMLElement.prototype.hidePopover = function hidePopover() { popoverHidden += 1; };
+
   const { container, unmount } = await render(react.createElement(probe.CalendarPanel, { workbench: true }));
   try {
-    assert.match(probe.CSS, /content:"▸";content:"▸"\s*\/\s*""/);
-    assert.match(probe.CSS, /@media\s*\(prefers-reduced-motion:\s*no-preference\)\{[^}]*transition:rotate/);
+    // CSS includes popover polyfill selector, directional arrow rules, pixel8bit 0px/4px hard shadow, and reduced-motion gate
+    assert.match(probe.CSS, /\[popover\]:is\(:popover-open,\s*\.\\:popover-open\)\s*\{\s*display:\s*block\s*\}/);
+    assert.match(probe.CSS, /\[data-side=["']?bottom["']?\]\s*>/);
+    assert.match(probe.CSS, /4px 4px 0px #1e2826/);
+    assert.match(probe.CSS, /@media\s*\(prefers-reduced-motion:\s*no-preference\)/);
 
-    const guide = container.querySelector('details');
-    assert.ok(guide, 'collapsible <details> workflow guide must render');
-    const summary = guide.querySelector('summary');
-    assert.ok(summary);
-    assert.match(summary.textContent, /三步用起来/);
-    assert.equal(summary.querySelectorAll('h1, h2, h3, h4, h5, h6').length, 0, 'never place headings inside <summary>');
+    // Zero static top-level workflow <details> clutter in calendar shell
+    assert.equal(container.querySelectorAll('details').length, 0, 'static <details> workflow guide must be removed');
 
-    const chip45 = [...guide.querySelectorAll('button')].find(b => b.textContent.includes('帮我找本周下午两个 45 分钟空闲时段'));
-    const chipToday = [...guide.querySelectorAll('button')].find(b => b.textContent.includes('汇总今天的会议议程并提醒冲突'));
-    assert.ok(chip45, '45-min free slot prompt chip must render');
-    assert.ok(chipToday, 'today agenda prompt chip must render');
+    const trigger = container.querySelector('[data-calendar-tour-trigger]');
+    assert.ok(trigger, '? 引导 trigger button must sit in topbar actions');
+    assert.match(trigger.textContent, /\?\s*引导/);
+    assert.equal(trigger.getAttribute('aria-expanded'), 'false');
+    assert.equal(trigger.hasAttribute('aria-haspopup'), false, 'must not set aria-haspopup on coachmark trigger');
 
-    await react.act(async () => { chip45.click(); });
-    assert.equal(chip45.getAttribute('data-copied'), 'true');
-    assert.match(copiedPrompt, /45 分钟空闲时段/);
-    assert.match(guide.querySelector('[role="status"]').textContent, /已复制对话指令/);
+    // Wait for first-visit 280ms auto-open timer; verify it does NOT steal focus
+    await react.act(async () => new Promise(r => setTimeout(r, 320)));
+    const autoCard = container.querySelector('[data-tour-card="connection"]');
+    assert.ok(autoCard, 'first-visit auto-open must mount step 1 CoachmarkTour after 280ms');
+    assert.equal(trigger.getAttribute('aria-expanded'), 'true');
+    assert.equal(popoverShown >= 1, true, 'tour layer promoted via showPopover()');
+    const tourLayer = container.querySelector('[data-calendar-tour]');
+    assert.equal(tourLayer.getAttribute('popover'), 'manual', 'setAttribute("popover", "manual") applied');
+    assert.notEqual(win.document.activeElement, container.querySelector('[data-tour-next]'), 'auto-open must not hijack focus');
 
-    await react.act(async () => { chipToday.click(); });
-    assert.equal(chipToday.getAttribute('data-copied'), 'true');
-    assert.match(copiedPrompt, /汇总今天的会议议程并提醒冲突/);
+    // Opening a modal dialog (New Event) immediately closes the auto-opened tour
+    let newBtn = null;
+    for (let i = 0; i < 30 && !newBtn; i++) {
+      newBtn = [...container.querySelectorAll('button')].find(b => b.textContent.trim() === '新建日程' && !b.disabled);
+      if (!newBtn) await react.act(async () => new Promise(r => setTimeout(r, 10)));
+    }
+    assert.ok(newBtn, 'New event button enabled');
+    await react.act(async () => { newBtn.click(); });
+    assert.equal(container.querySelector('[data-tour-card]'), null, 'auto-tour closes immediately when modal opens');
+
+    // Close New Event modal via Escape or Cancel button
+    const cancelBtn = [...win.document.body.querySelectorAll('.host-portal-modal button')].find(b => b.textContent.includes('取消'));
+    assert.ok(cancelBtn, 'Cancel button in New event modal');
+    await react.act(async () => { cancelBtn.click(); });
+    assert.equal(win.document.body.querySelector('.host-portal-modal'), null);
+
+    // Manually click `? 引导` in topbar: tour opens at step 1/4 and focuses [data-tour-next]
+    await react.act(async () => { trigger.click(); });
+    const step1Card = container.querySelector('[data-tour-card="connection"]');
+    assert.ok(step1Card, 'manual trigger opens step 1');
+    assert.equal(step1Card.getAttribute('role'), 'dialog');
+    assert.equal(step1Card.getAttribute('aria-modal'), 'false');
+    assert.ok(step1Card.getAttribute('aria-labelledby'));
+    assert.ok(container.querySelector('[data-tour-spotlight="connection"]'), 'spotlight cutout rendered');
+    assert.ok(step1Card.querySelector('[data-tour-arrow]'), 'directional 10x10 arrow rendered');
+    assert.match(step1Card.textContent, /1 \/ 4/);
+    assert.match(step1Card.textContent, /连接日历账号/);
+    assert.equal(win.document.activeElement, step1Card.querySelector('[data-tour-next]'), 'manual open focuses Next button');
+
+    // Advance to Step 2 (views & drag reschedule)
+    await react.act(async () => { container.querySelector('[data-tour-next]').click(); });
+    const step2Card = container.querySelector('[data-tour-card="views"]');
+    assert.ok(step2Card);
+    assert.match(step2Card.textContent, /2 \/ 4/);
+    assert.match(step2Card.textContent, /日 \/ 周 \/ 月视图切换与拖拽改期/);
+
+    // Advance to Step 3 (availability & inline 1-click prompt copy)
+    await react.act(async () => { container.querySelector('[data-tour-next]').click(); });
+    const step3Card = container.querySelector('[data-tour-card="availability"]');
+    assert.ok(step3Card);
+    assert.match(step3Card.textContent, /3 \/ 4/);
+    const copyPromptBtn = step3Card.querySelector('[data-copy-prompt]');
+    assert.ok(copyPromptBtn, 'Step 3 exposes inline 1-click prompt copy button');
+    await react.act(async () => { copyPromptBtn.click(); });
+    assert.equal(copiedPrompt, '帮我查一下本周工作时间的空闲时段，整理成可发送的会议候选时间');
+    assert.equal(copyPromptBtn.getAttribute('data-copied'), 'true');
+    assert.match(step3Card.querySelector('[role="status"]').textContent, /已复制指令/);
+
+    // Advance to Step 4 (conflicts & smart drafts) and complete tour
+    await react.act(async () => { container.querySelector('[data-tour-next]').click(); });
+    const step4Card = container.querySelector('[data-tour-card="smart-draft"]');
+    assert.ok(step4Card);
+    assert.match(step4Card.textContent, /4 \/ 4/);
+    assert.match(step4Card.textContent, /冲突检查与从文字 \/ 截图智能建日程/);
+    const doneBtn = step4Card.querySelector('[data-tour-next]');
+    assert.match(doneBtn.textContent, /完成引导/);
+
+    await react.act(async () => { doneBtn.click(); });
+    await react.act(async () => new Promise(r => setTimeout(r, 15)));
+    assert.equal(container.querySelector('[data-tour-card]'), null, 'tour closes on Done');
+    assert.equal(win.localStorage.getItem('dsh-calendar.tour.v1'), 'done', 'persists done in localStorage');
+    assert.equal(trigger.getAttribute('aria-expanded'), 'false');
+    assert.equal(popoverHidden >= 1, true, 'hidePopover() called on unmount');
+    assert.equal(win.document.activeElement, trigger, 'restores focus to ? 引导 trigger on manual close');
   } finally {
     await unmount();
   }

@@ -110,16 +110,17 @@ function Picker({ id, label, value, options, onChange, disabled, compact = false
     });
 }
 
-function Segments({ id, label, items, value, onChange, disabled }) {
+function Segments({ id, label, items, value, onChange, disabled, ...rest }) {
     const P = getPrim();
     if (P?.SegmentedControl) {
         // The host positions the active pill by equal grid tracks. The
         // fallback flex layout would make its width and offsets diverge.
-        return h(P.SegmentedControl, { id, label, value, options: items, onChange, disabled });
+        return h(P.SegmentedControl, { id, label, value, options: items, onChange, disabled, ...rest });
     }
-    return h("div", { className: styles.segments, role: "tablist", "aria-label": label },
+    return h("div", { ...rest, className: styles.segments, role: "tablist", "aria-label": label },
         items.map(item => h("button", {
             key: item.value, type: "button", role: "tab", id: id + "-" + item.value,
+            "data-segment-id": item.value,
             className: styles.segment, "aria-selected": value === item.value,
             "aria-controls": id + "-" + item.value + "-panel",
             tabIndex: value === item.value ? 0 : -1, disabled: disabled || item.disabled,
