@@ -3,7 +3,7 @@
 1. 从 DSH 侧栏打开「日历」，先连接并测试自己的 CalDAV 日历。
 2. 点击「找空闲时段」，选择起止日期、日程时长、每天的工作时间和工作日；按需设置定时日程前后缓冲。
 3. 点击「查找空闲」。页面明确显示浏览器时区、读取时间与占用日程数量。修改条件会清除旧候选；查询中可取消。
-4. 点击「用此时段新建」，只会填写原有日程草稿。补充标题、地点等内容并核对时间，再明确保存；关闭草稿不会创建日程。
+4. 点击「复制空闲时段文案」可将整理好的不重叠候选时段直接粘贴到微信、钉钉、Slack 或邮件；点击「用此时段新建」则只会填写原有日程草稿。补充标题、地点等内容并核对时间，再明确保存；关闭草稿不会创建日程。
 
 草稿会显示实际日期、钟点和 UTC 偏移。未修改的起止时间分别保留候选的绝对时间，夏令时回拨也不会把第二次出现的钟点换成第一次。修改日期或某一端钟点后，该端按浏览器普通日期规则重新换算，请核对显示的实际时段。
 
@@ -27,7 +27,7 @@ Windows 本地 225 项测试通过，包括夏令时、UTC 偏移、全天边界
 
 ## English
 
-Open **Calendar → Find available time**, set dates, duration, working hours/days and optional buffers, then choose **Find times**. The page shows the browser time zone and the time of the read. Changed filters clear old candidates; a pending search can be cancelled. **Create with this time** only fills the existing new-event draft. Review its title, dates and details before saving.
+Open **Calendar → Find available time**, set dates, duration, working hours/days and optional buffers, then choose **Find times**. The page shows the browser time zone and the time of the read. Changed filters clear old candidates; a pending search can be cancelled. **Copy free slots summary** copies formatted, non-overlapping options for chat or email, while **Create with this time** only fills the existing new-event draft. Review its title, dates and details before saving.
 
 The draft shows resolved clock times and UTC offsets. Unchanged endpoints independently preserve their exact candidate instants, including repeated clock times during a DST fold. Editing the date or one clock endpoint resolves that endpoint using the browser's ordinary date rules; review the displayed resolved interval.
 

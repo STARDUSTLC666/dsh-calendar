@@ -1721,13 +1721,13 @@ __stardustUpdatesGuard(React, "dsh-calendar.import", { dirty: !!content.trim(), 
             const importStatusTone = { ready: styles.success, imported: styles.success, blocked: styles.warn, failed: styles.error };
             const title = t("import.title");
             const fields = h("div", { className: styles.card },
-                h("label", { className: styles["dshc-field"] },
-                    h("span", null, t("import.file")),
-                    h("input", { className: styles["dshc-input"], type: "file", accept: ".ics,text/calendar", disabled: busy, onChange: loadFile })
+                h("div", { className: styles["dshc-field"] },
+                    h("label", { htmlFor: timezoneId + "-file" }, t("import.file")),
+                    h("input", { id: timezoneId + "-file", className: styles["dshc-input"], type: "file", accept: ".ics,text/calendar", disabled: busy, onChange: loadFile })
                 ),
-                h("label", { className: styles["dshc-field"] },
-                    h("span", null, t("import.paste")),
-                    h("textarea", { className: clsx(styles["dshc-input"], styles.importText), value: content, rows: 5, disabled: busy, onChange: e => update(e.target.value), spellCheck: false })
+                h("div", { className: styles["dshc-field"] },
+                    h("label", { htmlFor: timezoneId + "-paste" }, t("import.paste")),
+                    h("textarea", { id: timezoneId + "-paste", className: clsx(styles["dshc-input"], styles.importText), value: content, rows: 5, disabled: busy, onChange: e => update(e.target.value), spellCheck: false })
                 ),
                 h("div", { className: styles["dshc-field"] },
                     h("label", { htmlFor: timezoneId }, t("import.timezone")),
@@ -2375,6 +2375,7 @@ __stardustUpdatesGuard(React, "dsh-calendar.import", { dirty: !!content.trim(), 
             },
                 h("div", { className: styles["dshc-shell"] },
                     topbar, compactToolbar,
+                    !compact ? h(CalendarWorkflowGuide) : null,
                     banner ? h("div", { className: styles["dshc-alert"], role: "status" }, banner) : null,
                     undo ? h("div", { className: styles["dshc-undo"], role: "status", "data-window-drag-exclude": "" },
                         h("span", null, t("move.saved") + " · " + (undo.summary || "")),

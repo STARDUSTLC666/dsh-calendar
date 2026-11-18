@@ -68,12 +68,14 @@ function Txt({ className, icon, ...props }) {
     );
 }
 
-function Chk({ checked, disabled, label, onChange, className, title }) {
+function Chk({ id, checked, disabled, label, onChange, className, title }) {
+    const generatedId = typeof useId === "function" ? useId() : undefined;
+    const inputId = id || generatedId;
     const P = getPrim();
     const classes = clsx(styles["dshc-check"], className);
-    if (P?.Checkbox) return h(P.Checkbox, { checked, disabled, label, onChange, className: classes, title });
-    return h("label", { className: classes, title },
-        h("input", { type: "checkbox", checked, disabled, onChange: event => onChange(event.target.checked) }),
+    if (P?.Checkbox) return h(P.Checkbox, { id: inputId, checked, disabled, label, onChange, className: classes, title });
+    return h("label", { htmlFor: inputId, className: classes, title },
+        h("input", { id: inputId, type: "checkbox", checked, disabled, onChange: event => onChange(event.target.checked) }),
         h("span", null, label)
     );
 }

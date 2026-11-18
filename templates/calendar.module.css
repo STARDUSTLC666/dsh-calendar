@@ -641,6 +641,101 @@ textarea.dshc-input { min-height: 64px; resize: vertical; }
 .slotGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 218px), 1fr)); gap: 8px; margin: 10px 0; padding: 0; list-style: none; }
 .slotCard { display: grid; gap: 8px; padding: 10px; border: 0.5px solid var(--dsw-alias-border-l2); border-radius: var(--dsw-radius-sm); background: var(--dsw-alias-bg-base); }
 .slotRange { color: var(--dsw-alias-label-secondary); font-size: 11px; }
+.copyRow { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; }
+.copyStatus { color: var(--dsw-alias-state-success-primary); font-size: 11.5px; opacity: 1; }
+.copyStatus:empty { opacity: 0; }
+
+.workflowGuide {
+  flex: none;
+  padding: 6px 14px;
+  border-block-end: 0.5px solid var(--dsw-alias-border-l2);
+  background: var(--dsw-alias-bg-layer-1);
+  font-size: 12px;
+}
+.layoutFloating .workflowGuide {
+  margin: 8px 10px 0;
+  border: 0.5px solid var(--dsw-alias-border-l2);
+  border-radius: var(--dsw-radius-lg);
+  background: var(--dsw-alias-calendar-island-surface);
+}
+.workflowSummary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  cursor: pointer;
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
+  font-weight: 600;
+  user-select: none;
+}
+.workflowSummary::-webkit-details-marker { display: none; }
+.workflowSummary::before {
+  content: "▸";
+  content: "▸" / "";
+  display: inline-block;
+  flex: none;
+  color: var(--dsw-alias-state-business-primary);
+  rotate: 0deg;
+}
+.workflowGuide[open] > .workflowSummary::before { rotate: 90deg; }
+.workflowBadge {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--dsw-alias-state-business-primary) 12%, transparent);
+  color: var(--dsw-alias-state-business-primary);
+  font-size: 11px;
+  font-weight: 500;
+}
+.workflowBody {
+  margin-block-start: 8px;
+  padding-block-start: 8px;
+  border-block-start: 0.5px solid var(--dsw-alias-border-l1);
+  display: grid;
+  gap: 8px;
+}
+.workflowSteps {
+  margin: 0;
+  padding-inline-start: 18px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px 14px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+.promptRow, .promptChips {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+}
+.promptChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 28px;
+  min-height: 26px;
+  padding: 3px 9px;
+  border: 0.5px solid var(--dsw-alias-border-l2);
+  border-radius: 999px;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 11.5px;
+  line-height: 1.35;
+  cursor: pointer;
+}
+.promptChip:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); }
+.promptChip[data-copied="true"] {
+  border-color: var(--dsw-alias-state-success-primary);
+  background: var(--dsw-alias-state-success-tertiary);
+  color: var(--dsw-alias-state-success-primary);
+}
+.dshc-root[data-dsh-style="pixel8bit"] .promptChip {
+  border-radius: 0 !important;
+}
 .dshc-import-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-block-start: 10px; }
 .dshc-import-rows { display: grid; min-width: 0; margin-block: 10px; border-block-start: 0.5px solid var(--dsw-alias-border-l2); }
 .dshc-import-row { padding: 9px 0; border-block-end: 0.5px solid var(--dsw-alias-border-l2); overflow-wrap: anywhere; }
@@ -785,6 +880,8 @@ textarea.dshc-input { min-height: 64px; resize: vertical; }
 .layoutCards :is(.dshc-slot, .card, .slotCard) { border-radius: var(--dsw-radius-lg); }
 
 @media (prefers-reduced-motion: no-preference) {
+  .workflowSummary::before { transition: rotate 160ms var(--dsh-ease-out, ease-out); }
+  .copyStatus { transition: opacity 150ms ease-out; }
   .dshc-root[data-main="true"] .workspacePage { animation: calendarPageIn 150ms ease-out both; }
   @keyframes calendarPageIn {
     from { opacity: 0; transform: translateY(4px); }
@@ -795,6 +892,7 @@ textarea.dshc-input { min-height: 64px; resize: vertical; }
 @container (max-width: 830px) {
   .schedule:not([data-resizable]) { grid-template-columns: 194px minmax(0, 1fr); }
   .zone { display: none; }
+  .workflowSteps { grid-template-columns: minmax(0, 1fr); }
 }
 
 @container (max-width: 620px) {

@@ -36,12 +36,11 @@ dsh plugin --profile desktop add dsh-calendar
 
 For the web version, replace `desktop` with `web`. Restart DSH after installation.
 
-## Start using it
+## Start using it: Three-step workflow
 
-1. Open Calendar in the sidebar; choose a provider in connection settings and enter your account credentials.
-2. Test the connection, select a calendar and verify its time zone before using month, week or agenda views.
-3. Before creating or editing an event, check its date, time and destination calendar, then confirm.
-4. Preview and select ICS entries before importing; review skipped and failed entries before retrying.
+1. **Connect calendar**: Open Calendar in the sidebar, choose a provider in connection settings, test the connection, and save.
+2. **Share free slots**: Open **Find available time**, search with your duration and buffer, then click **Copy free slots summary** to paste options into chat/email or **Create with this time** to review a draft.
+3. **Review with assistant**: Ask DSH chat to summarize your agenda and flag overlaps, or preview and import ICS entries in batches.
 
 ## Requirements and configuration
 
@@ -58,7 +57,7 @@ Detailed configuration, tool arguments and troubleshooting are in the [usage gui
 
 ## Plugin updates
 
-Requires DSH 0.2.1-rc.3 or newer. Update controls sit at the bottom of the calendar sidebar and are also available in native plugin details. Checks, release notes and preferences expand in place, with no separate update page or settings menu. Automatic checks are on by default; **automatic installation is off by default**. Only explicit opt-in permits compatible stable patches while idle with no unsaved changes. Preferences are independent, with per-plugin disable, deferral and ignore controls. No forced DSH restart or upgrade, and local-source installations stay unchanged. Suite components explain and operate on the whole Suite in the same footer.
+Requires DSH `>=0.2.2-rc.3`. Update controls sit at the bottom of the calendar sidebar and are also available in native plugin details. Checks, release notes and preferences expand in place, with no separate update page or settings menu. Automatic checks are on by default; **automatic installation is off by default**. Only explicit opt-in permits compatible stable patches while idle with no unsaved changes. Preferences are independent, with per-plugin disable, deferral and ignore controls. No forced DSH restart or upgrade, and local-source installations stay unchanged. Suite components explain and operate on the whole Suite in the same footer.
 
 Older releases need one manual update in native plugin management to acquire these controls. Publishing to npm does not replace an existing user installation.
 

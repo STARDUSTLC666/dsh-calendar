@@ -215,3 +215,49 @@ test('floating Launcher and SVG micro-animation icons expose data-window-drag-ex
     await unmount();
   }
 });
+
+test('collapsible workflow guide, 1-click chat prompt chips, marker CSS rules, and >=0.2.2-rc.3 docs stay compliant', async () => {
+  const refZh = readFileSync(new URL('docs/REFERENCE.zh.md', ROOT_URL), 'utf8');
+  const refEn = readFileSync(new URL('docs/REFERENCE.en.md', ROOT_URL), 'utf8');
+  const workbenchDoc = readFileSync(new URL('docs/WORKBENCH.md', ROOT_URL), 'utf8');
+  assert.doesNotMatch(refZh + '\n' + refEn + '\n' + workbenchDoc, /0\.2\.1-rc\.3/);
+  assert.match(refZh, />=0\.2\.2-rc\.3/);
+  assert.match(refEn, />=0\.2\.2-rc\.3/);
+
+  const { win, react, probe, render } = await mountEnv();
+  let copiedPrompt = '';
+  Object.defineProperty(win.navigator, 'clipboard', {
+    value: { async writeText(val) { copiedPrompt = String(val); } },
+    configurable: true,
+  });
+  try { Object.defineProperty(globalThis, 'navigator', { value: win.navigator, configurable: true }); } catch {}
+
+  const { container, unmount } = await render(react.createElement(probe.CalendarPanel, { workbench: true }));
+  try {
+    assert.match(probe.CSS, /content:"▸";content:"▸"\s*\/\s*""/);
+    assert.match(probe.CSS, /@media\s*\(prefers-reduced-motion:\s*no-preference\)\{[^}]*transition:rotate/);
+
+    const guide = container.querySelector('details');
+    assert.ok(guide, 'collapsible <details> workflow guide must render');
+    const summary = guide.querySelector('summary');
+    assert.ok(summary);
+    assert.match(summary.textContent, /三步用起来/);
+    assert.equal(summary.querySelectorAll('h1, h2, h3, h4, h5, h6').length, 0, 'never place headings inside <summary>');
+
+    const chip45 = [...guide.querySelectorAll('button')].find(b => b.textContent.includes('帮我找本周下午两个 45 分钟空闲时段'));
+    const chipToday = [...guide.querySelectorAll('button')].find(b => b.textContent.includes('汇总今天的会议议程并提醒冲突'));
+    assert.ok(chip45, '45-min free slot prompt chip must render');
+    assert.ok(chipToday, 'today agenda prompt chip must render');
+
+    await react.act(async () => { chip45.click(); });
+    assert.equal(chip45.getAttribute('data-copied'), 'true');
+    assert.match(copiedPrompt, /45 分钟空闲时段/);
+    assert.match(guide.querySelector('[role="status"]').textContent, /已复制对话指令/);
+
+    await react.act(async () => { chipToday.click(); });
+    assert.equal(chipToday.getAttribute('data-copied'), 'true');
+    assert.match(copiedPrompt, /汇总今天的会议议程并提醒冲突/);
+  } finally {
+    await unmount();
+  }
+});

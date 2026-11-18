@@ -18,7 +18,8 @@
 ## Features
 
 - Plan with month, week and agenda views, week drag-to-reschedule, iCloud calendar discovery, and reviewed smart event drafts from text or screenshots.
-- Find candidates using duration, weekdays and buffers.
+- Find candidates using duration, weekdays and buffers, and click **Copy free slots summary** to paste formatted meeting options straight into WeChat, DingTalk, Slack, or email.
+- Expand the compact workflow bar at the top of the workbench to copy 1-click DSH chat prompts.
 - Review event drafts or ICS imports before confirming writes.
 - Harmonized layouts, event palettes, and five switchable UI themes (Native Airy, Warm Cream, Claude Warmth, Bright 8-Bit, and Airy Mint) with breathable slate dark mode.
 
@@ -43,14 +44,15 @@ For the web profile, replace `desktop` with `web`. Restart that DSH profile afte
 
 ## Start using it
 
-1. Open Calendar in the sidebar; choose a provider in connection settings and enter your account credentials.
-2. Test the connection, select a calendar and verify its time zone before using month, week or agenda views.
-3. Before creating or editing an event, check its date, time and destination calendar, then confirm.
-4. Preview and select ICS entries before importing; review skipped and failed entries before retrying.
+### Three-step workflow: Connect calendar -> Share free slots -> Review with assistant
 
-Example request：
+1. **Connect your calendar**: Open **Calendar** in the sidebar, choose iCloud, Google, Nextcloud, or custom CalDAV in **Connection**, run **Test connection**, and save (or click **See a sample** first).
+2. **Find & share free slots**: Open **Find available time** (shortcut `F`), set duration, working hours, and buffers, then click **Copy free slots summary** to paste clean time options into WeChat, DingTalk, Slack, or email—or click **Create with this time** to open a pre-filled draft.
+3. **Review with your assistant**: Extract drafts from messages or screenshots in **New event**, preview `.ics` files before importing, or expand the top workflow guide to copy ready-made DSH chat prompts:
 
-> Read this week in the connected calendar and summarize conflicts I should check.
+- `Find two 45-minute free slots this week in the afternoon (13:30–18:00) with a 15-minute buffer, and list the candidates first without creating an event.`
+- `Summarize today's meeting agenda in chronological order with locations, and highlight any scheduling overlaps.`
+- `Read my schedule for next week, identify the busiest day, and list 2-hour uninterrupted blocks for deep work.`
 
 ## Before you start
 

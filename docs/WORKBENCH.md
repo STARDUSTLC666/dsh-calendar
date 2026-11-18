@@ -26,7 +26,7 @@ The workbench sources live in `templates/client.js`, `templates/panels/`, and `t
 
 ## 验收范围 / Validation boundary
 
-2026-10-25：Windows、官方 DSH 0.2.1-rc.3 Web，后台 Chrome/Playwright 实际点击和输入；覆盖中英文、浅深色、1536px 与 390px、状态读回与控制台。Browser plugin 不可用，因此使用本地 Playwright。
+当前版本要求宿主 DSH `>=0.2.2-rc.3`。工作台顶部内置可折叠「三步用起来」指南与一键复制的对话巡检指令。历史回归记录（早期 `>=0.2.2-rc.3` 升级前基线）：Windows 后台 Chrome/Playwright 实际点击和输入；覆盖中英文、浅深色、1536px 与 390px、状态读回与控制台。Browser plugin 不可用，因此使用本地 Playwright。
 
 邮件使用受控 AgentMail HTTP 服务，日历使用受控 CalDAV 协议传输；插件处理器、存储、校验和原生宿主均实际运行。未使用真实邮箱、真实日历账号或付费模型。RSS 访问 Node.js 官方公开来源。PPT 实际生成并渲染 PPTX、下载 ZIP；两个视频插件实际运行官方引擎并播放 MP4。
 

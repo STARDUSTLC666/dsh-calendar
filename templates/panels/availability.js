@@ -1,4 +1,48 @@
+function pickDistinctAvailabilitySlots(slots, maxCount = 6) {
+    const picked = [];
+    let lastEnd = -Infinity;
+    for (const slot of slots) {
+        const startMs = Date.parse(slot.start);
+        const endMs = Date.parse(slot.end);
+        if (startMs >= lastEnd) {
+            picked.push(slot);
+            lastEnd = endMs;
+            if (picked.length >= maxCount) break;
+        }
+    }
+    return picked.length ? picked : slots.slice(0, maxCount);
+}
+
+function formatAvailabilityShareSummary(slots, { durationMinutes, zone, lang }) {
+    const chosen = pickDistinctAvailabilitySlots(slots, 6);
+    const isEn = lang === "en";
+    const dayFmt = new Intl.DateTimeFormat(isEn ? "en-US" : "zh-CN", {
+        timeZone: zone, year: "numeric", month: "short", day: "numeric", weekday: "short"
+    });
+    const clockFmt = new Intl.DateTimeFormat(isEn ? "en-US" : "zh-CN", {
+        timeZone: zone, hour: "2-digit", minute: "2-digit", hourCycle: "h23"
+    });
+    const lines = chosen.map(slot => {
+        const start = new Date(slot.start);
+        const end = new Date(slot.end);
+        const startDay = dayFmt.format(start);
+        const endDay = dayFmt.format(end);
+        const range = startDay === endDay
+            ? startDay + " " + clockFmt.format(start) + "–" + clockFmt.format(end)
+            : startDay + " " + clockFmt.format(start) + " – " + endDay + " " + clockFmt.format(end);
+        return "• " + range;
+    });
+    const header = isEn
+        ? "Available meeting slots (" + durationMinutes + " min, " + zone + "):"
+        : "可选空闲时段（时长 " + durationMinutes + " 分钟，时区 " + zone + "）：";
+    const footer = isEn
+        ? "Let me know which time works best and I will send a calendar invite."
+        : "请看以上哪个时间方便？确认后我来发日历邀请。";
+    return [header, ...lines, footer].join("\n");
+}
+
 function AvailabilityPanel({ anchor, onChoose, onClose, onBusy }) {
+    const formId = typeof useId === "function" ? useId() : "dshc-avail";
     const text = calendarText;
     const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
     const [form, setForm] = useState(() => {
@@ -13,7 +57,11 @@ function AvailabilityPanel({ anchor, onChoose, onClose, onBusy }) {
     const [result, setResult] = useState(null);
     const [error, setError] = useState("");
     const [busy, setBusy] = useState(false);
+    const [copiedSummary, setCopiedSummary] = useState(false);
+    const [copyStatus, setCopyStatus] = useState("");
     const active = useRef({ id: 0, controller: null });
+    const copyTimer = useRef(null);
+    const lastCopyMsg = useRef("");
 
     useEffect(() => {
         onBusy(busy);
@@ -22,8 +70,14 @@ function AvailabilityPanel({ anchor, onChoose, onClose, onBusy }) {
     useEffect(() => () => {
         active.current.id++;
         active.current.controller?.abort();
+        if (copyTimer.current) clearTimeout(copyTimer.current);
     }, []);
 
+    function clearCopyFeedback() {
+        if (copyTimer.current) clearTimeout(copyTimer.current);
+        setCopiedSummary(false);
+        setCopyStatus("");
+    }
     function cancel() {
         active.current.id++;
         active.current.controller?.abort();
@@ -36,13 +90,36 @@ function AvailabilityPanel({ anchor, onChoose, onClose, onBusy }) {
     }
     function update(fields) {
         cancel();
+        clearCopyFeedback();
         setForm(value => ({ ...value, ...fields }));
         setResult(null);
         setError("");
     }
+    async function copySummary() {
+        if (!result?.slots?.length) return;
+        const summary = formatAvailabilityShareSummary(result.slots, {
+            durationMinutes: form.durationMinutes,
+            zone,
+            lang: UI_LANG
+        });
+        const ok = await copyText(summary);
+        if (copyTimer.current) clearTimeout(copyTimer.current);
+        let msg = ok
+            ? text("已复制，可直接粘贴到微信、钉钉、Slack 或邮件。", "Copied — ready to paste into chat or email.")
+            : text("无法访问剪贴板，请手动复制时段。", "Clipboard access unavailable.");
+        if (msg === lastCopyMsg.current) msg += "\u00A0";
+        lastCopyMsg.current = msg;
+        setCopiedSummary(ok);
+        setCopyStatus(msg);
+        copyTimer.current = setTimeout(() => {
+            setCopiedSummary(false);
+            setCopyStatus("");
+        }, 2200);
+    }
     async function search(event) {
         event.preventDefault();
         cancel();
+        clearCopyFeedback();
         const controller = new AbortController();
         const id = ++active.current.id;
         active.current.controller = controller;
@@ -74,10 +151,13 @@ function AvailabilityPanel({ anchor, onChoose, onClose, onBusy }) {
     }
 
     const title = text("找空闲时段", "Find available time");
-    const field = (name, label, type, limits) => h("label", { key: name, className: styles["dshc-field"] },
-        h("span", null, label),
-        h(Txt, { type, value: form[name], disabled: busy, required: true, ...limits, onChange: event => update({ [name]: event.target.value }) })
-    );
+    const field = (name, label, type, limits) => {
+        const inputId = formId + "-" + name;
+        return h("div", { key: name, className: styles["dshc-field"] },
+            h("label", { htmlFor: inputId }, label),
+            h(Txt, { id: inputId, name, type, value: form[name], disabled: busy, required: true, ...limits, onChange: event => update({ [name]: event.target.value }) })
+        );
+    };
     const formatter = useMemo(() => new Intl.DateTimeFormat(UI_LANG === "en" ? "en-US" : "zh-CN", {
         timeZone: zone, year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", timeZoneName: "shortOffset"
     }), [UI_LANG, zone]);
@@ -129,9 +209,19 @@ function AvailabilityPanel({ anchor, onChoose, onClose, onBusy }) {
         ),
         error ? h("p", { className: clsx(styles["dshc-alert"], styles.error), role: "alert" }, error) : null,
         result ? h("div", { className: styles.card, "data-dsh-card": "", "aria-live": "polite" },
-            h("p", { className: styles["dshc-sub"] }, text("读取于 ", "Checked at ") + format(result.checkedAt) +
-                text("，已核对 ", " · Checked ") + result.busyEventCount +
-                text(" 个占用日程。候选尚未预约，可相互重叠。", " busy events. Candidates are not reserved and may overlap.")),
+            h("div", { className: styles.cardToolbar },
+                h("p", { className: styles["dshc-sub"] }, text("读取于 ", "Checked at ") + format(result.checkedAt) +
+                    text("，已核对 ", " · Checked ") + result.busyEventCount +
+                    text(" 个占用日程。候选尚未预约，可相互重叠。", " busy events. Candidates are not reserved and may overlap.")),
+                result.count ? h("div", { className: styles.copyRow },
+                    h(Btn, {
+                        icon: copiedSummary ? "check" : "copy",
+                        "data-copied": copiedSummary ? "true" : undefined,
+                        onClick: copySummary
+                    }, copiedSummary ? text("已复制空闲时段文案", "Copied free slots summary") : text("复制空闲时段文案", "Copy free slots summary")),
+                    h("span", { className: styles.copyStatus, role: "status" }, copyStatus)
+                ) : null
+            ),
             result.count ? h("ol", { className: styles.slotGrid }, result.slots.map(slot => h("li", { className: styles.slotCard, "data-dsh-card": "", key: slot.start },
                 h("span", { className: styles.slotRange }, format(slot.start) + " — " + format(slot.end)),
                 h(Btn, { variant: "primary", onClick: () => onChoose(slot) }, text("用此时段新建", "Create with this time"))

@@ -1,5 +1,10 @@
 # 更新记录
 
+## 0.18.3 (2026-11-18)
+
+- 空闲时段面板新增「复制空闲时段文案」按钮，一键生成带日期星期、起止时间与时区的候选约会文本供直接粘贴发送；补充可折叠三步日程工作流、一键复制指令与无障碍标签关联。
+- Add 1-click **Copy free slots summary** in Availability for instant sharing in chat or email, alongside a collapsible 3-step schedule workflow guide, copyable prompt chips, and explicit form label associations.
+
 ## 0.18.2 (2026-11-18)
 
 - 更新区底部新增克制、无打扰的 GitHub 点赞与问题反馈快捷链接，并完善中英文检索关键词。

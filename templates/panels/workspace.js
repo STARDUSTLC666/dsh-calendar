@@ -183,3 +183,100 @@ function CalendarConflicts({ events, onPick, onClose }) {
             : h("p", { className: styles["dshc-sub"], role: "status" }, calendarText("当前范围无冲突", "No conflicts in this range"))
     });
 }
+
+function CalendarWorkflowGuide() {
+    const [copiedId, setCopiedId] = useState("");
+    const [statusText, setStatusText] = useState("");
+    const timer = useRef(null);
+    const lastMsg = useRef("");
+
+    useEffect(() => () => {
+        if (timer.current) clearTimeout(timer.current);
+    }, []);
+
+    const prompts = [
+        {
+            id: "slots-45",
+            label: calendarText("帮我找本周下午两个 45 分钟空闲时段", "Find two 45-minute afternoon slots this week"),
+            prompt: calendarText(
+                "帮我找本周下午两个 45 分钟空闲时段，工作时间按 13:30–18:00，前后预留 15 分钟缓冲，先列出候选不要直接创建。",
+                "Find two 45-minute free slots this week in the afternoon (13:30–18:00) with a 15-minute buffer, and list the candidates first without creating an event."
+            )
+        },
+        {
+            id: "today-agenda",
+            label: calendarText("汇总今天的会议议程并提醒冲突", "Summarize today's agenda and flag conflicts"),
+            prompt: calendarText(
+                "汇总今天的会议议程并提醒冲突，按时间顺序列出每场日程的起止时间与地点。",
+                "Summarize today's meeting agenda in chronological order with locations, and highlight any scheduling overlaps."
+            )
+        },
+        {
+            id: "focus-blocks",
+            label: calendarText("梳理下周日程密度与两小时整块空档", "Review next week's load & 2h focus blocks"),
+            prompt: calendarText(
+                "读取我下周的日历安排，指出会议最密集的一天，并标出可用于深度工作的两小时整块空闲。",
+                "Read my schedule for next week, identify the busiest day, and list 2-hour uninterrupted blocks for deep work."
+            )
+        }
+    ];
+
+    async function handleCopy(item) {
+        const ok = await copyText(item.prompt);
+        if (timer.current) clearTimeout(timer.current);
+        let msg = ok
+            ? calendarText("已复制对话指令，可直接粘贴到 DSH 对话框。", "Copied prompt — paste it into DSH chat.")
+            : calendarText("无法访问剪贴板，请手动复制指令。", "Clipboard access unavailable.");
+        if (msg === lastMsg.current) msg += "\u00A0";
+        lastMsg.current = msg;
+        setCopiedId(ok ? item.id : "");
+        setStatusText(msg);
+        timer.current = setTimeout(() => {
+            setCopiedId("");
+            setStatusText("");
+        }, 2200);
+    }
+
+    return h("details", { className: styles.workflowGuide },
+        h("summary", { className: styles.workflowSummary },
+            h("span", { className: styles.workflowTitle }, calendarText(
+                "三步用起来：连接日历 → 查空档发邀约 → 让助手巡检日程",
+                "How it works: Connect calendar → Copy free slots → Ask assistant to review"
+            )),
+            h("span", { className: styles.workflowBadge }, calendarText("含一键对话指令", "1-click chat prompts"))
+        ),
+        h("div", { className: styles.workflowBody },
+            h("ol", { className: styles.workflowSteps },
+                h("li", null, calendarText(
+                    "连接日历：在「日历连接」测试并启用 iCloud / Google / Nextcloud / 自建 CalDAV，也可先点「查看示例」。",
+                    "Connect calendar: Test and save iCloud, Google, Nextcloud, or CalDAV in Connection, or try the read-only sample first."
+                )),
+                h("li", null, calendarText(
+                    "查空档发邀约：按 F 打开「找空闲时段」，查出候选后点「复制空闲时段文案」一键发到微信、钉钉、Slack 或邮件。",
+                    "Share free slots: Press F to open Find available time, then click Copy free slots summary for WeChat, Slack, or email."
+                )),
+                h("li", null, calendarText(
+                    "让助手巡检日程：支持从文字/截图生成草稿，或点击下方指令气泡复制到 DSH 对话框。",
+                    "Review with assistant: Extract drafts from text/screenshots, or click a prompt chip below to copy for DSH chat."
+                ))
+            ),
+            h("div", { className: styles.promptRow },
+                h("span", { className: styles["dshc-sub"] }, calendarText("点按复制对话指令：", "Copy a chat prompt:")),
+                h("div", { className: styles.promptChips }, prompts.map(item => {
+                    const isCopied = copiedId === item.id;
+                    return h("button", {
+                        key: item.id,
+                        type: "button",
+                        className: styles.promptChip,
+                        "data-copied": isCopied ? "true" : undefined,
+                        onClick: () => handleCopy(item)
+                    },
+                        h(Icon, { name: isCopied ? "check" : "copy", size: 13 }),
+                        h("span", null, item.label)
+                    );
+                })),
+                h("span", { className: styles.copyStatus, role: "status" }, statusText)
+            )
+        )
+    );
+}

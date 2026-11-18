@@ -639,3 +639,63 @@ test('cancelled availability queries cannot restore late candidates even if a tr
     assert.equal([...win.document.querySelectorAll('button')].some(b=>b.textContent==='用此时段新建'),false);
   } finally { await react.act(async()=>root.unmount()); }
 });
+
+test('AvailabilityPanel copies non-overlapping formatted free slots summary and associates every label via htmlFor + id', async () => {
+  const { react, reactDomClient, components, win } = await setup();
+  let copiedText = '';
+  Object.defineProperty(win.navigator, 'clipboard', {
+    value: { async writeText(val) { copiedText = String(val); } },
+    configurable: true,
+  });
+  try { Object.defineProperty(globalThis, 'navigator', { value: win.navigator, configurable: true }); } catch {}
+
+  globalThis.fetch = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({
+      ok: true,
+      value: {
+        count: 3,
+        busyEventCount: 2,
+        checkedAt: '2026-11-02T08:00:00Z',
+        hasMore: false,
+        slots: [
+          { start: '2026-11-02T09:00:00Z', end: '2026-11-02T10:00:00Z' },
+          { start: '2026-11-02T09:15:00Z', end: '2026-11-02T10:15:00Z' },
+          { start: '2026-11-02T14:00:00Z', end: '2026-11-02T15:00:00Z' },
+        ],
+      },
+    }),
+  });
+
+  const { root } = await render(react, reactDomClient, react.createElement(components.AvailabilityPanel, {
+    anchor: new Date('2026-11-02T00:00:00Z'),
+    onBusy() {},
+    onClose() {},
+    onChoose() {},
+  }));
+  try {
+    // Verify every <label> in AvailabilityPanel explicitly associates htmlFor -> control id
+    for (const label of win.document.querySelectorAll('label')) {
+      const targetId = label.getAttribute('for');
+      assert.ok(targetId, 'every <label> must have htmlFor');
+      assert.ok(win.document.getElementById(targetId), `label[for="${targetId}"] must match an input id`);
+    }
+
+    await react.act(async () => {
+      win.document.querySelector('form').dispatchEvent(new win.Event('submit', { bubbles: true, cancelable: true }));
+    });
+
+    const copyBtn = [...win.document.querySelectorAll('button')].find(b => b.textContent.includes('复制空闲时段文案'));
+    assert.ok(copyBtn, 'Copy free slots summary button must appear when slots exist');
+    await react.act(async () => { copyBtn.click(); });
+
+    assert.equal(copyBtn.getAttribute('data-copied'), 'true');
+    assert.match(copiedText, /可选空闲时段（时长 60 分钟/);
+    const bulletLines = copiedText.split('\n').filter(line => line.startsWith('• '));
+    assert.equal(bulletLines.length, 2, 'overlapping 09:15–10:15 window is deduplicated so pasted chat options do not overlap');
+    assert.match(win.document.body.textContent, /微信、钉钉、Slack 或邮件/);
+  } finally {
+    await react.act(async () => root.unmount());
+  }
+});
