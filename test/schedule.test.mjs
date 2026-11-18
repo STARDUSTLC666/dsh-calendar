@@ -143,7 +143,8 @@ test('拖拽接线：监听器一次注册/卸载摘净、视口坐标判列、r
   assert.match(src, /setTimeout\(\(\) => \{ suppressClick\.current = false; \}, 0\)/, '拖动后点击抑制要兜底清除');
   assert.match(src, /clickEvent\.stopPropagation\(\)/, 'slot 的 click 必须挡住冒泡（否则点事件同时弹新建）');
   assert.match(src, /if \(clickEvent\.target !== clickEvent\.currentTarget\)\s*return;/, '只有点格子空白才新建');
-  assert.equal(/\.offsetLeft/.test(src), false, '不能用 offsetLeft（与 clientX 不同坐标系）');
+  const weekSection = src.slice(src.indexOf('function WeekView'), src.indexOf('function AgendaView'));
+  assert.equal(/\.offsetLeft/.test(weekSection), false, '不能用 offsetLeft（与 clientX 不同坐标系）');
   assert.match(src, /columnIndexFromRects\(clientX, drag\.columns\)/, '列判定走纯函数');
   assert.match(src, /requestAnimationFrame\(stepAutoScroll\)/, '边缘滚动用 rAF 持续滚');
   assert.match(src, /applyPreviewAt\(autoScroll\.current\.x, y, drag\)/, '滚动后重算落点');

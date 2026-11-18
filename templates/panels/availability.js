@@ -173,7 +173,7 @@ function AvailabilityPanel({ anchor, onChoose, onClose, onBusy }) {
         }
     }, h("div", { className: styles.pageInner },
         h("div", { className: styles.pageHeader },
-            h("h2", { className: styles.pageHeading }, title),
+            h("h2", { className: styles.pageHeading, "data-dsh-serif": "" }, title),
             h(IconButton, { icon: "close", label: text("关闭", "Close"), onClick: close })
         ),
         h("p", { className: styles.pageIntro }, text(
@@ -208,6 +208,8 @@ function AvailabilityPanel({ anchor, onChoose, onClose, onBusy }) {
             )
         ),
         error ? h("p", { className: clsx(styles["dshc-alert"], styles.error), role: "alert" }, error) : null,
+        busy && !result ? h("div", { className: styles.card, "data-dsh-card": "" },
+            renderDshSkeleton(React, { variant: "card", label: text("正在查询…", "Searching…") })) : null,
         result ? h("div", { className: styles.card, "data-dsh-card": "", "aria-live": "polite" },
             h("div", { className: styles.cardToolbar },
                 h("p", { className: styles["dshc-sub"] }, text("读取于 ", "Checked at ") + format(result.checkedAt) +

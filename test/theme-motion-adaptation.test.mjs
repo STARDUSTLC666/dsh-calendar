@@ -6,13 +6,13 @@ import { JSDOM } from 'jsdom';
 const ROOT_URL = new URL('../', import.meta.url);
 const PKG = JSON.parse(readFileSync(new URL('package.json', ROOT_URL), 'utf8'));
 const SOURCE = readFileSync(new URL('lib/client.js', ROOT_URL), 'utf8').replace(/\r\n/g, '\n');
-const EXPOSE = 'module.exports.__themeProbe = { CalendarPanel, Launcher, ConnectionForm, CoachmarkTour, computeTourLayout, DSH_STYLES, writeDshStyle, readDshStyle, calendarAppearance, CSS };';
+const EXPOSE = 'module.exports.__themeProbe = { CalendarPanel, Launcher, ConnectionForm, CoachmarkTour, computeTourLayout, DSH_STYLES, DSH_FONTS, DSH_DEFAULT_FONT, writeDshStyle, readDshStyle, writeDshFont, readDshFont, calendarAppearance, CSS };';
 if (!SOURCE.includes('return module.exports;')) {
   throw new Error('client.js export contract changed');
 }
 const PATCHED = SOURCE.replace('return module.exports;', EXPOSE + '\nreturn module.exports;');
 
-async function mountEnv({ withHostModal = false, darkHost = false } = {}) {
+async function mountEnv({ withHostModal = false, darkHost = false, events = [] } = {}) {
   const dom = new JSDOM('<!doctype html><html><body></body></html>', {
     pretendToBeVisual: true,
     url: 'http://localhost/',
@@ -25,7 +25,7 @@ async function mountEnv({ withHostModal = false, darkHost = false } = {}) {
     if (body.action === 'connection') {
       return { ok: true, status: 200, json: async () => ({ ok: true, value: { configured: true, provider: 'custom', caldavUrl: 'https://example.test/dav', username: 'u' } }) };
     }
-    return { ok: true, status: 200, json: async () => ({ ok: true, value: { count: 0, start: '', end: '', events: [] } }) };
+    return { ok: true, status: 200, json: async () => ({ ok: true, value: { count: events.length, start: '', end: '', events } }) };
   };
   globalThis.fetch = win.fetch;
   win.AbortSignal.timeout = () => undefined;
@@ -117,16 +117,23 @@ test('never-too-dark: pitch-black surfaces are eliminated and host dark mode use
   }
 });
 
-test('5-style theme switcher syncs workbench, harmonizes layout/palette, and updates portaled Modal dialogs', async () => {
+test('13-style theme switcher & 8-font pairing switcher sync workbench, harmonizes layout/palette, and updates portaled Modal dialogs', async () => {
   const { win, react, probe, render } = await mountEnv({ withHostModal: true });
   const { container, unmount } = await render(react.createElement(probe.CalendarPanel, { workbench: true }));
   try {
     assert.deepEqual(
       Array.from(probe.DSH_STYLES, item => item.id),
-      ['harness', 'cream', 'claude', 'pixel8bit', 'mint'],
+      ['harness', 'cream', 'claude', 'pixel8bit', 'mint', 'glass', 'eink', 'blueprint', 'risograph', 'win98', 'songhui', 'frutiger', 'gazette'],
     );
+    assert.equal(probe.DSH_DEFAULT_FONT, 'arcade');
+    assert.deepEqual(
+      Array.from(probe.DSH_FONTS, item => item.id),
+      ['arcade', 'auto', 'songkai', 'fangsong', 'poster', 'retro98', 'serif', 'modern'],
+    );
+    assert.ok(probe.CSS.toLowerCase().includes('#f6f3ec'), 'gazette newsprint surface present in CSS');
     const rootSection = container.querySelector('.dshc-root');
     assert.equal(rootSection.getAttribute('data-dsh-style'), 'harness');
+    assert.equal(rootSection.getAttribute('data-dsh-font'), 'arcade');
 
     // Open StyleSwitcher menu and pick pixel8bit
     const switcherTrigger = container.querySelector('.dsh-style-trigger');
@@ -144,6 +151,20 @@ test('5-style theme switcher syncs workbench, harmonizes layout/palette, and upd
     assert.equal(rootSection.getAttribute('data-dsh-style'), 'pixel8bit');
     // Custom style defers surface tokens to CSS instead of inline overriding --dsw-alias-bg-base
     assert.equal(rootSection.style.getPropertyValue('--dsw-alias-bg-base'), '');
+
+    // Open FontSwitcher menu and pick songkai
+    const fontTrigger = container.querySelector('.dsh-font-trigger');
+    assert.ok(fontTrigger, 'FontSwitcher trigger must render beside StyleSwitcher');
+    await react.act(async () => {
+      fontTrigger.click();
+    });
+    const songkaiOption = [...container.querySelectorAll('[role="menuitemradio"]')].find(el => el.textContent.includes('中宋+楷书'));
+    assert.ok(songkaiOption, 'Song + Kai font option must appear in FontSwitcher menu');
+    await react.act(async () => {
+      songkaiOption.click();
+    });
+    assert.equal(win.localStorage.getItem('dsh-stardust:ui-font'), 'songkai');
+    assert.equal(rootSection.getAttribute('data-dsh-font'), 'songkai');
 
     // Picking a custom calendar palette swatch ("极光紫") harmonizes accent without clobbering bg-base
     const auroraSwatch = container.querySelector('button[aria-label="极光紫"]');
@@ -168,14 +189,18 @@ test('5-style theme switcher syncs workbench, harmonizes layout/palette, and upd
     const portalDialog = win.document.body.querySelector('.host-portal-modal[role="dialog"]');
     assert.ok(portalDialog, 'Modal must portal to document.body');
     assert.equal(portalDialog.getAttribute('data-dsh-style'), 'pixel8bit');
+    assert.equal(portalDialog.getAttribute('data-dsh-font'), 'songkai');
     assert.equal(portalDialog.hasAttribute('data-window-drag-exclude'), true);
 
-    // Cross-plugin broadcast via writeDshStyle updates both workbench root and open portaled dialog live
+    // Cross-plugin broadcast via writeDshStyle & writeDshFont updates both workbench root and open portaled dialog live
     await react.act(async () => {
-      probe.writeDshStyle('claude', win);
+      probe.writeDshStyle('gazette', win);
+      probe.writeDshFont('fangsong', win);
     });
-    assert.equal(rootSection.getAttribute('data-dsh-style'), 'claude');
-    assert.equal(portalDialog.getAttribute('data-dsh-style'), 'claude');
+    assert.equal(rootSection.getAttribute('data-dsh-style'), 'gazette');
+    assert.equal(rootSection.getAttribute('data-dsh-font'), 'fangsong');
+    assert.equal(portalDialog.getAttribute('data-dsh-style'), 'gazette');
+    assert.equal(portalDialog.getAttribute('data-dsh-font'), 'fangsong');
   } finally {
     await unmount();
   }
@@ -185,12 +210,14 @@ test('floating Launcher and SVG micro-animation icons expose data-window-drag-ex
   const { win, react, probe, render } = await mountEnv();
   await react.act(async () => {
     probe.writeDshStyle('mint', win);
+    probe.writeDshFont('retro98', win);
   });
   const { container, unmount } = await render(react.createElement(probe.Launcher, {}));
   try {
     const fab = container.querySelector('.dshc-fab');
     assert.ok(fab);
     assert.equal(fab.getAttribute('data-dsh-style'), 'mint');
+    assert.equal(fab.getAttribute('data-dsh-font'), 'retro98');
     assert.equal(fab.hasAttribute('data-window-drag-exclude'), true);
 
     await react.act(async () => {
@@ -199,6 +226,7 @@ test('floating Launcher and SVG micro-animation icons expose data-window-drag-ex
     const floatPanel = container.querySelector('.dshc-float');
     assert.ok(floatPanel);
     assert.equal(floatPanel.getAttribute('data-dsh-style'), 'mint');
+    assert.equal(floatPanel.getAttribute('data-dsh-font'), 'retro98');
     assert.equal(floatPanel.hasAttribute('data-window-drag-exclude'), true);
 
     const icons = [...container.querySelectorAll('svg[data-dsh-icon]')].map(el => el.getAttribute('data-dsh-icon'));
@@ -328,6 +356,57 @@ test('CoachmarkTour (? 引导), spotlight + directional arrow, inline prompt cop
     assert.equal(trigger.getAttribute('aria-expanded'), 'false');
     assert.equal(popoverHidden >= 1, true, 'hidePopover() called on unmount');
     assert.equal(win.document.activeElement, trigger, 'restores focus to ? 引导 trigger on manual close');
+  } finally {
+    await unmount();
+  }
+});
+
+test('v3 header, sliding tab indicator, resizable split sidebar, shimmer skeleton, and row hover actions work in calendar', async () => {
+  const now = new Date();
+  const start = new Date(now.getTime() + 3600000).toISOString().replace(/\.\d{3}Z$/, 'Z');
+  const end = new Date(now.getTime() + 5400000).toISOString().replace(/\.\d{3}Z$/, 'Z');
+  const { win, react, probe, render } = await mountEnv({
+    withHostModal: true,
+    events: [{ uid: 'evt-1', summary: 'V3 Design Review', start, end, allDay: false, location: 'Studio' }],
+  });
+  const { container, unmount } = await render(react.createElement(probe.CalendarPanel, { workbench: true }));
+  try {
+    for (const token of ['dsh-header', 'dsh-tab-indicator', 'dsh-split-resizer', 'dsh-skeleton', 'dsh-row-actions', 'dsh-pixel-cursor']) {
+      assert.ok(probe.CSS.includes(token), `missing v3 CSS token ${token}`);
+    }
+
+    const header = container.querySelector('[data-dsh-header]');
+    assert.ok(header, 'unified topbar exposes [data-dsh-header]');
+    const layoutPills = [...header.querySelectorAll('[aria-label="布局"] button')].map(b => b.textContent);
+    assert.deepEqual(layoutPills, ['原生', '浮岛', '聚光', 'Bento']);
+    assert.match(probe.CSS, /#ececec[\s\S]*#1b4f9c/i, 'win98 platinum toolbar contrast rule present');
+
+    const tablist = container.querySelector('[data-dsh-tablist]');
+    assert.ok(tablist, 'workspace tabs expose [data-dsh-tablist]');
+    assert.ok(tablist.querySelector('.dsh-tab-indicator'), 'sliding tab indicator renders in tablist');
+
+    const resizer = container.querySelector('[data-dsh-resizer]');
+    assert.ok(resizer, 'ScheduleLayout renders DshSplitResizer');
+    assert.equal(resizer.getAttribute('role'), 'separator');
+    assert.equal(resizer.getAttribute('aria-valuenow'), '236');
+    await react.act(async () => {
+      resizer.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    });
+    assert.equal(resizer.getAttribute('aria-valuenow'), '252');
+    assert.equal(win.localStorage.getItem('dsh-calendar:rail-width'), '252');
+    await react.act(async () => {
+      resizer.dispatchEvent(new win.MouseEvent('dblclick', { bubbles: true }));
+    });
+    assert.equal(resizer.getAttribute('aria-valuenow'), '236');
+
+    // Switch to Agenda view to verify [data-dsh-row] + .dsh-row-actions + .dsh-pixel-cursor
+    const agendaTab = [...container.querySelectorAll('[role="tab"]')].find(t => t.textContent.includes('议程'));
+    assert.ok(agendaTab, 'Agenda view tab exists');
+    await react.act(async () => { agendaTab.click(); });
+    const row = container.querySelector('[data-dsh-row]');
+    assert.ok(row, 'Agenda view renders [data-dsh-row]');
+    assert.ok(row.querySelector('.dsh-pixel-cursor'), 'Agenda row includes pixel8bit cursor');
+    assert.ok(row.querySelector('.dsh-row-actions'), 'Agenda row includes .dsh-row-actions');
   } finally {
     await unmount();
   }

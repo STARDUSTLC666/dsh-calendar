@@ -43,7 +43,7 @@ function Btn({ variant = "outline", size = "sm", icon, className, children, ...p
     const button = {
         type: "button",
         ...props,
-        className: clsx(styles["dshc-btn"], styles[nativeVariant], variant === "danger" && styles.danger, className)
+        className: clsx(styles["dshc-btn"], styles[nativeVariant], variant === "primary" && "dsh-btn-primary", variant === "danger" && styles.danger, className)
     };
     const glyph = icon ? h(Icon, { name: icon }) : null;
     return P?.Button
@@ -83,6 +83,7 @@ function Chk({ id, checked, disabled, label, onChange, className, title }) {
 function Picker({ id, label, value, options, onChange, disabled, compact = false }) {
     const [open, setOpen] = useState(false);
     const [dshStyle] = useDshStyle(React);
+    const [dshFont] = useDshFont(React);
     const P = getPrim();
     if (!P?.Menu) {
         return h("select", {
@@ -96,7 +97,7 @@ function Picker({ id, label, value, options, onChange, disabled, compact = false
     const expanded = open && !disabled;
     // Menu composes the host's MenuSurface and owns positioning/keyboard focus.
     return h(HostMenu, {
-        open: expanded, dshStyle, portal: true, compact: true, autoFocus: true, minWidthFromAnchor: true,
+        open: expanded, dshStyle, dshFont, portal: true, compact: true, autoFocus: true, minWidthFromAnchor: true,
         className: compact ? styles.toolbarPicker : styles.picker, listClassName: styles.menu,
         anchor: h(Btn, {
             id, disabled, className: compact ? styles.layoutTrigger : styles.pickerTrigger,
@@ -112,12 +113,13 @@ function Picker({ id, label, value, options, onChange, disabled, compact = false
 
 function Segments({ id, label, items, value, onChange, disabled, ...rest }) {
     const P = getPrim();
+    const indicator = useSlidingTabIndicator(React, value, { deps: [items.length] });
     if (P?.SegmentedControl) {
         // The host positions the active pill by equal grid tracks. The
         // fallback flex layout would make its width and offsets diverge.
         return h(P.SegmentedControl, { id, label, value, options: items, onChange, disabled, ...rest });
     }
-    return h("div", { ...rest, className: styles.segments, role: "tablist", "aria-label": label },
+    return h("div", { ...rest, ...indicator.tablistProps, className: clsx(styles.segments, "dsh-tablist", "dsh-tablist-pill", rest.className), role: "tablist", "aria-label": label },
         items.map(item => h("button", {
             key: item.value, type: "button", role: "tab", id: id + "-" + item.value,
             "data-segment-id": item.value,
@@ -136,7 +138,8 @@ function Segments({ id, label, items, value, onChange, disabled, ...rest }) {
                 onChange(next);
                 document.getElementById(id + "-" + next)?.focus();
             }
-        }, item.label))
+        }, item.label)),
+        h("span", indicator.indicatorProps)
     );
 }
 
@@ -148,7 +151,7 @@ function EmptyState({ title, children, action }) {
     );
 }
 
-function FallbackDialog({ title, onClose, children, review, dshStyle }) {
+function FallbackDialog({ title, onClose, children, review, dshStyle, dshFont }) {
     const panel = useRef(null);
     useEffect(() => {
         const previous = document.activeElement;
@@ -170,27 +173,30 @@ function FallbackDialog({ title, onClose, children, review, dshStyle }) {
     return h("div", {
         className: review ? styles["dshc-overlay"] : styles["dshc-modalwrap"],
         "data-dsh-style": dshStyle,
+        "data-dsh-font": dshFont,
         "data-dsh-portal-synced": "true",
         onMouseDown: event => { if (event.target === event.currentTarget) onClose(); }
     }, h("section", {
         className: clsx(styles.dialog, review ? styles["dshc-drawer"] : styles["dshc-modal"]),
         ref: panel, role: "dialog", "aria-modal": true, "aria-label": title, tabIndex: -1, onKeyDown: trapTab,
-        "data-dsh-style": dshStyle, "data-window-drag-exclude": "", "data-dsh-portal-synced": "true"
+        "data-dsh-style": dshStyle, "data-dsh-font": dshFont, "data-window-drag-exclude": "", "data-dsh-portal-synced": "true"
     }, children));
 }
 
 function Dlg({ open, onClose, title, closeLabel = title, children, footer, review = false }) {
     const appearance = React.useContext(getCalendarAppearanceContext());
     const [dshStyle] = useDshStyle(React);
+    const [dshFont] = useDshFont(React);
     const P = getPrim();
     if (!open) return null;
     const frame = h("div", {
         key: "frame",
-        ref: createOverlaySyncRef(dshStyle),
+        ref: createOverlaySyncRef(dshStyle, dshFont),
         className: styles.dialogFrame,
         style: appearance,
         "data-dshc-scope": "1",
         "data-dsh-style": dshStyle,
+        "data-dsh-font": dshFont,
         "data-window-drag-exclude": ""
     },
         h("header", { className: styles.dialogHeader },
@@ -200,6 +206,6 @@ function Dlg({ open, onClose, title, closeLabel = title, children, footer, revie
         footer ? h("footer", { className: styles.dialogFooter }, footer) : null
     );
     return P?.Modal
-        ? h(P.Modal, { open, onClose, title, headless: true, className: styles.dialog }, frame)
-        : h(FallbackDialog, { title, onClose, review, dshStyle }, frame);
+        ? h(P.Modal, { open, onClose, title, headless: true, dshStyle, dshFont, className: styles.dialog }, frame)
+        : h(FallbackDialog, { title, onClose, review, dshStyle, dshFont }, frame);
 }

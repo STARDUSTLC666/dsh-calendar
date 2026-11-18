@@ -1,5 +1,12 @@
 # 更新记录
 
+## 0.19.0 (2026-11-18)
+
+- **UI v3 全新视觉与交互升级**：13 种高质感浅色预设（新增 `glass` 晴昼琉璃、`eink` 护眼墨水屏、`blueprint` 工程晒图、`risograph` 波普孔版、`win98` 千禧复古、`songhui` 宋韵朱砂、`frutiger` 晴空水晶、`gazette` 铅字晨报），以及 8 套独立的中英双层字体搭配（默认 `arcade` 幼圆等宽，支持 `auto` 风格专属字、`songkai` 中宋+楷书、`fangsong` 工程仿宋、`poster` 重磅画报黑、`retro98` 千禧新宋、`serif` 思源书宋、`modern` 现代思源黑）。
+- 紧凑单行 48px 工作台顶栏（精简布局胶囊与快捷键标签）、滑动选项卡指示条、可拖拽调节日程侧栏、主题着色微光骨架屏、议程行悬浮快捷操作栏、`[data-dsh-serif]` 标题排版，以及全量浮层/悬浮球/引导提示的 `[data-dsh-style]` + `[data-dsh-font]` 实时同步。
+- **UI v3 Upgrade**: add 13 curated light presets (including `glass`, `eink`, `blueprint`, `risograph`, `win98`, `songhui`, `frutiger`, and `gazette`) and 8 independent dual-layer Chinese + Latin font pairings (defaulting to `arcade` YouYuan Mono alongside `auto`, `songkai`, `fangsong`, `poster`, `retro98`, `serif`, and `modern`).
+- Streamline the 48px single-row workbench header (compact layout pills and shortcut trigger), sliding tab indicator, resizable schedule rail, theme-tinted shimmer skeletons, agenda row hover quick actions, `[data-dsh-serif]` headings, and live `[data-dsh-style]` + `[data-dsh-font]` syncing across dialogs, launcher, and CoachmarkTour.
+
 ## 0.18.7 (2026-11-18)
 
 - 升级共享更新组件至 `@stardustlc/dsh-updates@0.2.5`：独立安装插件详情页底栏去重（保留组合包组件委派与对话页热更新卡片），补齐 `bundle-in-use` 组合包占用提示说明，并在检查结果过期或远端版本变更时自动刷新元数据，彻底消除 `check-first` 卡顿。

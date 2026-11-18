@@ -25,10 +25,10 @@ function loadCalendarLayout() {
 
 function calendarLayoutOptions() {
     return [
-        { id: "native", label: calendarText("DSH 原生", "DSH native") },
-        { id: "floating", label: calendarText("Arc 浮岛", "Arc Floating") },
-        { id: "spotlight", label: calendarText("Raycast 聚光", "Raycast Spotlight") },
-        { id: "cards", label: calendarText("Bento 卡片", "Bento Cards") }
+        { id: "native", label: calendarText("DSH 原生", "DSH native"), shortLabel: calendarText("原生", "Native") },
+        { id: "floating", label: calendarText("Arc 浮岛", "Arc Floating"), shortLabel: calendarText("浮岛", "Island") },
+        { id: "spotlight", label: calendarText("Raycast 聚光", "Raycast Spotlight"), shortLabel: calendarText("聚光", "Focus") },
+        { id: "cards", label: calendarText("Bento 卡片", "Bento Cards"), shortLabel: calendarText("Bento", "Bento") }
     ];
 }
 
@@ -38,8 +38,10 @@ function CalendarLayoutPicker({ layout, options, onChange }) {
         h("div", { className: styles.layoutChoices, role: "group", "aria-label": label },
             options.map(option => h(Btn, {
                 key: option.id, variant: option.id === layout ? "primary" : "ghost",
+                title: option.label,
+                "aria-label": option.label,
                 "aria-pressed": option.id === layout, onClick: () => onChange(option.id)
-            }, option.label))
+            }, option.shortLabel || option.label))
         ),
         h("div", { className: styles.layoutDropdown },
             h(Picker, { label, value: layout, compact: true, options, onChange })
@@ -62,65 +64,23 @@ function CalendarShortcutHints({ quickKey }) {
 }
 
 function ScheduleLayout({ resizable, rail, children }) {
-    const [width, setWidth] = useState(() => {
-        const saved = Number(readCalendarPreference(CALENDAR_RAIL_KEY));
-        return saved >= RAIL_MIN_WIDTH && saved <= RAIL_MAX_WIDTH ? saved : RAIL_DEFAULT_WIDTH;
+    const split = useResizableSplit(React, {
+        key: CALENDAR_RAIL_KEY,
+        initial: RAIL_DEFAULT_WIDTH,
+        min: RAIL_MIN_WIDTH,
+        max: RAIL_MAX_WIDTH
     });
-    const drag = useRef(null);
-    const clampWidth = (value) => Math.min(RAIL_MAX_WIDTH, Math.max(RAIL_MIN_WIDTH, Math.round(value)));
-    const commit = (value) => {
-        const next = clampWidth(value);
-        setWidth(next);
-        storeCalendarPreference(CALENDAR_RAIL_KEY, next);
-    };
-    const pointerWidth = (event, origin) => origin.width + (event.clientX - origin.x) * origin.direction;
-    function begin(event) {
-        if (event.button !== 0 || drag.current) return;
-        const handle = event.currentTarget;
-        drag.current = {
-            id: event.pointerId, x: event.clientX, savedWidth: width,
-            width: handle.previousElementSibling.getBoundingClientRect().width,
-            direction: getComputedStyle(handle).direction === "rtl" ? -1 : 1
-        };
-        handle.setPointerCapture(event.pointerId);
-        handle.focus({ preventScroll: true });
-    }
-    function move(event) {
-        const origin = drag.current;
-        if (origin?.id === event.pointerId) setWidth(clampWidth(pointerWidth(event, origin)));
-    }
-    function end(event) {
-        const origin = drag.current;
-        if (!origin || origin.id !== event.pointerId) return;
-        drag.current = null;
-        if (event.type === "pointerup") commit(pointerWidth(event, origin));
-        else setWidth(origin.savedWidth);
-    }
-    function resizeWithKey(event) {
-        const handle = event.currentTarget;
-        const rtl = getComputedStyle(handle).direction === "rtl";
-        const current = handle.previousElementSibling.getBoundingClientRect().width;
-        const deltas = { ArrowRight: rtl ? -16 : 16, ArrowLeft: rtl ? 16 : -16 };
-        if (!Object.hasOwn(deltas, event.key) && event.key !== "Home" && event.key !== "End") return;
-        event.preventDefault();
-        if (event.key === "Home") commit(RAIL_MIN_WIDTH);
-        else if (event.key === "End") commit(RAIL_MAX_WIDTH);
-        else commit(current + deltas[event.key]);
-    }
     return h("div", {
         className: styles.schedule,
         "data-resizable": resizable ? "" : undefined,
-        style: resizable ? { "--calendar-rail-width": width + "px" } : undefined
+        style: resizable ? { "--calendar-rail-width": split.size + "px" } : undefined
     },
         rail,
-        resizable ? h("div", {
-            className: styles.railHandle, role: "separator", tabIndex: 0,
-            "aria-label": calendarText("调整日历侧栏宽度", "Resize calendar sidebar"),
-            "aria-controls": rail.props.id,
-            "aria-orientation": "vertical", "aria-valuemin": RAIL_MIN_WIDTH,
-            "aria-valuemax": RAIL_MAX_WIDTH, "aria-valuenow": width,
-            onPointerDown: begin, onPointerMove: move, onPointerUp: end, onPointerCancel: end, onLostPointerCapture: end,
-            onKeyDown: resizeWithKey
+        resizable ? renderDshSplitResizer(React, {
+            ...split.resizerProps,
+            className: styles.railHandle,
+            "aria-controls": rail?.props?.id,
+            label: calendarText("调整日历侧栏宽度", "Resize calendar sidebar")
         }) : null,
         children
     );
@@ -262,8 +222,9 @@ function computeTourLayout(target, preferredSide, cardEl) {
     };
 }
 
-function CoachmarkTour({ rootRef, steps = [], step = 0, manual = false, style = "harness", appearance, lang = "zh", activeKey = "", layout: rawLayout, setLayout, onStep, onClose, onCopyPrompt }) {
+function CoachmarkTour({ rootRef, steps = [], step = 0, manual = false, style = "harness", font = DSH_DEFAULT_FONT, appearance, lang = "zh", activeKey = "", layout: rawLayout, setLayout, onStep, onClose, onCopyPrompt }) {
     const activeStyle = normalizeDshStyle(style);
+    const activeFont = normalizeDshFont(font ?? readDshFont());
     const layerRef = useRef(null);
     const cardRef = useRef(null);
     const nextBtnRef = useRef(null);
@@ -298,12 +259,18 @@ function CoachmarkTour({ rootRef, steps = [], step = 0, manual = false, style = 
     }, [step]);
 
     useEffect(() => {
+        function safeQuery(scope, selector) {
+            if (!selector || typeof scope.querySelector !== "function") return null;
+            if (selector.startsWith("#") && !/[\s>+~[\].,()]/.test(selector.slice(1))) {
+                const id = selector.slice(1).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+                try { return scope.querySelector('[id="' + id + '"]'); } catch { /* ignore */ }
+            }
+            try { return scope.querySelector(selector); } catch { return null; }
+        }
         function measure() {
             const scope = rootRef?.current || (typeof document !== "undefined" ? document : null);
             if (!scope || typeof scope.querySelector !== "function") return;
-            const target = (current.selector && scope.querySelector(current.selector))
-                || (current.fallback && scope.querySelector(current.fallback))
-                || null;
+            const target = safeQuery(scope, current.selector) || safeQuery(scope, current.fallback) || null;
             setLayout?.(computeTourLayout(target, current.side, cardRef.current));
         }
         measure();
@@ -354,6 +321,7 @@ function CoachmarkTour({ rootRef, steps = [], step = 0, manual = false, style = 
         className: styles.tourLayer,
         style: appearance,
         "data-dsh-style": activeStyle,
+        "data-dsh-font": activeFont,
         "data-calendar-tour": current.id || String(step),
         "data-window-drag-exclude": ""
     },

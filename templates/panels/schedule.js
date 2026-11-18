@@ -89,8 +89,9 @@ function ScheduleRail({ id, anchor, onPick, source, showing, onVisibilityChange,
                 h("h2", null, calendarText("已连接日历", "Connected calendar")),
                 h("div", { className: styles.calendarSource }, source
                     ? h(Chk, { checked: showing, label: source, title: source, onChange: onVisibilityChange })
-                    : h("p", { className: styles["dshc-sub"] }, loading ? t("state.loading") : calendarText("尚未连接日历", "No calendar connected"))),
-                source && showing ? h("div", { className: clsx(styles.conflictCard, hasConflicts && styles.warn) },
+                    : loading ? renderDshSkeleton(React, { variant: "text", lines: 1, label: t("state.loading") })
+                        : h("p", { className: styles["dshc-sub"] }, calendarText("尚未连接日历", "No calendar connected"))),
+                source && showing ? h("div", { className: clsx(styles.conflictCard, hasConflicts && styles.warn), "data-dsh-card": "" },
                     h(Icon, { name: hasConflicts ? "warning" : "check", size: 14 }),
                     h("div", null,
                         h("span", { role: "status" }, conflictText),
