@@ -1,5 +1,10 @@
 # 更新记录
 
+## 0.18.4 (2026-11-18)
+
+- 同步 `@stardustlc/dsh-updates` 0.2.3：侧边栏工作台平时默认隐藏底部更新栏（零高度占用），仅在检测到兼容新版本或执行更新时浮现单行精简提示条；完整更新设置与检查入口统一保留在 DSH「插件」详情页底部。
+- Sync `@stardustlc/dsh-updates` 0.2.3: keep the sidebar workbench update footer hidden by default when up-to-date, surfacing a single-line compact strip only for actionable updates or active jobs while retaining full controls in native Plugin Details.
+
 ## 0.18.3 (2026-11-18)
 
 - 空闲时段面板新增「复制空闲时段文案」按钮，一键生成带日期星期、起止时间与时区的候选约会文本供直接粘贴发送；补充可折叠三步日程工作流、一键复制指令与无障碍标签关联。
