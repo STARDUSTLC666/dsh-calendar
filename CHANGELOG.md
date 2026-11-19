@@ -1,11 +1,11 @@
 # 更新记录
 
-## Unreleased (2026-11-19)
+## 0.20.0 (2026-11-19)
 
 - 修复工作台弹窗及 fallback 控件反复重挂载造成的失焦；增加模型工具总开关和逐工具开关，拼错配置明确报错。
 - 设置和智能草稿接入宿主认证 Fetch 管线，支持正确配置的反代域名与子路径；多用户模式使用可信身份与独立版本化连接文件，拒绝身份缺失时降级读取 owner 凭据。
 - 支持连接内多个日历集合、明确写入目标、连接/集合只读策略，并在工具、面板和 ICS 导入统一执行；空闲查询合并全部集合的完整繁忙展开。
-- Preserve modal identity; add model-tool switches, authenticated proxy carriers, opt-in person isolation, multiple collections and server-enforced read-only writes. See docs/MULTIUSER.md for identity-provider and deployment validation limits. This is source-only until a subsequent npm release.
+- Preserve modal identity; add model-tool switches, authenticated proxy carriers, opt-in person isolation, multiple collections and server-enforced read-only writes. See docs/MULTIUSER.md for identity-provider and deployment validation limits.
 
 ## 0.19.0 (2026-11-18)
 
