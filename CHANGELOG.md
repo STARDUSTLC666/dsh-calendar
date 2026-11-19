@@ -1,5 +1,11 @@
 # 更新记录
 
+## 0.20.1 (2026-11-20)
+
+- 在备用弹窗中，子菜单优先处理 Escape，避免误关外层表单。
+- Let nested controls consume Escape before closing a fallback dialog.
+- 旧设置和草稿路由先执行 DSH 鉴权；连接测试不再复用待清除的凭据。
+
 ## 0.20.0 (2026-11-19)
 
 - 修复工作台弹窗及 fallback 控件反复重挂载造成的失焦；增加模型工具总开关和逐工具开关，拼错配置明确报错。

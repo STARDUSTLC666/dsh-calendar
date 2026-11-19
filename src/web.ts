@@ -341,7 +341,12 @@ export class CalendarSettingsBackend {
     // Policy/collection metadata is server-owned and never comes from form input.
     const policy = Object.fromEntries(['readOnly', 'calendars', 'writeCalendar'].filter(key => Object.hasOwn(storedValue, key)).map(key => [key, storedValue[key]]))
     const stored = { ...policy, ...mergeConnection(storedValue, draft) }
-    return { stored, config: { ...this.configOf(), ...draftToConfig(stored as Partial<CalendarSettingsValue>) } }
+    const config = { ...this.configOf(), ...draftToConfig(stored as Partial<CalendarSettingsValue>) }
+    // null is an explicit credential removal. configOf() may still expose the
+    // previous live/profile value until replace() commits, so do not let the
+    // pre-save probe silently reuse a secret the user is clearing.
+    for (const key of CONNECTION_KEYS) if (draft[key] === null) delete (config as Record<string, unknown>)[key]
+    return { stored, config }
   }
 
   /** 真连一次：拿拟议配置列一下未来 30 天，能列出来就算通。 */
@@ -586,19 +591,50 @@ function clampInt(value: unknown, fallback: number, min: number, max: number): n
  * 把设置页里的日历面板挂到宿主 webserver 上。
  * 与 dsh-email 相同：ctx.inject(['webServer']) + effect 注册，插件卸载即摘掉路由。
  */
+function legacyAuthResponse(res: any, status: 401 | 403, message: string): void {
+  if (typeof res.writeHead === 'function') res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+  if (typeof res.end === 'function') res.end(JSON.stringify({ ok: false, error: { code: 'forbidden', message } }))
+}
+
+/**
+ * 把设置页里的日历面板挂到宿主 webserver 上。
+ * 与 dsh-email 相同：ctx.inject(['webServer']) + effect 注册，插件卸载即摘掉路由。
+ */
 export function installCalendarSettingsWeb(ctx: any, backend: CalendarSettingsBackend): void {
-  ctx.inject(['webServer'], (webCtx: any) => {
+  ctx.inject?.(['webServer', 'connection'], (webCtx: any) => {
     webCtx.effect(() => {
+      const rejectUnauthenticated = (req: any, res: any): boolean => {
+        const connection = webCtx.connection
+        if (typeof connection?.requestRejection !== 'function') {
+          legacyAuthResponse(res, 403, 'dsh-calendar connection authentication is unavailable')
+          return true
+        }
+        let rejection: 401 | 403 | undefined
+        try { rejection = connection.requestRejection({ headers: req.headers ?? {} }) }
+        catch {
+          legacyAuthResponse(res, 403, 'dsh-calendar request authentication failed')
+          return true
+        }
+        if (rejection !== undefined) {
+          legacyAuthResponse(res, rejection === 401 ? 401 : rejection === 403 ? 403 : 403, 'dsh-calendar request authentication required')
+          return true
+        }
+        return false
+      }
+      const handler = (draft: boolean) => (req: any, res: any): Promise<void> | void => {
+        if (rejectUnauthenticated(req, res)) return
+        return backend.handle(req, res, draft)
+      }
       const unmount = webCtx.webServer.register({
         kind: 'exact',
         path: SETTINGS_ROUTE,
-        handler: (req: any, res: any) => backend.handle(req, res),
+        handler: handler(false),
       })
       try {
         const unmountDraft = webCtx.webServer.register({
           kind: 'exact',
           path: DRAFT_ROUTE,
-          handler: (req: any, res: any) => backend.handle(req, res, true),
+          handler: handler(true),
         })
         return () => { unmountDraft(); unmount() }
       } catch (error) {

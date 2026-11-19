@@ -366,7 +366,42 @@ test('保存时留空密钥＝沿用已存的那一份（面板不用把密码�
   assert.equal(settings.state.writes[0].value.caldavUrl, 'https://new.example/dav/');
 });
 
-test('连接测试失败 → 不落盘，并把服务器原话带回面板', async () => {
+test('clearing a stored password probes without the old secret, then can save explicitly untested', async () => {
+  const settings = fakeSettings({
+    provider: 'custom',
+    caldavUrl: 'https://old.example/dav/',
+    username: 'me',
+    password: 'fixture-old-password',
+  });
+  const probes = [];
+  const backend = new CalendarSettingsBackend({
+    // Mirrors the per-person/owner integration: settings are reflected in configOf.
+    config: () => settings.read(),
+    settings,
+    probeFactory: async config => {
+      probes.push({ ...config });
+      if (!config.password) throw new Error('Password missing in probe configuration');
+      return { count: 0, sample: [] };
+    },
+  });
+  const failed = makeRes();
+  await backend.handle(makeReq({ body: {
+    action: 'saveConnection', provider: 'custom', caldavUrl: 'https://old.example/dav/', username: 'me', password: null,
+  } }), failed);
+  assert.equal(failed.state.status, 400, 'the default probe must fail rather than test with the credential being cleared');
+  assert.equal(settings.state.writes.length, 0, 'failed probe must not save');
+  assert.equal('password' in probes[0], false, 'the probe must not inherit the old secret from configOf');
+
+  const untested = makeRes();
+  await backend.handle(makeReq({ body: {
+    action: 'saveConnection', provider: 'custom', caldavUrl: 'https://old.example/dav/', username: 'me', password: null, test: false,
+  } }), untested);
+  assert.equal(untested.state.status, 200);
+  assert.equal('password' in settings.state.writes[0].value, false, 'explicit null clears the saved credential');
+  assert.equal('password' in settings.read(), false);
+});
+
+ test('连接测试失败 → 不落盘，并把服务器原话带回面板', async () => {
   const settings = fakeSettings({ provider: 'custom', caldavUrl: 'https://old.example/dav/', username: 'me', password: 'p' });
   const backend = new CalendarSettingsBackend({
     config: {},
