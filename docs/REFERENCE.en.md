@@ -48,6 +48,31 @@ Calendar credentials are required. Google uses OAuth2; other providers may use a
 
 Detailed configuration, tool arguments and troubleshooting are in the [usage guide](USAGE.en.md). For standalone development, follow the Node requirement in [package.json](../package.json).
 
+See the [deployment contract](MULTIUSER.md) for opt-in person isolation, authenticated reverse proxies, multiple collections, and server-enforced read-only policies. DSH rc.5 itself exposes only an owner principal; multi-user identity needs a trusted provider. No real OIDC deployment was exercised in this validation.
+
+### Panel-only use and model tool switches
+
+Override `config.tools` on the `calendar` entry in the profile's `cordis.patch.yml`, then reload the plugin or restart DSH. Omit it or use `true` to register all seven model tools; use `false` to register none while retaining the panel, ICS import and smart drafts:
+
+```yaml
+- id: calendar
+  config:
+    tools: false
+```
+
+Alternatively, disable individual tools; unspecified tools remain enabled. For example, retain only read-only model tools:
+
+```yaml
+- id: calendar
+  config:
+    tools:
+      calendar_create: false
+      calendar_update: false
+      calendar_delete: false
+```
+
+Accepted names are `calendar_list`, `calendar_search`, `calendar_health`, `calendar_find_time`, `calendar_create`, `calendar_update` and `calendar_delete`. This controls model schemas only; **it does not make the panel or calendar account read-only**. Panel writes remain available.
+
 ## Documentation
 
 - [Usage and troubleshooting](USAGE.en.md)

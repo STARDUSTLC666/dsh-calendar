@@ -79,6 +79,19 @@ test('expired previews and changed credentials cannot write to a different accou
   active = { ...active, password: 'changed' }; await assert.rejects(commit(), /连接已改变/); assert.equal(f.writes.length, 0)
   active = config(); now = 15 * 60 * 1000 + 1; await assert.rejects(commit(), /过期/)
 })
+test('read-only policy activated after preview blocks every import write',async()=>{
+ let active=config();const f=fixture({config:()=>active});
+ const preview=await f.backend.action({action:'preview',ics:wrap(event('one'))});
+ active={...active,readOnly:true};
+ await assert.rejects(f.backend.action({action:'commit',id:preview.id,selected:[preview.rows[0].id],confirmed:true}),/read-only/);
+ assert.equal(f.writes.length,0);
+});
+test('private backend previews cannot be committed through another person backend',async()=>{
+ const alice=fixture(),bob=fixture();
+ const p=await alice.backend.action({action:'preview',ics:wrap(event('one'))});
+ await assert.rejects(bob.backend.action({action:'commit',id:p.id,selected:[p.rows[0].id],confirmed:true}),/过期/);
+ assert.equal(alice.writes.length+bob.writes.length,0);
+});
 test('cancellation before commit and concurrent imports do not issue extra writes', async () => {
   const f = fixture(); const p = await f.backend.action({ action: 'preview', ics: wrap(event('one')) })
   const body = { action: 'commit', id: p.id, selected: [p.rows[0].id], confirmed: true }

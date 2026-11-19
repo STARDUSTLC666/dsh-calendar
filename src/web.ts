@@ -3,7 +3,7 @@
  *
  * 与 dsh-email 的设置路由同一套安全模型，理由也一样：这个路由能读用户的
  * 全部日程、还能替用户改/删日程，而宿主 webserver 有可能绑定在 0.0.0.0。
- * 四道门缺一不可 ——
+ * 旧 loopback 兼容路由的四道门缺一不可（新的 /api 路由由宿主认证管线承载）——
  *   1. remoteAddress 必须是回环地址（局域网不可达）；
  *   2. Host 头必须是 localhost 名（挡 DNS rebinding：恶意域名解析到 127.0.0.1）；
  *   3. 写操作要求 application/json（跨源页面无法用简单请求绕过预检）+
@@ -15,7 +15,7 @@
  */
 import { resolveConfig, type CalendarConfig } from './config.js'
 import { CalendarSettingsSchema, SETTINGS_NAMESPACE, draftToConfig, validateSettingsValue, type CalendarSettingsValue } from './settings.js'
-import { CalendarService } from './caldav.js'
+import { createConnectionService, connectionCollections } from './connections.js'
 import { discoverICloud } from './icloud.js'
 import { asRecord, assertIsoTime, assertTimeRange, isoNoMillis, optionalString, sortEvents } from './tools.js'
 import type { CalendarEvent } from './ical.js'
@@ -51,8 +51,8 @@ export function postVerdict(headers: Record<string, unknown>): { status: number;
     } catch {
       url = undefined
     }
-    if (url !== undefined && (url.protocol === 'http:' || url.protocol === 'https:')
-      && !LOCAL_HOSTNAMES.has(url.hostname.toLowerCase())) {
+    if (url === undefined || !['http:', 'https:'].includes(url.protocol)
+      || !LOCAL_HOSTNAMES.has(url.hostname.toLowerCase())) {
       return { status: 403, message: `origin "${origin}" is not allowed to write dsh-calendar events` }
     }
   }
@@ -260,10 +260,12 @@ export class CalendarSettingsBackend {
   private service(): CalendarServiceLike {
     const current = this.configOf()
     if (this.options.serviceFactory !== undefined) return this.options.serviceFactory(current)
-    const resolved = resolveConfig(current, this.options.env ?? process.env)
-    const key = JSON.stringify(resolved)
+    const env = current.perUser ? {} : this.options.env ?? process.env
+    const rows = connectionCollections(current)
+    const resolved = (rows.length ? rows.map(row => row.url) : [current.caldavUrl]).map(caldavUrl => resolveConfig({ ...current, ...(caldavUrl ? { caldavUrl } : {}) }, env))
+    const key = JSON.stringify({ current, resolved })
     if (this.cachedService === undefined || this.cachedKey !== key) {
-      this.cachedService = new CalendarService(resolved) as unknown as CalendarServiceLike
+      this.cachedService = createConnectionService(current, env) as unknown as CalendarServiceLike
       this.cachedKey = key
     }
     return this.cachedService
@@ -279,8 +281,13 @@ export class CalendarSettingsBackend {
     const descriptor = this.settings?.descriptor?.()
     let configured = false
     let reason: string | undefined
+    let collections: ReturnType<typeof connectionCollections> = []
     try {
-      resolveConfig(effective, this.options.env ?? process.env)
+      const rows = connectionCollections(effective)
+      collections = rows
+      for (const caldavUrl of rows.length ? rows.map(row => row.url) : [effective.caldavUrl]) {
+        resolveConfig({ ...effective, ...(caldavUrl ? { caldavUrl } : {}) }, effective.perUser ? {} : this.options.env ?? process.env)
+      }
       configured = true
     } catch (error) {
       reason = error instanceof Error ? error.message : String(error)
@@ -291,12 +298,14 @@ export class CalendarSettingsBackend {
       const resolved = (effective as Record<string, unknown>)[key]
       return typeof resolved === 'string' ? resolved : ''
     }
-    const env = this.options.env ?? process.env
+    const env = effective.perUser ? {} : this.options.env ?? process.env
     const hasCredential = (key: string, envKey: string): boolean =>
       text(key).trim() !== '' || (typeof env[envKey] === 'string' && env[envKey]!.trim() !== '')
     return {
       configured,
       ...(reason !== undefined ? { reason } : {}),
+      readOnly: effective.readOnly === true,
+      calendars: collections.map(row => ({ id: row.id, name: row.name ?? row.id, readOnly: !!effective.readOnly || !!row.readOnly })),
       settingsAvailable: this.settings !== undefined,
       ...(this.settings?.kind !== undefined ? { settingsKind: this.settings.kind } : {}),
       ...(this.options.settingsReason !== undefined ? { settingsReason: this.options.settingsReason } : {}),
@@ -329,7 +338,9 @@ export class CalendarSettingsBackend {
  */
   private proposed(draft: Record<string, unknown>): { stored: Record<string, unknown>; config: CalendarConfig } {
     const storedValue = ((this.settings?.read?.() ?? {}) as Record<string, unknown>)
-    const stored = mergeConnection(storedValue, draft)
+    // Policy/collection metadata is server-owned and never comes from form input.
+    const policy = Object.fromEntries(['readOnly', 'calendars', 'writeCalendar'].filter(key => Object.hasOwn(storedValue, key)).map(key => [key, storedValue[key]]))
+    const stored = { ...policy, ...mergeConnection(storedValue, draft) }
     return { stored, config: { ...this.configOf(), ...draftToConfig(stored as Partial<CalendarSettingsValue>) } }
   }
 
@@ -338,7 +349,7 @@ export class CalendarSettingsBackend {
     if (this.options.probeFactory !== undefined) return await this.options.probeFactory(config)
     const service = this.options.serviceFactory !== undefined
       ? this.options.serviceFactory(config)
-      : (new CalendarService(resolveConfig(config, this.options.env ?? process.env)) as unknown as CalendarServiceLike)
+      : (createConnectionService(config, config.perUser ? {} : this.options.env ?? process.env) as unknown as CalendarServiceLike)
     const now = new Date()
     const events = await service.list(isoNoMillis(now.toISOString()), isoNoMillis(new Date(now.getTime() + 30 * 86400000).toISOString()), { expand: false, maxOccurrences: 5 })
     return { count: events.length, sample: events.slice(0, 3).map((event) => event.summary) }
@@ -394,6 +405,32 @@ export class CalendarSettingsBackend {
     } finally { res.off?.('close', disconnect) }
   }
 
+  /** Internal authenticated carrier entry; authentication is enforced by transport.ts. */
+  async fetchAuthenticated(request: Request, draft = false): Promise<Response> {
+    const json = (status: number, value: unknown) => Response.json(value,{status,headers:{'cache-control':'no-store'}})
+    if (request.method === 'GET' && !draft) return json(200,{ok:true,value:this.status()})
+    if (request.method !== 'POST') return json(405,{ok:false,message:'Use POST'})
+    if (request.headers.get('content-type')?.split(';')[0].trim().toLowerCase() !== 'application/json') return json(415,{ok:false,message:'JSON required'})
+    const origin = request.headers.get('origin'), site = request.headers.get('sec-fetch-site')
+    if (site && !['same-origin','none'].includes(site)) return json(403,{ok:false,message:'Cross-site request refused'})
+    if (origin) {
+      try { const parsed = new URL(origin); if (!['http:','https:'].includes(parsed.protocol) || parsed.host !== (request.headers.get('host') || new URL(request.url).host)) return json(403,{ok:false,message:'Cross-origin request refused'}) }
+      catch { return json(403,{ok:false,message:'Invalid origin'}) }
+    }
+    const reader = request.body?.getReader()
+    if (!reader) return json(400,{ok:false,message:'Request body required'})
+    let size=0; const chunks: Uint8Array[]=[]
+    try {
+      try { for (;;) { const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>(draft?DRAFT_BODY_LIMIT:256*1024)){await reader.cancel();return json(413,{ok:false,message:'Request too large'})}chunks.push(value) } }
+      finally { reader.releaseLock() }
+      const parsed = JSON.parse(Buffer.concat(chunks).toString('utf8'))
+      if (!parsed || typeof parsed!=='object' || Array.isArray(parsed)) throw new Error('Request must be an object')
+      const signal=AbortSignal.any([request.signal,AbortSignal.timeout(120000)])
+      const value=draft?await this.dispatchDraft(parsed,signal):await this.dispatch(parsed,signal)
+      return json(200,{ok:true,value})
+    } catch(error) { return json(400,{ok:false,error:{code:'rejected',message:error instanceof Error?error.message:'Calendar request failed'}}) }
+  }
+
   private async dispatchDraft(body: Record<string, unknown>, signal: AbortSignal): Promise<unknown> {
     const model = this.options.draftModel?.()
     if (body.action === 'models') return { models: model ? await model.routes(signal) : [] }
@@ -404,6 +441,7 @@ export class CalendarSettingsBackend {
   /** 动作分发。每个动作自己校验参数，错误信息面向用户（中文，面板直接显示）。 */
   private async dispatch(body: Record<string, unknown>, signal?: AbortSignal): Promise<unknown> {
     const action = typeof body.action === 'string' ? body.action : ''
+    if (['create', 'update', 'delete'].includes(action) && this.configOf().readOnly) throw new Error('日历连接为只读 / Calendar connection is read-only')
     if (action === 'status' || action === 'connection') return this.connection()
     if (action === 'discoverICloud') {
       const draft = connectionDraft(body)

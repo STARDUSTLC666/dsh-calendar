@@ -11,7 +11,7 @@
  * @module dsh-calendar/host-config
  */
 import z from '@deepseek-ai/schemastery';
-import type { CalendarConfig } from './config.js';
+import { type CalendarConfig } from './config.js';
 /**
  * entry 的 Config 形状。字段与 `CalendarSettingsSchema` 一一对应，但这里不给默认值：
  * 「没填」必须保持 undefined，否则表单默认值会盖掉 cordis.patch.yml 与 provider 预设。

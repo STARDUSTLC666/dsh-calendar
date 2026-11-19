@@ -48,6 +48,31 @@ dsh plugin --profile desktop add dsh-calendar
 
 详细配置、工具参数与排错见[使用说明](USAGE.md)。从源码独立开发时，Node 要求以 [package.json](../package.json) 为准。
 
+多用户身份隔离、认证反代、多日历集合与只读写入策略见[部署说明](MULTIUSER.md)。
+
+### 只使用面板或限制模型工具
+
+在 profile 的 `cordis.patch.yml` 中覆盖 `calendar` 条目的 `config.tools`，重载插件或重启 DSH 后生效。默认不填或 `true` 注册全部 7 个工具；`false` 不注册任何日历模型工具，面板、ICS 导入与智能草稿入口仍可用：
+
+```yaml
+- id: calendar
+  config:
+    tools: false
+```
+
+也可逐工具关闭，未列出的工具保持启用。例如只保留只读模型工具：
+
+```yaml
+- id: calendar
+  config:
+    tools:
+      calendar_create: false
+      calendar_update: false
+      calendar_delete: false
+```
+
+工具名包括 `calendar_list`、`calendar_search`、`calendar_health`、`calendar_find_time`、`calendar_create`、`calendar_update`、`calendar_delete`。这只控制模型工具注册，**不是日历账号或面板的只读权限设置**；面板依然可以写入日历。
+
 ## 文档
 
 - [使用与排错](USAGE.md)

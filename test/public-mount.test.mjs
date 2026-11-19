@@ -20,7 +20,7 @@ for (const base of ['https://dsh.example/', 'https://dsh.example/tools/dsh/']) {
     await client.probe.api('save', { value: {}, expectedRevision: 2 })
 
     for (const request of requests) {
-      assert.equal(request.url, base + '_dsh/dsh-calendar/settings')
+      assert.equal(request.url, base + 'api/dsh-calendar/settings')
       assert.equal(request.init.credentials, 'same-origin')
     }
     assert.equal(JSON.parse(requests[0].init.body).expectedRevision, 2)

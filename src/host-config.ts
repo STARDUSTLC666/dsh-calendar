@@ -11,13 +11,22 @@
  * @module dsh-calendar/host-config
  */
 import z from '@deepseek-ai/schemastery'
-import type { CalendarConfig } from './config.js'
+import { CALENDAR_TOOL_NAMES, type CalendarConfig } from './config.js'
 
 /**
  * entry 的 Config 形状。字段与 `CalendarSettingsSchema` 一一对应，但这里不给默认值：
  * 「没填」必须保持 undefined，否则表单默认值会盖掉 cordis.patch.yml 与 provider 预设。
  */
 export const Config: z = z.object({
+  // Registration controls are non-volatile: changing them reloads the plugin,
+  // so a disabled tool leaves the host schema as well as its execute path.
+  tools: z.union([z.boolean(), z.dict(z.boolean(), z.union(CALENDAR_TOOL_NAMES.map(name => z.const(name))))]),
+  perUser: z.boolean(),
+  allowOwnerFallback: z.boolean(),
+  connectionsDir: z.string(),
+  readOnly: z.boolean().volatile(),
+  calendars: z.array(z.object({id:z.string().required(),name:z.string(),url:z.string().required(),readOnly:z.boolean()})).min(1).max(20).volatile(),
+  writeCalendar: z.string().volatile(),
   provider: z.string().volatile(),
   caldavUrl: z.string().volatile(),
   username: z.string().volatile(),

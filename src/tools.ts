@@ -5,7 +5,7 @@
  * @module dsh-calendar/tools
  */
 
-import { CalendarService } from './caldav.js'
+import { createConnectionService, connectionCollections, type ConnectedCalendarService } from './connections.js'
 import {
   CALENDAR_PROVIDERS, buildCaldavUrl, resolveAuthMethod, resolveConfig, resolveCredentials, validateOAuthUrl,
   type CalendarConfig, type CalendarProvider,
@@ -118,7 +118,7 @@ export function sortEvents(events: CalendarEvent[]): CalendarEvent[] {
 
 function formatEvent(event: CalendarEvent): string {
   const range = event.allDay ? event.start + '（全天）' : event.start + ' ~ ' + event.end
-  const extra = [event.location ? '地点：' + event.location : '', event.rrule ? '重复：' + event.rrule : '']
+  const extra = [event.calendarName ? '日历：' + event.calendarName : '', event.location ? '地点：' + event.location : '', event.rrule ? '重复：' + event.rrule : '']
     .filter(Boolean).join('；')
   return '- ' + event.summary + '（' + range + '）' + (extra ? '，' + extra : '') + '，uid=' + event.uid
 }
@@ -134,18 +134,21 @@ function buildSearchFilter(query: string): (event: CalendarEvent) => boolean {
 
 /** 构建七个工具定义；每个 execute 惰性解析配置，缺失时抛出中文指引。 */
 /** 配置来源：静态对象，或一个 getter（面板把新配置写进 settings 后，工具下一次调用就该用新的）。 */
-export type CalendarConfigSource = CalendarConfig | undefined | (() => CalendarConfig | undefined)
+export type CalendarConfigSource = CalendarConfig | undefined | ((exec?: unknown) => CalendarConfig | undefined)
 
 export function buildCalendarTools(config: CalendarConfigSource, env: NodeJS.ProcessEnv = process.env): CalendarToolDefinition[] {
-  const configOf = (): CalendarConfig | undefined => (typeof config === 'function' ? config() : config)
+  const configOf = (exec?: unknown): CalendarConfig | undefined => (typeof config === 'function' ? config(exec) : config)
   let cachedKey: string | undefined
-  let cachedService: CalendarService | undefined
-  const service = (): CalendarService => {
-    const resolved = resolveConfig(configOf(), env)
-    // 闭包内比较，不写日志或磁盘；凭据/端点变化时不复用旧 token。
-    const key = JSON.stringify(resolved)
+  let cachedService: ConnectedCalendarService | undefined
+  const service = (exec?: unknown): ConnectedCalendarService => {
+    const current = configOf(exec) ?? {}
+    // Keep credentials private and never inherit owner environment secrets for a person.
+    const credentialEnv = current.perUser ? {} : env
+    const rows = connectionCollections(current)
+    const resolved = (rows.length ? rows.map(row => row.url) : [current.caldavUrl]).map(caldavUrl => resolveConfig({ ...current, ...(caldavUrl ? { caldavUrl } : {}) }, credentialEnv))
+    const key = JSON.stringify({ current, resolved })
     if (cachedService === undefined || cachedKey !== key) {
-      cachedService = new CalendarService(resolved)
+      cachedService = createConnectionService(current, current.perUser ? {} : env)
       cachedKey = key
     }
     return cachedService
@@ -190,7 +193,7 @@ export function buildCalendarTools(config: CalendarConfigSource, env: NodeJS.Pro
       assertTimeRange(start, end)
       const expand = booleanWithDefault(input, 'expand', true)
       const maxOccurrences = clampedInteger(input, 'maxOccurrences', 30, 1, 200)
-      const events = sortEvents(await service().list(start, end, { expand, maxOccurrences }, executionSignal(exec)))
+      const events = sortEvents(await service(exec).list(start, end, { expand, maxOccurrences }, executionSignal(exec)))
       return { count: events.length, start, end, events }
     },
     timeoutMs: TIMEOUT_MS,
@@ -241,7 +244,7 @@ export function buildCalendarTools(config: CalendarConfigSource, env: NodeJS.Pro
         ...(allDay !== undefined ? { allDay } : {}),
         ...(rrule !== undefined ? { rrule } : {}),
       }
-      const created = await service().create(fields, executionSignal(exec))
+      const created = await service(exec).create(fields, executionSignal(exec))
       return { created }
     },
     timeoutMs: TIMEOUT_MS,
@@ -291,7 +294,7 @@ export function buildCalendarTools(config: CalendarConfigSource, env: NodeJS.Pro
       if (allDay !== undefined) changes.allDay = allDay
       const rrule = optionalPatchString(input, 'rrule')
       if (rrule !== undefined) changes.rrule = rrule
-      const updated = await service().update(uid, changes, executionSignal(exec), input.scope === 'series' ? 'series' : undefined)
+      const updated = await service(exec).update(uid, changes, executionSignal(exec), input.scope === 'series' ? 'series' : undefined)
       return { updated }
     },
     timeoutMs: TIMEOUT_MS,
@@ -323,7 +326,7 @@ export function buildCalendarTools(config: CalendarConfigSource, env: NodeJS.Pro
     async execute(args: unknown, exec: unknown): Promise<unknown> {
       const input = asRecord(args)
       const uid = requiredString(input, 'uid', '事件 uid')
-      const result = await service().delete(uid, executionSignal(exec), input.scope === 'series' ? 'series' : undefined)
+      const result = await service(exec).delete(uid, executionSignal(exec), input.scope === 'series' ? 'series' : undefined)
       return { deleted: true, uid: result.uid, href: result.href }
     },
     timeoutMs: TIMEOUT_MS,
@@ -367,7 +370,7 @@ export function buildCalendarTools(config: CalendarConfigSource, env: NodeJS.Pro
       assertIsoTime(start, 'start')
       assertIsoTime(end, 'end')
       assertTimeRange(start, end)
-      const all = await service().all(executionSignal(exec), { start, end })
+      const all = await service(exec).all(executionSignal(exec), { start, end })
       const matched = sortEvents(all).filter(buildSearchFilter(query)).slice(0, limit)
       return { query, count: matched.length, events: matched }
     },
@@ -395,15 +398,16 @@ export function buildCalendarTools(config: CalendarConfigSource, env: NodeJS.Pro
       executionSignal(exec)?.throwIfAborted()
       const checks: Array<Record<string, unknown>> = []
       // 每次自检都重新取配置：面板刚保存的地址应当立刻反映在这里。
-      const current = configOf()
+      const current = configOf(exec)
       const rawProvider = (current as { provider?: unknown } | undefined)?.provider
       const provider = rawProvider === undefined || rawProvider === null || rawProvider === '' ? 'custom' : String(rawProvider)
       const providerOk = (CALENDAR_PROVIDERS as readonly string[]).includes(provider)
       checks.push({ name: '服务商', ok: providerOk, detail: providerOk ? provider : '不支持 ' + provider + '；只支持 ' + CALENDAR_PROVIDERS.join(' / ') })
 
       try {
-        const endpoint = buildCaldavUrl(current ?? {}, provider as CalendarProvider)
-        if (resolveAuthMethod(current) === 'oauth') validateOAuthUrl(endpoint, 'caldavUrl')
+        const calendars = connectionCollections(current ?? {})
+        const endpoint = calendars.length ? calendars.map(row => row.url).join(', ') : buildCaldavUrl(current ?? {}, provider as CalendarProvider)
+        if (resolveAuthMethod(current) === 'oauth') for (const url of calendars.length ? calendars.map(row => row.url) : [endpoint]) validateOAuthUrl(url, 'caldavUrl')
         checks.push({ name: '日历地址', ok: true, detail: '已解析为 ' + endpoint })
       } catch (error) {
         checks.push({ name: '日历地址', ok: false, detail: error instanceof Error ? error.message : String(error) })
@@ -420,7 +424,7 @@ export function buildCalendarTools(config: CalendarConfigSource, env: NodeJS.Pro
         checks.push({ name: '认证方式', ok: false, detail: error instanceof Error ? error.message : String(error) })
       }
       try {
-        const credentials = resolveCredentials(current, env)
+        const credentials = resolveCredentials(current, current?.perUser ? {} : env)
         checks.push({ name: '认证凭据', ok: true, detail: credentials.oauth === undefined
           ? '已配置 Basic 凭据；仅检查配置，未联网验证'
           : '已配置 clientId、clientSecret、refreshToken 与 tokenUrl；仅检查配置，未联网验证' })
@@ -434,7 +438,7 @@ export function buildCalendarTools(config: CalendarConfigSource, env: NodeJS.Pro
 
   const findTime: CalendarToolDefinition = {
     name: 'calendar_find_time',
-    description: '只读查询当前连接日历的空闲时段，不创建或预约日程。须提供带时区的 start/end（最多 31 天）与 IANA timeZone；默认工作日周一至周五 09:00–18:00、60 分钟时长、15 分钟候选间隔。按查询时区解释全天和浮动时间，排除透明或取消事件，展开完整的重复例外；读取或展开不完整时明确失败，不把部分结果当空闲。bufferMinutes 仅用于定时日程前后缓冲。候选可重叠，只反映读取时当前连接的一个日历，不保证其他日历或参会者空闲；创建前需向用户核对。',
+    description: '只读查询当前连接日历的空闲时段，不创建或预约日程。须提供带时区的 start/end（最多 31 天）与 IANA timeZone；默认工作日周一至周五 09:00–18:00、60 分钟时长、15 分钟候选间隔。按查询时区解释全天和浮动时间，排除透明或取消事件，展开完整的重复例外；读取或展开不完整时明确失败，不把部分结果当空闲。bufferMinutes 仅用于定时日程前后缓冲。候选可重叠，覆盖读取时当前连接配置的日历集合，不保证未连接日历或参会者空闲；创建前需向用户核对。',
     parameters: compileParameters({
       start: { type: 'string', required: true, description: '查询开始，带 Z 或 UTC 偏移的 ISO 时间' },
       end: { type: 'string', required: true, description: '查询结束，不包含端点，最多 31 天' },
@@ -451,7 +455,7 @@ export function buildCalendarTools(config: CalendarConfigSource, env: NodeJS.Pro
       const result = value as AvailabilityResult
       return [{ type: 'text', text: ['当前连接日历的空闲候选（' + result.timeZone + '；读取于 ' + result.checkedAt + '；不代表其他日历或参会者空闲）：', ...result.slots.map(s => s.start + ' ~ ' + s.end), result.hasMore ? '候选数量已达上限，可调整范围或数量后再查。' : result.count ? '候选仅供选择，尚未预约或创建日程。' : '完整查询范围内没有符合条件的时段。'].join('\n') }]
     } },
-    execute: (args, exec) => service().availability(asRecord(args) as unknown as AvailabilityInput, executionSignal(exec)),
+    execute: (args, exec) => service(exec).availability(asRecord(args) as unknown as AvailabilityInput, executionSignal(exec)),
     timeoutMs: TIMEOUT_MS,
   }
   return [list, create, update, remove, search, health, findTime]

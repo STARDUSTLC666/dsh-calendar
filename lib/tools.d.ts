@@ -36,5 +36,5 @@ export declare function isoNoMillis(value: string): string;
 export declare function sortEvents(events: CalendarEvent[]): CalendarEvent[];
 /** 构建七个工具定义；每个 execute 惰性解析配置，缺失时抛出中文指引。 */
 /** 配置来源：静态对象，或一个 getter（面板把新配置写进 settings 后，工具下一次调用就该用新的）。 */
-export type CalendarConfigSource = CalendarConfig | undefined | (() => CalendarConfig | undefined);
+export type CalendarConfigSource = CalendarConfig | undefined | ((exec?: unknown) => CalendarConfig | undefined);
 export declare function buildCalendarTools(config: CalendarConfigSource, env?: NodeJS.ProcessEnv): CalendarToolDefinition[];

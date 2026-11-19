@@ -31,6 +31,8 @@ export declare class CalendarService {
         end: string;
     }): Promise<CalendarEvent[]>;
     private toEvents;
+    /** Complete recurrence expansion for a single collection, shared by multi-calendar reads. */
+    availabilityEvents(input: AvailabilityInput, signal?: AbortSignal): Promise<CalendarEvent[]>;
     /** A complete read of the connected collection; never writes or reserves events. */
     availability(input: AvailabilityInput, signal?: AbortSignal): Promise<AvailabilityResult>;
     /** 列出并展开：每个对象经 expandEventFromICal 展开为若干实例行。 */

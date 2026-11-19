@@ -1057,6 +1057,10 @@ export function DshSkeleton(props = {}) {
  * IMPORTANT: Call ONLY inside component render paths — never eagerly inside
  * `window.__ModuleLoader__.load({ factory })` or `apply(ctx)`.
  */
+// Component types must survive form renders, including Modal autofocus effects.
+// Resolve the host before cache lookup so late loading and replacement still work.
+const hostPrimitivesByReact = new WeakMap();
+
 export function resolveHostPrimitives(React, requireFn) {
   const h = React.createElement;
   let host = null;
@@ -1067,6 +1071,13 @@ export function resolveHostPrimitives(React, requireFn) {
       host = null;
     }
   }
+
+  let cached = hostPrimitivesByReact.get(React);
+  if (!cached) {
+    cached = new Map();
+    hostPrimitivesByReact.set(React, cached);
+  }
+  if (cached.has(host)) return cached.get(host);
 
   function FallbackButton({ variant = 'ghost', size = 'md', icon, className, children, type = 'button', ...rest }) {
     const cls = ['dsh-btn', `dsh-btn-${variant}`, `dsh-btn-${size}`, className].filter(Boolean).join(' ');
@@ -1325,7 +1336,7 @@ export function resolveHostPrimitives(React, requireFn) {
       }
     : FallbackModal;
 
-  return {
+  const resolved = {
     ...(host || {}),
     isFallback: !host,
     Button: host?.Button || FallbackButton,
@@ -1336,6 +1347,8 @@ export function resolveHostPrimitives(React, requireFn) {
     Menu: WrappedMenu,
     Modal: WrappedModal,
   };
+  cached.set(host, resolved);
+  return resolved;
 }
 
 /**

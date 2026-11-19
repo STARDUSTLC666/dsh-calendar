@@ -14,8 +14,29 @@ export interface CalendarOAuthCredentials {
     clientSecret: string;
     refreshToken: string;
 }
+/** Model tool names accepted by the registration switch. */
+export declare const CALENDAR_TOOL_NAMES: readonly ["calendar_list", "calendar_create", "calendar_update", "calendar_delete", "calendar_search", "calendar_health", "calendar_find_time"];
+export type CalendarToolName = typeof CALENDAR_TOOL_NAMES[number];
 /** 插件配置：可在 profile 的 cordis.patch.yml 覆盖 calendar 行的整个 config。 */
 export interface CalendarConfig {
+    /** false: panel-only; otherwise unspecified tools stay enabled. Changes require plugin reload. */
+    tools?: boolean | Partial<Record<CalendarToolName, boolean>>;
+    /** Optional collections sharing this connection's credentials; at most 20. */
+    calendars?: Array<{
+        id: string;
+        name?: string;
+        url: string;
+        readOnly?: boolean;
+    }>;
+    /** Explicit destination id for create/import when multiple collections are configured. */
+    writeCalendar?: string;
+    /** Server-controlled policy; applies to tools, panel writes and ICS import. */
+    readOnly?: boolean;
+    /** Enable private per-person connection files, using verified request/session identity. */
+    perUser?: boolean;
+    /** Opt-in legacy owner access in per-user mode; default is to require a person. */
+    allowOwnerFallback?: boolean;
+    connectionsDir?: string;
     /** provider 预设；默认 custom。 */
     provider?: CalendarProvider;
     /** 完整日历集合 URL；custom / icloud 必填，google / nextcloud 可由此手填覆盖预设。 */

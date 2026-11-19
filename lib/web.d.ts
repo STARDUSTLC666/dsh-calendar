@@ -3,7 +3,7 @@
  *
  * 与 dsh-email 的设置路由同一套安全模型，理由也一样：这个路由能读用户的
  * 全部日程、还能替用户改/删日程，而宿主 webserver 有可能绑定在 0.0.0.0。
- * 四道门缺一不可 ——
+ * 旧 loopback 兼容路由的四道门缺一不可（新的 /api 路由由宿主认证管线承载）——
  *   1. remoteAddress 必须是回环地址（局域网不可达）；
  *   2. Host 头必须是 localhost 名（挡 DNS rebinding：恶意域名解析到 127.0.0.1）；
  *   3. 写操作要求 application/json（跨源页面无法用简单请求绕过预检）+
@@ -153,6 +153,8 @@ export declare class CalendarSettingsBackend {
     private responseJson;
     /** 路由入口。GET = 读状态，POST = 动作（list/create/update/delete）。 */
     handle(req: any, res: any, draft?: boolean): Promise<void>;
+    /** Internal authenticated carrier entry; authentication is enforced by transport.ts. */
+    fetchAuthenticated(request: Request, draft?: boolean): Promise<Response>;
     private dispatchDraft;
     /** 动作分发。每个动作自己校验参数，错误信息面向用户（中文，面板直接显示）。 */
     private dispatch;

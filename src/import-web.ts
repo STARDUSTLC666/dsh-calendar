@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { resolveConfig, type CalendarConfig, type ResolvedConfig } from './config.js'
 import { CalendarService } from './caldav.js'
+import { writableCollection } from './connections.js'
 import { parseImportICS, importTimezones, type ImportItem } from './import-ical.js'
 import type { CalendarEvent } from './ical.js'
 
@@ -25,7 +26,10 @@ export class CalendarImportBackend {
   private committing = false
   constructor(private readonly options: Options) {}
   private now(): number { return this.options.now?.() ?? Date.now() }
-  private current(): ResolvedConfig { return resolveConfig(this.options.config(), this.options.env ?? process.env) }
+  private current(): ResolvedConfig {
+    const config=this.options.config(), row=writableCollection(config)
+    return resolveConfig({...config,...(row?{caldavUrl:row.url}:{})},config.perUser?{}:this.options.env??process.env)
+  }
   private service(config: ResolvedConfig): ImportService { return this.options.serviceFactory?.(config) ?? new CalendarService(config) }
   private prune(): void { for (const [id, plan] of this.plans) if (this.now() - plan.created > 15 * 60 * 1000) this.plans.delete(id) }
   private safeMessage(error: unknown): string {

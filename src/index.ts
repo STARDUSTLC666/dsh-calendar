@@ -9,13 +9,16 @@ import { registerUpdates } from '@stardustlc/dsh-updates'
  * @module dsh-calendar
  */
 
-import { resolveConfig, type CalendarConfig } from './config.js'
+import { resolveConfig, type CalendarConfig, type CalendarToolName } from './config.js'
 import { buildCalendarTools, type CalendarToolDefinition } from './tools.js'
 import { CalendarSettingsSchema, SETTINGS_NAMESPACE, toCalendarConfig, toSettingsBase, validateSettingsValue, type CalendarSettingsValue } from './settings.js'
 import { CalendarSettingsBackend, installCalendarSettingsWeb, CONNECTION_KEYS, hostFormsFaceOf, settingsFaceOf, type CalendarSettingsFace } from './web.js'
 import { connectionFile, readConnectionFile, writeConnectionFile } from './store.js'
 import { Config as ConfigSchema, liveConfig } from './host-config.js'
-import { CalendarImportBackend, installCalendarImport } from './import-web.js'
+import { CalendarImportBackend } from './import-web.js'
+import { dirname, join } from 'node:path'
+import { resolveCalendarCaller, createPersonSettingsFace, personStorageKey, type CalendarPersonCaller, type RequestIdentityLike } from './people.js'
+import { installAuthenticatedCalendar } from './transport.js'
 import { nativeDraftModel } from './quick-draft.js'
 import { entryIdOf, installLegacySettingsImport, isFormsProvider, isLegacyProvider, settingsProviderOf } from './host-settings.js'
 
@@ -168,8 +171,38 @@ export function apply(ctx: CalendarPluginContext, config?: CalendarConfig | null
   const attached = attachSettings(ctx, cfg)
   const configOf = (): CalendarConfig => ({ ...cfg, ...toCalendarConfig(attached.face.read() as Partial<CalendarSettingsValue> | undefined, null) })
 
+  const personFaces = new Map<string, CalendarSettingsFace>()
+  const identityProvider = (): RequestIdentityLike | undefined => {
+    try { return ctx.get?.('requestIdentity') ?? undefined } catch { return undefined }
+  }
+  const personFace = (caller: CalendarPersonCaller): CalendarSettingsFace => {
+    const key=personStorageKey(caller.subject)
+    let face=personFaces.get(key)
+    if (!face) {
+      face=createPersonSettingsFace(cfg.connectionsDir ?? join(dirname(connectionFile()),'people'),caller)
+      if(personFaces.size>=128)personFaces.delete(personFaces.keys().next().value!)
+      personFaces.set(key,face)
+    }
+    return face
+  }
+  const personConfig = (caller: CalendarPersonCaller): CalendarConfig => {
+    const value=personFace(caller).read() as CalendarConfig
+    if(value.readOnly!==undefined&&typeof value.readOnly!=='boolean')throw new Error('Invalid person calendar readOnly policy')
+    return {...value,perUser:true,readOnly:cfg.readOnly===true||value.readOnly===true}
+  }
+  const toolConfigOf = (): CalendarConfig => {
+    if(!cfg.perUser)return configOf()
+    // Model arguments and arbitrary session fields are not identity authorities.
+    // A multi-user tool needs a trusted identity provider active in its driver chain.
+    const caller=resolveCalendarCaller(undefined,identityProvider())
+    if(caller.kind!=='person')throw new Error('Verified calendar tool identity required')
+    return personConfig(caller)
+  }
+
   const disposers: Array<() => void> = []
-  for (const definition of buildCalendarTools(configOf)) {
+  const enabledTools = cfg.tools
+  for (const definition of buildCalendarTools(toolConfigOf)) {
+    if (enabledTools === false || (typeof enabledTools === 'object' && enabledTools?.[definition.name as CalendarToolName] === false)) continue
     disposers.push(ctx.tools.register(definition))
   }
 
@@ -189,7 +222,7 @@ export function apply(ctx: CalendarPluginContext, config?: CalendarConfig | null
     service.on?.('dispose', clearAttachments)
   })
   const backend = new CalendarSettingsBackend({
-    config: configOf,
+    config: () => ({ ...configOf(), perUser: false }),
     ctx,
     settings: attached.face,
     settingsBase: toSettingsBase(cfg),
@@ -197,9 +230,28 @@ export function apply(ctx: CalendarPluginContext, config?: CalendarConfig | null
     draftModel: () => llm ? nativeDraftModel(llm, attachments) : undefined,
     ...(attached.reason !== undefined ? { settingsReason: attached.reason } : {}),
   })
+  const ownerImports=new CalendarImportBackend({config:()=>backend.currentConfig()})
+  const privateBackends=new Map<string,{settings:CalendarSettingsBackend;imports:CalendarImportBackend}>()
   try {
-    installCalendarSettingsWeb(ctx, backend)
-    installCalendarImport(ctx, new CalendarImportBackend({ config: () => backend.currentConfig() }))
+    // Legacy local-only routes are never mounted in per-user mode.
+    if(!cfg.perUser)installCalendarSettingsWeb(ctx, backend)
+    installAuthenticatedCalendar(ctx,principal=>{
+      if(!cfg.perUser)return {settings:backend,imports:ownerImports}
+      const caller=resolveCalendarCaller(principal,identityProvider())
+      if(caller.kind==='owner') {
+        if(!cfg.allowOwnerFallback)throw new Error('Per-user calendar requests require a verified person')
+        return {settings:backend,imports:ownerImports}
+      }
+      const key=personStorageKey(caller.subject)
+      let entry=privateBackends.get(key)
+      if(!entry){
+        const settings=new CalendarSettingsBackend({config:()=>personConfig(caller),settings:personFace(caller),env:{},draftModel:()=>llm?nativeDraftModel(llm,attachments):undefined})
+        entry={settings,imports:new CalendarImportBackend({config:()=>settings.currentConfig(),env:{}})}
+        if(privateBackends.size>=128)privateBackends.delete(privateBackends.keys().next().value!)
+        privateBackends.set(key,entry)
+      }
+      return entry
+    })
   } catch (error) {
     console.warn('dsh-calendar: 面板路由未挂载：' + (error instanceof Error ? error.message : String(error)))
   }
@@ -232,4 +284,7 @@ export * from './store.js'
 export * from './host-settings.js'
 export * from './import-ical.js'
 export * from './import-web.js'
+export * from './connections.js'
+export * from './people.js'
+export * from './transport.js'
 export { liveConfig } from './host-config.js'

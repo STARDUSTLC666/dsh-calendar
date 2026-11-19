@@ -9,7 +9,7 @@ window.__ModuleLoader__.load({ id: "dsh-calendar", factory: (require) => {
         const h = React.createElement;
         // @calendar-ui
         // Resolve against the Harness document base, including any reverse-proxy prefix.
-        const ROUTE = "_dsh/dsh-calendar/settings";
+        const ROUTE = "api/dsh-calendar/settings";
         const IMPORT_ROUTE = "api/dsh-calendar/import";
         /** 三视图；order 决定 tab 顺序。 */
         const VIEWS = ["month", "week", "agenda"];

@@ -7,6 +7,10 @@
 export declare function isRecurringResource(data: string): boolean;
 /** 一个暴露给模型的日历事件（或重复系列的一个展开实例）。 */
 export interface CalendarEvent {
+    /** Collection identity when several calendars share a connection. */
+    calendarId?: string;
+    calendarName?: string;
+    readOnly?: boolean;
     /** 稳定标识（CalDAV href），calendar_update / calendar_delete 用它。 */
     uid: string;
     /** 与 uid 相同的完整对象 URL，便于调试。 */
