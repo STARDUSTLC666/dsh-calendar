@@ -14,6 +14,7 @@ import { Config, liveConfig } from '../lib/host-config.js';
 import { entryIdOf, importLegacySettings, isFormsProvider, isLegacyProvider, settingsProviderOf } from '../lib/host-settings.js';
 import { attachSettings, apply } from '../lib/index.js';
 import { CalendarSettingsBackend, SETTINGS_ROUTE, hostFormsFaceOf } from '../lib/web.js';
+import { connectionCollections } from '../lib/connections.js';
 
 const CONNECTION_FIELDS = ['provider', 'caldavUrl', 'username', 'password', 'host', 'user', 'calendar', 'calendarId', 'authMethod', 'clientId', 'clientSecret', 'refreshToken', 'tokenUrl', 'proxyUrl'];
 const SECRETS = ['password', 'clientSecret', 'refreshToken'];
@@ -106,6 +107,16 @@ test('liveConfig：活引用摊平成值，老宿主的字面量原样通过', (
   assert.equal(live.provider, 'nextcloud', '每次读都取当前值：设置页改完工具立刻用得上');
   const plain = liveConfig({ provider: 'custom' });
   assert.equal(plain.provider, 'custom');
+});
+
+test('actual host schema preserves an omitted multi-calendar list for single-collection connections', () => {
+  const source = { provider: 'custom', caldavUrl: 'https://calendar.invalid/owned/', username: 'fixture', password: 'synthetic' };
+  const single = liveConfig(Config(source));
+  assert.equal(single.calendars, undefined);
+  assert.deepEqual(connectionCollections(single), []);
+  const configured = liveConfig(Config({ ...source, calendars: [{ id: 'owned', url: source.caldavUrl }] }));
+  assert.deepEqual(connectionCollections(configured), [{ id: 'owned', url: source.caldavUrl }]);
+  assert.throws(() => connectionCollections(liveConfig(Config({ ...source, calendars: [] }))), /1–20/);
 });
 
 test('宿主形态判定：0.1.7 是 forms，0.1.6 是 legacy，两个都没有就退化', () => {

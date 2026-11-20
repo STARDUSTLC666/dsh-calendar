@@ -32,6 +32,13 @@ test('touching endpoints do not conflict; candidate truncation is explicit',()=>
  const result=findAvailableTimes([event('2026-11-02T08:00:00Z','2026-11-02T09:00:00Z'),event('2026-11-02T10:00:00Z','2026-11-02T11:00:00Z')],{...base,limit:1})
  assert.equal(result.slots[0].start,'2026-11-02T09:00:00.000Z');assert.equal(result.hasMore,true)
 })
+test('long searches retain complete busy counts and validate late events after enough early slots',()=>{
+ const input={...base,end:'2026-12-03T00:00:00Z',limit:1}
+ const late=event('2026-12-02T09:00:00Z','2026-12-02T10:00:00Z')
+ const result=findAvailableTimes([late],input)
+ assert.equal(result.slots[0].start,'2026-11-02T09:00:00.000Z');assert.equal(result.hasMore,true);assert.equal(result.busyEventCount,1)
+ assert.throws(()=>findAvailableTimes([{...late,end:'2026-12-02T08:00:00Z'}],input),/结束早于/)
+})
 test('weekday and whole-minute working-window filters reject overnight proposals',()=>{
  const result=findAvailableTimes([],{...base,start:'2026-11-01T00:00:00Z',end:'2026-11-03T00:00:00Z'})
  assert.equal(result.slots[0].start,'2026-11-02T09:00:00.000Z');assert.equal(findAvailableTimes([],{...base,workStart:'09:00',workEnd:'09:30'}).count,0)

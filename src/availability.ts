@@ -71,18 +71,38 @@ export function findAvailableTimes(events: CalendarEvent[], input: AvailabilityI
   timed.sort((a, b) => a[0] - b[0]); const merged: Array<[number, number]> = []
   for (const interval of timed) { const last = merged.at(-1); if (last && interval[0] <= last[1]) last[1] = Math.max(last[1], interval[1]); else merged.push([...interval]) }
   const first = Math.ceil(startMs / MINUTE) * MINUTE, minutes = Math.max(0, Math.floor((endMs - first) / MINUTE))
-  const local = Array.from({ length: minutes + 1 }, (_, i) => {
+  type LocalMinute = { date: string; minute: number; blocked: boolean }
+  const local = new Array<LocalMinute | undefined>(minutes + 1)
+  const dates = new Map<string, boolean>()
+  const localAt = (i: number): LocalMinute => {
+    const cached = local[i]
+    if (cached) return cached
     const parts = Object.fromEntries(formatter.formatToParts(first + i * MINUTE).map(p => [p.type, p.value]))
     const date = parts.year + '-' + parts.month + '-' + parts.day
-    return { date, minute: Number(parts.hour) * 60 + Number(parts.minute), weekday: (new Date(date + 'T00:00:00Z').getUTCDay() + 6) % 7 + 1 }
-  })
-  const blockedDates = new Set([...new Set(local.map(p => p.date))].filter(date => allDay.some(([a, b]) => date >= a && date < b)))
+    let blockedDate = dates.get(date)
+    if (blockedDate === undefined) {
+      const weekday = (new Date(date + 'T00:00:00Z').getUTCDay() + 6) % 7 + 1
+      blockedDate = !weekdays.includes(weekday) || allDay.some(([a, b]) => date >= a && date < b)
+      dates.set(date, blockedDate)
+    }
+    const minute = Number(parts.hour) * 60 + Number(parts.minute)
+    return local[i] = { date, minute, blocked: blockedDate || minute < workStart.minute || minute >= workEnd.minute }
+  }
   const blocked = new Uint32Array(minutes + 1)
-  for (let i = 0; i < minutes; i++) { const p = local[i]; blocked[i + 1] = blocked[i] + Number(!weekdays.includes(p.weekday) || p.minute < workStart.minute || p.minute >= workEnd.minute || blockedDates.has(p.date)) }
+  let blockedThrough = 0
+  const blockedUntil = (end: number) => {
+    // Extend the same minute prefix only as far as a candidate needs. DST
+    // transitions still use every elapsed minute, including repeated hours.
+    while (blockedThrough < end) {
+      blocked[blockedThrough + 1] = blocked[blockedThrough] + Number(localAt(blockedThrough).blocked)
+      blockedThrough++
+    }
+    return blocked[end]
+  }
   const slots: Array<{ start: string; end: string }> = []; let intervalIndex = 0
   for (let i = 0; i + durationMinutes <= minutes; i++) {
-    const p = local[i]
-    if (p.minute % request.stepMinutes || p.date !== local[i + durationMinutes].date || blocked[i + durationMinutes] !== blocked[i]) continue
+    const p = localAt(i)
+    if (p.minute % request.stepMinutes || p.date !== localAt(i + durationMinutes).date || blockedUntil(i + durationMinutes) !== blocked[i]) continue
     const a = first + i * MINUTE, b = a + durationMinutes * MINUTE
     while (intervalIndex < merged.length && merged[intervalIndex][1] <= a) intervalIndex++
     if (intervalIndex < merged.length && merged[intervalIndex][0] < b) { i = Math.max(i, Math.ceil((merged[intervalIndex][1] - first) / MINUTE) - 1); continue }
