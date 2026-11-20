@@ -76,13 +76,13 @@ export class CalendarService {
   private readonly collectionUrl: string
   private clientPromise?: Promise<DAVClient>
 
-  constructor(private readonly config: ResolvedConfig) {
+  constructor(private readonly config: ResolvedConfig, private readonly oauthFetch?: typeof fetch) {
     this.collectionUrl = ensureTrailingSlash(config.caldavUrl)
   }
 
   private client(): Promise<DAVClient> {
     if (this.clientPromise === undefined) {
-      const transport = this.config.proxyUrl !== '' ? createProxyFetch(this.config.proxyUrl) : globalThis.fetch
+      const transport = this.oauthFetch ?? (this.config.proxyUrl !== '' ? createProxyFetch(this.config.proxyUrl) : globalThis.fetch)
       const oauth = this.config.oauth
       this.clientPromise = createDAVClient({
         serverUrl: this.config.caldavUrl,
@@ -94,7 +94,7 @@ export class CalendarService {
         authFunction: async (): Promise<Record<string, string>> => oauth === undefined
           ? { authorization: 'Basic ' + Buffer.from(this.config.username + ':' + this.config.password, 'utf8').toString('base64') }
           : {},
-        fetch: oauth === undefined ? transport : createOAuthFetch(oauth, transport, this.config.caldavUrl),
+        fetch: this.oauthFetch ?? (oauth === undefined ? transport : createOAuthFetch(oauth, transport, this.config.caldavUrl)),
       })
     }
     // 创建失败时清掉缓存，让下一次工具调用有机会重试，而不是永久复用 rejected promise。

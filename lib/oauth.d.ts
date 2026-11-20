@@ -3,5 +3,7 @@ export declare class OAuthError extends Error {
     readonly status?: number | undefined;
     constructor(message: string, status?: number | undefined);
 }
-/** tsdav 管理 token/expiry；此层补上失败校验、取消、代理与不泄露凭据的错误。 */
+/** One connection owns credentials and refresh serialization for all its collections. */
+export declare function createOAuthConnection(config: CalendarOAuthCredentials, transport: typeof fetch): (calendarUrl: string) => typeof fetch;
+/** Standalone collections own an independent OAuth connection by default. */
 export declare function createOAuthFetch(config: CalendarOAuthCredentials, transport: typeof fetch, calendarUrl: string): typeof fetch;

@@ -15,9 +15,10 @@ export declare class CalDAVError extends Error {
 /** 对单个日历集合的封装。 */
 export declare class CalendarService {
     private readonly config;
+    private readonly oauthFetch?;
     private readonly collectionUrl;
     private clientPromise?;
-    constructor(config: ResolvedConfig);
+    constructor(config: ResolvedConfig, oauthFetch?: typeof fetch | undefined);
     private client;
     private calendar;
     /** 列出某时间段内的事件；expand 为 true 时在窗口内展开 RRULE。 */

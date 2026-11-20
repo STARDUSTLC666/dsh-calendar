@@ -32,4 +32,4 @@ export interface ConnectedCalendarService {
 export declare function connectionCollections(config: CalendarConfig): CalendarCollection[];
 /** Explicit write destination is required when more than one collection is configured. */
 export declare function writableCollection(config: CalendarConfig): CalendarCollection | undefined;
-export declare function createConnectionService(config: CalendarConfig, env?: NodeJS.ProcessEnv, make?: (resolved: ResolvedConfig) => ConnectedCalendarService): ConnectedCalendarService;
+export declare function createConnectionService(config: CalendarConfig, env?: NodeJS.ProcessEnv, make?: (resolved: ResolvedConfig, oauthFetch?: typeof fetch) => ConnectedCalendarService): ConnectedCalendarService;

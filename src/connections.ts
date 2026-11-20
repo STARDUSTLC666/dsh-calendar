@@ -2,6 +2,8 @@ import { resolveConfig, type CalendarConfig, type ResolvedConfig } from './confi
 import { CalendarService } from './caldav.js'
 import type { CalendarEvent, EventFields } from './ical.js'
 import { findAvailableTimes, type AvailabilityInput, type AvailabilityResult } from './availability.js'
+import { createOAuthConnection } from './oauth.js'
+import { createProxyFetch } from './proxy-fetch.js'
 
 export interface CalendarCollection { id: string; name?: string; url: string; readOnly?: boolean }
 export interface ConnectedCalendarService {
@@ -52,9 +54,20 @@ export function writableCollection(config: CalendarConfig): CalendarCollection |
 }
 
 export function createConnectionService(config: CalendarConfig, env: NodeJS.ProcessEnv = process.env,
-  make: (resolved: ResolvedConfig) => ConnectedCalendarService = resolved => new CalendarService(resolved)): ConnectedCalendarService {
+  make: (resolved: ResolvedConfig, oauthFetch?: typeof fetch) => ConnectedCalendarService = (resolved, oauthFetch) => new CalendarService(resolved, oauthFetch)): ConnectedCalendarService {
   const rows = connectionCollections(config)
-  const single = (row?: CalendarCollection) => make(resolveConfig({ ...config, ...(row ? { caldavUrl: row.url } : {}) }, env))
+  // Keep this state on the owning connection, never in a process-wide cache:
+  // equal settings on two person/tenant connections must not share live tokens.
+  let oauthConnection: ReturnType<typeof createOAuthConnection> | undefined
+  const single = (row?: CalendarCollection) => {
+    const resolved = resolveConfig({ ...config, ...(row ? { caldavUrl: row.url } : {}) }, env)
+    let oauthFetch: typeof fetch | undefined
+    if (resolved.oauth !== undefined) {
+      oauthConnection ??= createOAuthConnection(resolved.oauth, resolved.proxyUrl !== '' ? createProxyFetch(resolved.proxyUrl) : globalThis.fetch)
+      oauthFetch = oauthConnection(resolved.caldavUrl)
+    }
+    return make(resolved, oauthFetch)
+  }
   const parts = rows.map(row => ({ row, service: single(row), url: normalizedCollection(row.url) }))
   const ordinary = parts.length ? undefined : single()
   const annotate = (event: CalendarEvent, row: CalendarCollection): CalendarEvent => Object.assign({}, event, { calendarId: row.id, calendarName: row.name ?? row.id, readOnly: !!config.readOnly || !!row.readOnly })

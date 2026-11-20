@@ -197,6 +197,65 @@ test('pre-aborted OAuth calls perform no token request', async (t) => {
   await assert.rejects(new CalendarService(config()).all(AbortSignal.abort(reason)), error => error === reason)
 })
 
+test('concurrent OAuth calls exchange a rotating refresh token only once', async (t) => {
+  let now = 1_800_000_000_000
+  t.mock.method(Date, 'now', () => now)
+  let release, started
+  const gate = new Promise(resolve => { release = resolve })
+  const tokenStarted = new Promise(resolve => { started = resolve })
+  const refreshTokens = [], sent = []
+  const request = createOAuthFetch(credentials, async (input, init) => {
+    if (String(input) === tokenUrl) {
+      const refresh = new URLSearchParams(init.body).get('refresh_token')
+      refreshTokens.push(refresh)
+      if (refreshTokens.length === 1) { started(); await gate }
+      if (refresh !== (refreshTokens.length === 1 ? 'test-refresh' : 'rotated-refresh')) {
+        return Response.json({ error: 'invalid_grant' }, { status: 400 })
+      }
+      return token('access-' + refreshTokens.length, { refresh_token: 'rotated-refresh' })
+    }
+    sent.push(new Headers(init.headers).get('authorization'))
+    return new Response(null, { status: 204 })
+  }, calendarUrl)
+  const first = request(calendarUrl)
+  await tokenStarted
+  const second = request(calendarUrl)
+  const settled = Promise.allSettled([first, second])
+  // Both callers have reached the token boundary before the first exchange finishes.
+  await new Promise(resolve => setImmediate(resolve))
+  release()
+  const results = await settled
+  assert.deepEqual(results.map(result => result.status), ['fulfilled', 'fulfilled'])
+  assert.deepEqual(refreshTokens, ['test-refresh'])
+  now += 3_580_000
+  await request(calendarUrl)
+  assert.deepEqual(refreshTokens, ['test-refresh', 'rotated-refresh'])
+  assert.deepEqual(sent, ['Bearer access-1', 'Bearer access-1', 'Bearer access-2'])
+})
+
+test('queued OAuth calls cancel promptly without stopping the refresh owner', async () => {
+  let release, started
+  const gate = new Promise(resolve => { release = resolve })
+  const tokenStarted = new Promise(resolve => { started = resolve })
+  const cancelled = new AbortController(), reason = new Error('cancel queued read')
+  let tokenCalls = 0, calendarCalls = 0
+  const request = createOAuthFetch(credentials, async input => {
+    if (String(input) === tokenUrl) { tokenCalls++; started(); await gate; return token() }
+    calendarCalls++
+    return new Response(null, { status: 204 })
+  }, calendarUrl)
+  const first = request(calendarUrl)
+  await tokenStarted
+  const second = request(calendarUrl, { signal: cancelled.signal })
+  const rejected = assert.rejects(second, error => error === reason)
+  cancelled.abort(reason)
+  try { await rejected } finally { release() }
+  await first
+  await request(calendarUrl)
+  assert.equal(tokenCalls, 1)
+  assert.equal(calendarCalls, 2)
+})
+
 test('401 invalidates the token for the next call, without automatically replaying a write', async (t) => {
   let issued = 0
   let writes = 0

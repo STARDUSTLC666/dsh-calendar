@@ -12,8 +12,8 @@ importers:
         specifier: ^3.18.3
         version: 3.18.3
       '@stardustlc/dsh-updates':
-        specifier: 0.2.7
-        version: 0.2.7
+        specifier: 0.2.9
+        version: 0.2.9
       ical.js:
         specifier: ^2.1.0
         version: 2.2.1
@@ -126,8 +126,8 @@ packages:
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
 
-  '@stardustlc/dsh-updates@0.2.7':
-    resolution: {integrity: sha512-JYymKsQc66TkYamTnD30TGKpg/jm+BmlrGmgYc3aZT4DZekECsLcum6ljRSbFGyaugXcnZClJ6EX/oKlgGitIA==}
+  '@stardustlc/dsh-updates@0.2.9':
+    resolution: {integrity: sha512-XGNM0rp5p2jvdfj+29Qgm3gKEiXmbRmxl/I9iSqO3Y4nQYJPoZsuHLlGCTWWev0YEkble87LkwjgOdDibez2Fw==}
     engines: {node: ^22.19.0 || >=24.0.0}
 
   '@types/node@24.13.3':
@@ -175,8 +175,8 @@ packages:
   generic-names@4.0.0:
     resolution: {integrity: sha512-ySFolZQfw9FoDb3ed9d80Cm9f0+r7qj+HJkWjeD9RBfpxEVTlVhol+gvaQB/78WbwYfbnNh8nWHHBSlg072y6A==}
 
-  graceful-fs@4.2.11:
-    resolution: {integrity: sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ==}
+  graceful-fs@4.2.12:
+    resolution: {integrity: sha512-iuyGF2E4oafQfPsRrG2wtY2ILupMhvtdrhzrxB+0VcjsPpSPttpfYdjnGFGsTi5MaJFjI1jOKHPQ6UTbTj9TAw==}
 
   html-encoding-sniffer@6.0.0:
     resolution: {integrity: sha512-CV9TW3Y3f8/wT0BRFc1/KAVQ3TUHiXmaAb6VW9vtiMFf7SLoMd1PdAc4W3KFOFETBJUb90KatHqlsZMWV+R9Gg==}
@@ -457,7 +457,7 @@ snapshots:
 
   '@standard-schema/spec@1.1.0': {}
 
-  '@stardustlc/dsh-updates@0.2.7':
+  '@stardustlc/dsh-updates@0.2.9':
     dependencies:
       acorn: 8.15.0
       proper-lockfile: 4.1.2
@@ -501,7 +501,7 @@ snapshots:
     dependencies:
       loader-utils: 3.3.1
 
-  graceful-fs@4.2.11: {}
+  graceful-fs@4.2.12: {}
 
   html-encoding-sniffer@6.0.0:
     dependencies:
@@ -607,7 +607,7 @@ snapshots:
 
   proper-lockfile@4.1.2:
     dependencies:
-      graceful-fs: 4.2.11
+      graceful-fs: 4.2.12
       retry: 0.12.0
       signal-exit: 3.0.7
 
