@@ -2253,20 +2253,20 @@ __stardustUpdatesGuard(React, "dsh-calendar.import", { dirty: !!content.trim(), 
             };
             const tourSteps = [
                 {
-                    id: "connection",
-                    selector: '[data-segment-id="connection"], [id$="-connection"]',
-                    fallback: '[data-tour="calendar-workspace-tabs"]',
+                    id: "focus-ribbon",
+                    selector: '[data-calendar-focus-ribbon="true"]',
+                    fallback: '[data-tour="calendar-views"]',
                     side: "bottom",
-                    title: calendarText("连接日历账号（iCloud / Google / CalDAV）", "Connect your calendar (iCloud / Google / CalDAV)"),
-                    desc: calendarText("在「日历连接」配置 iCloud、Google OAuth、Nextcloud 或自建 CalDAV，先测试连接再保存；也可先点「查看示例」体验。", "Configure iCloud, Google OAuth, Nextcloud, or custom CalDAV in Connection—test first, then save, or explore the sample.")
+                    title: calendarText("今日聚焦条：下一场倒计时、冲突状态与快速新建", "Today Focus Ribbon: countdown, conflicts & quick add"),
+                    desc: calendarText("聚焦条常驻日历画布上方，一眼看清今天日期、下一场日程倒计时与无冲突/告警状态，支持 1 键「+ 快速新建」或回到今天；点顶栏「日历连接」可配置 iCloud / Google / CalDAV。", "The Today Focus Ribbon keeps today's date, next event countdown, conflict status, and + Quick add always in view; configure iCloud, Google OAuth, Nextcloud, or CalDAV in Connection.")
                 },
                 {
-                    id: "views",
-                    selector: '[data-tour="calendar-views"]',
-                    fallback: '[data-segment-id="schedule"], [id$="-schedule"]',
+                    id: "layout",
+                    selector: '[data-tour="calendar-layout"]',
+                    fallback: ".dsh-style-switcher",
                     side: "bottom",
-                    title: calendarText("日 / 周 / 月视图切换与拖拽改期", "Agenda / Week / Month views & drag to reschedule"),
-                    desc: calendarText("按 M / W / A 快速切换月、周或议程视图；周视图支持上下拖拽改时间、左右跨天，并提供 5 秒一键撤销。", "Press M / W / A to switch Month, Week, or Agenda views; drag events in Week view to reschedule or resize with 5-second undo.")
+                    title: calendarText("Bento 默认布局 · 四种空间布局与 13 风格 / 8 字体", "Bento default layout · 4 layouts, 13 styles & 8 fonts"),
+                    desc: calendarText("工作台默认以 Bento 卡片风呈现，可在顶栏 1 键切换「原生 / 浮岛 / 聚光 / Bento」及 13 套视觉风格与 8 套字体；按 M / W / A 切换月、周或议程视图并支持周视图拖拽改期。", "Starts in the Bento card studio by default—switch Native / Island / Focus / Bento plus 13 styles & 8 fonts from the header, and press M / W / A for Month, Week (drag-to-reschedule), or Agenda views.")
                 },
                 {
                     id: "availability",
@@ -2284,7 +2284,7 @@ __stardustUpdatesGuard(React, "dsh-calendar.import", { dirty: !!content.trim(), 
                     fallback: ".topbar",
                     side: "bottom",
                     title: calendarText("冲突检查与从文字 / 截图智能建日程", "Conflict checks & smart drafts from text or screenshots"),
-                    desc: calendarText("新建日程时可粘贴通知文字或拖入截图自动生成草稿，保存前会检测时间重叠并在侧栏汇总冲突。", "Paste message text or drop a screenshot in New event to generate a reviewed draft, with automatic overlap detection before saving.")
+                    desc: calendarText("点击「新建日程」或聚焦条「+ 快速新建」，可粘贴通知文字或拖入截图自动生成草稿，保存前自动检测时间重叠并在侧栏汇总冲突。", "Paste message text or drop a screenshot in New event / + Quick add to generate a reviewed draft, with automatic overlap detection before saving.")
                 }
             ];
             const commandActions = workbench ? [
@@ -2349,7 +2349,7 @@ __stardustUpdatesGuard(React, "dsh-calendar.import", { dirty: !!content.trim(), 
                     "data-tour": "calendar-workspace-tabs",
                     items: [
                         { value: "schedule", label: calendarText("日程", "Schedule") },
-                        { value: "availability", label: availabilityLabel, disabled: demo || configured === null },
+                        { value: "availability", label: calendarText("找空闲时段", "Free time"), disabled: demo || configured === null },
                         { value: "import", label: t("import.open"), disabled: demo },
                         { value: "connection", label: calendarText("日历连接", "CalDAV"), disabled: configured === null }
                     ],
@@ -2430,6 +2430,17 @@ __stardustUpdatesGuard(React, "dsh-calendar.import", { dirty: !!content.trim(), 
                         h("span", { className: styles["dshc-spacer"] }),
                         h(Btn, { onClick: reload }, t("action.retry"))
                     ) : null,
+                    !compact ? h(TodayFocusRibbon, {
+                        events: visibleEvents,
+                        conflicts,
+                        canCreate,
+                        configured,
+                        demo,
+                        onJumpToday: () => setAnchor(new Date()),
+                        onOpenEvent: openEvent,
+                        onReviewConflicts: reviewConflicts,
+                        onCreate: startDraft
+                    }) : null,
                     h("div", { className: styles.calendarSurface },
                         h("div", { id: viewId + "-" + view + "-panel", className: "dsh-tab-panel", role: "tabpanel", "aria-labelledby": viewId + "-" + view }, renderCalendar())
                     ),
@@ -2458,7 +2469,7 @@ __stardustUpdatesGuard(React, "dsh-calendar.import", { dirty: !!content.trim(), 
             const original = draft?.uid && !draft.isSeries ? data.events.find(event => event.uid === draft.uid) : undefined;
             const page = h("section", {
                 ref: rootRef, className: clsx(styles["dshc-root"], workbench && LAYOUT_CLASSES[layout]),
-                "data-main": workbench, "data-compact": compact, "data-dsh-style": dshStyle, "data-dsh-font": dshFont, style: appearance,
+                "data-main": workbench, "data-compact": compact, "data-calendar-layout": workbench ? (layout === "cards" ? "bento" : layout) : undefined, "data-dsh-style": dshStyle, "data-dsh-font": dshFont, style: appearance,
                 onPointerMove: workbench ? moveCalendarSpotlight : undefined,
                 tabIndex: workbench ? 0 : undefined, onKeyDown: workbench ? onWorkbenchKeyDown : undefined
             },

@@ -19,8 +19,9 @@ function storeCalendarPreference(key, value) {
 }
 
 function loadCalendarLayout() {
-    const layout = readCalendarPreference(CALENDAR_LAYOUT_KEY);
-    return Object.hasOwn(LAYOUT_CLASSES, layout) ? layout : "native";
+    const raw = readCalendarPreference(CALENDAR_LAYOUT_KEY);
+    const layout = raw === "bento" ? "cards" : raw;
+    return Object.hasOwn(LAYOUT_CLASSES, layout) ? layout : "cards";
 }
 
 function calendarLayoutOptions() {
@@ -32,10 +33,87 @@ function calendarLayoutOptions() {
     ];
 }
 
+function formatCountdownBadge(event, now) {
+    if (event.allDay) return calendarText("全天", "All day");
+    const s = startDate(event).getTime();
+    const e = endDate(event).getTime();
+    const tNow = now.getTime();
+    if (s <= tNow && e > tNow) return calendarText("进行中", "In progress");
+    const mins = Math.max(1, Math.round((s - tNow) / 60000));
+    if (mins < 60) return calendarText(mins + " 分钟后", "in " + mins + "m");
+    const hours = Math.floor(mins / 60);
+    const rem = mins % 60;
+    if (hours < 24) return calendarText(rem > 0 ? hours + "h" + rem + "m 后" : hours + " 小时后", rem > 0 ? "in " + hours + "h " + rem + "m" : "in " + hours + "h");
+    const days = Math.max(1, daysBetween(now, startDate(event)));
+    return calendarText(days + " 天后", "in " + days + "d");
+}
+
+function TodayFocusRibbon({ events, conflicts, canCreate, configured, demo, onJumpToday, onOpenEvent, onReviewConflicts, onCreate }) {
+    const now = new Date();
+    const todayText = UI_LANG === "en"
+        ? now.toLocaleDateString("en-US", { month: "short", day: "numeric", weekday: "short" })
+        : (now.getMonth() + 1) + "月" + now.getDate() + "日 周" + WEEKDAYS_ZH[isoWeekday(now) - 1];
+    const upcoming = sortForDisplay(events).filter(ev => {
+        if (ev.status?.toUpperCase() === "CANCELLED") return false;
+        if (ev.allDay) return dayKey(endDate(ev)) > dayKey(now);
+        return endDate(ev).getTime() > now.getTime();
+    });
+    const nextEvent = upcoming[0] || null;
+    const hasConflicts = conflicts > 0;
+    return h("div", {
+        className: styles.focusRibbon,
+        "data-calendar-focus-ribbon": "true",
+        "data-tour": "calendar-focus-ribbon",
+        "data-window-drag-exclude": "",
+        role: "region",
+        "aria-label": calendarText("今日聚焦条", "Today focus ribbon")
+    },
+        h("button", {
+            type: "button",
+            className: styles.focusDatePill,
+            onClick: onJumpToday,
+            title: calendarText("回到今天", "Jump to today")
+        },
+            h("span", { className: styles.focusDot, "aria-hidden": "true" }),
+            h("span", { className: styles.focusDateLabel }, calendarText("今天", "Today")),
+            h("span", { className: styles.focusDateValue }, todayText)
+        ),
+        nextEvent ? h("button", {
+            type: "button",
+            className: styles.focusNextPill,
+            onClick: () => onOpenEvent(nextEvent),
+            title: formatWhen(nextEvent)
+        },
+            h("span", { className: styles.focusNextTag }, calendarText("下一场", "Next")),
+            h("span", { className: styles.focusNextTitle }, nextEvent.summary),
+            h("span", { className: styles.focusCountdown }, (nextEvent.allDay ? "" : hhmm(startDate(nextEvent)) + " · ") + formatCountdownBadge(nextEvent, now))
+        ) : h("div", { className: styles.focusClearPill },
+            h("span", null, demo ? calendarText("示例日历 · 今日余下时间空闲", "Sample · Clear ahead") : configured === false ? calendarText("连接日历后自动显示下一场日程", "Connect calendar to track upcoming events") : calendarText("今日余下时间空闲", "Clear schedule ahead"))
+        ),
+        h("div", { className: styles.focusRight },
+            hasConflicts ? h("button", {
+                type: "button",
+                className: clsx(styles.focusConflictPill, styles.warn),
+                onClick: onReviewConflicts
+            }, h(Icon, { name: "warning", size: 13 }), h("span", null, calendarText(conflicts + " 处冲突", conflicts + " conflict" + (conflicts === 1 ? "" : "s"))))
+            : h("span", { className: styles.focusConflictPill },
+                h(Icon, { name: "check", size: 13 }),
+                h("span", null, calendarText("无时间冲突", "Conflict-free"))
+            ),
+            h("button", {
+                type: "button",
+                className: styles.focusQuickNew,
+                disabled: !canCreate,
+                onClick: onCreate
+            }, calendarText("+ 快速新建", "+ Quick add"))
+        )
+    );
+}
+
 function CalendarLayoutPicker({ layout, options, onChange }) {
     const label = calendarText("布局", "Layout");
     return h(React.Fragment, null,
-        h("div", { className: styles.layoutChoices, role: "group", "aria-label": label },
+        h("div", { className: styles.layoutChoices, role: "group", "aria-label": label, "data-tour": "calendar-layout" },
             options.map(option => h(Btn, {
                 key: option.id, variant: option.id === layout ? "primary" : "ghost",
                 title: option.label,

@@ -2,7 +2,7 @@
 
 # Calendar
 
-**DeepSeek Harness 原生日历工作台：管理 CalDAV 日程、查找空闲时段、预览导入 ICS，支持多套布局与五种界面主题切换。**
+**DeepSeek Harness 原生日历工作台：默认采用 Bento 卡片式工作室布局与「今日聚焦条」（今日徽章、下一日程倒计时、无冲突状态、一键 `+ 快速新建`），管理 CalDAV 日程、查找空闲时段、预览导入 ICS，支持 4 套布局与 13 套主题 + 8 种字体切换。**
 
 [![npm](https://img.shields.io/npm/v/dsh-calendar)](https://www.npmjs.com/package/dsh-calendar) [![downloads](https://raw.githubusercontent.com/STARDUSTLC666/dsh-suite/npm-downloads/assets/dsh-calendar-downloads.svg)](https://www.npmjs.com/package/dsh-calendar) [![total downloads](https://raw.githubusercontent.com/STARDUSTLC666/dsh-suite/npm-downloads/assets/dsh-calendar-total-downloads.svg)](https://www.npmjs.com/package/dsh-calendar)
 
@@ -12,23 +12,23 @@
   <source media="(prefers-color-scheme: dark) and (max-width: 640px)" srcset="https://raw.githubusercontent.com/STARDUSTLC666/dsh-calendar/main/docs/assets/intro/workflow-zh-mobile-dark.svg">
   <source media="(max-width: 640px)" srcset="https://raw.githubusercontent.com/STARDUSTLC666/dsh-calendar/main/docs/assets/intro/workflow-zh-mobile-light.svg">
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/STARDUSTLC666/dsh-calendar/main/docs/assets/intro/workflow-zh-dark.svg">
-  <img src="https://raw.githubusercontent.com/STARDUSTLC666/dsh-calendar/main/docs/assets/intro/workflow-zh-light.svg" alt="看清日程，找到当前日历里合适的空闲时间。 · 流程示意" width="100%">
+  <img src="https://raw.githubusercontent.com/STARDUSTLC666/dsh-calendar/main/docs/assets/intro/workflow-zh-light.svg" alt="Bento 日历工作室与今日聚焦条：看清日程、定位空档并核对写入。 · 流程示意" width="100%">
 </picture>
 
 ## 功能
 
-- 用月、周或议程视图安排日程，支持周视图拖拽改期、iCloud 日历自动发现及从文字/截图智能草稿填写。
-- 按时长、工作日与缓冲查找空闲候选，并支持**「复制空闲时段文案」**一键发到微信、钉钉、Slack 或邮件。
-- 顶栏内置**「? 引导」**聚光灯分步导览（首次打开自动展示，内含一键复制的对话查空档指令气泡）。
-- 先核对新建草稿或 ICS 导入预览，再确认写入。
-- 内置多套布局、事件配色与五种界面主题切换（原生清透 / 米白纸感 / Claude 暖书卷 / 8-Bit 像素 / 晴空薄荷），深色模式采用柔和石板灰。
+- **默认 Bento 卡片工作室 + 今日聚焦条**：首次打开即呈现立体卡片式 Bento 布局（可一键切换原生 / 浮岛 / 聚光 / Bento）；画布顶部的**今日聚焦条**实时汇总今日日期徽章、下一场日程倒计时、冲突状态与**「+ 快速新建」**快捷胶囊。
+- **月 / 周 / 议程视图与高效排期**：支持周视图拖拽改期（15 分钟吸附 + 5 秒撤销）、iCloud 日历自动发现及从文字/截图智能生成日程草稿。
+- **找空闲时段与一键邀约**：按时长、工作日与缓冲查找空闲候选，并支持**「复制空闲时段文案」**一键发到微信、钉钉、Slack 或邮件。
+- **交互式「? 引导」导览**：顶栏内置 4 步聚光灯导览（聚焦今日条 -> Bento 布局与视图 -> 找空闲时段与一键复制对话指令 -> 冲突检测与智能草稿）。
+- **先核对再写入 + 13 套主题与 8 种字体**：新建草稿与 ICS 导入预览均先检查冲突与去重，再确认写入；顶栏支持 13 套设计风格、4 套事件配色与 8 套字体搭配（默认幼圆等宽），深色模式柔和护眼。
 
 <details>
 <summary>查看实际示例</summary>
 
-![Calendar 的薄荷主题 DSH 原生月视图](https://raw.githubusercontent.com/STARDUSTLC666/dsh-calendar/main/docs/assets/intro/screen-zh.webp)
+![Calendar 默认 Bento 卡片工作室布局与今日聚焦条](https://raw.githubusercontent.com/STARDUSTLC666/dsh-calendar/main/docs/assets/intro/screen-zh.webp)
 
-截图来自 DeepSeek Harness 0.2.2-rc.3 中的 Calendar 0.18.1（薄荷主题），使用示例日程。
+截图来自 DeepSeek Harness 0.2.2-rc.3 中的 Calendar（默认 Bento 布局 + 今日聚焦条），使用示例日程。
 
 </details>
 
@@ -44,11 +44,11 @@ dsh plugin --profile desktop add dsh-calendar
 
 ## 开始使用
 
-### 三步用起来：连接日历 -> 查空档发邀约 -> 让助手巡检日程
+### 三步用起来：打开 Bento 与今日聚焦条 -> 查空档发邀约 -> 冲突核对与助手协作
 
-1. **连接日历**：打开左侧栏「日历」，在「日历连接」选择服务商（iCloud / Google / Nextcloud / 自建 CalDAV），先点「测试连接」验证读取，再保存启用；首次上手也可先点「查看示例」。
-2. **查空档发邀约**：切到「找空闲时段」（快捷键 `F`），设定时长、工作时间与前后缓冲；查出候选后既可点**「复制空闲时段文案」**直接粘贴到微信、钉钉、Slack 或邮件跟对方约时间，也可点「用此时段新建」进入草稿核对保存。
-3. **让助手巡检日程**：新建日程时支持从通知文字或截图生成草稿；也可点顶栏**「? 引导」**聚光灯导览一键复制对话指令发给 DSH 助手，或导入 `.ics` 文件预览去重后写入。
+1. **打开 Bento 工作台与今日聚焦条**：打开左侧栏「日历」，默认进入 **Bento** 卡片布局与顶部的**今日聚焦条**（一眼掌握今日徽章、下一场日程倒计时、冲突状态与 `+ 快速新建`）；在「连接」中选择服务商（iCloud / Google / Nextcloud / 自建 CalDAV），先点「测试连接」再保存启用，首次体验也可先点「查看示例」。
+2. **视图切换与查空档发邀约**：按 `M / W / A` 切换月/周/议程视图或从顶栏一键切换 `原生 / 浮岛 / 聚光 / Bento`；按 `F` 进入「找空闲时段」，设定时长、工作日与前后缓冲，查出候选后点**「复制空闲时段文案」**直接发到微信、钉钉、Slack 或邮件，或点「用此时段新建」进入草稿。
+3. **冲突核对、智能草稿与助手协作**：点今日聚焦条的 `+ 快速新建` 或右上角「新建日程」，支持粘贴文字/截图生成草稿并自动提示重叠冲突，也支持 `.ics` 预览去重导入；随时点顶栏**「? 引导」**重温 4 步导览并一键复制给 DSH 对话助手的指令：
 
 可以直接复制给 DSH 对话助手的常用指令：
 

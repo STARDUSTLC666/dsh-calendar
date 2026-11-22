@@ -4,6 +4,8 @@
 
 ## Current improvements
 
+The calendar workbench now opens by default in the tactile **Bento** card studio layout with a compact **Today Focus Ribbon** right above the calendar canvas (showing today's date badge, next-event countdown, conflict status, and a 1-click `+ Quick event` pill). The topbar keeps 1-click switching across 4 layouts (`Native / Floating / Spotlight / Bento`), 13 visual styles, 8 curated font pairings, and a refreshed 4-step **`? Tour`** spotlight walkthrough.
+
 Use YYYY-MM-DD for dates and ISO datetimes with Z or a UTC offset. Invalid dates fail before remote creation or updates. Existing events are preserved.
 
 ## Installation

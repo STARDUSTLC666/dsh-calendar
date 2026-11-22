@@ -284,7 +284,7 @@ test('CoachmarkTour (? 引导), spotlight + directional arrow, inline prompt cop
 
     // Wait for first-visit 280ms auto-open timer; verify it does NOT steal focus
     await react.act(async () => new Promise(r => setTimeout(r, 320)));
-    const autoCard = container.querySelector('[data-tour-card="connection"]');
+    const autoCard = container.querySelector('[data-tour-card="focus-ribbon"]');
     assert.ok(autoCard, 'first-visit auto-open must mount step 1 CoachmarkTour after 280ms');
     assert.equal(trigger.getAttribute('aria-expanded'), 'true');
     assert.equal(popoverShown >= 1, true, 'tour layer promoted via showPopover()');
@@ -310,23 +310,23 @@ test('CoachmarkTour (? 引导), spotlight + directional arrow, inline prompt cop
 
     // Manually click `? 引导` in topbar: tour opens at step 1/4 and focuses [data-tour-next]
     await react.act(async () => { trigger.click(); });
-    const step1Card = container.querySelector('[data-tour-card="connection"]');
+    const step1Card = container.querySelector('[data-tour-card="focus-ribbon"]');
     assert.ok(step1Card, 'manual trigger opens step 1');
     assert.equal(step1Card.getAttribute('role'), 'dialog');
     assert.equal(step1Card.getAttribute('aria-modal'), 'false');
     assert.ok(step1Card.getAttribute('aria-labelledby'));
-    assert.ok(container.querySelector('[data-tour-spotlight="connection"]'), 'spotlight cutout rendered');
+    assert.ok(container.querySelector('[data-tour-spotlight="focus-ribbon"]'), 'spotlight cutout rendered');
     assert.ok(step1Card.querySelector('[data-tour-arrow]'), 'directional 10x10 arrow rendered');
     assert.match(step1Card.textContent, /1 \/ 4/);
-    assert.match(step1Card.textContent, /连接日历账号/);
+    assert.match(step1Card.textContent, /今日聚焦条/);
     assert.equal(win.document.activeElement, step1Card.querySelector('[data-tour-next]'), 'manual open focuses Next button');
 
-    // Advance to Step 2 (views & drag reschedule)
+    // Advance to Step 2 (Bento default layout & styles)
     await react.act(async () => { container.querySelector('[data-tour-next]').click(); });
-    const step2Card = container.querySelector('[data-tour-card="views"]');
+    const step2Card = container.querySelector('[data-tour-card="layout"]');
     assert.ok(step2Card);
     assert.match(step2Card.textContent, /2 \/ 4/);
-    assert.match(step2Card.textContent, /日 \/ 周 \/ 月视图切换与拖拽改期/);
+    assert.match(step2Card.textContent, /Bento 默认布局/);
 
     // Advance to Step 3 (availability & inline 1-click prompt copy)
     await react.act(async () => { container.querySelector('[data-tour-next]').click(); });
@@ -377,8 +377,18 @@ test('v3 header, sliding tab indicator, resizable split sidebar, shimmer skeleto
 
     const header = container.querySelector('[data-dsh-header]');
     assert.ok(header, 'unified topbar exposes [data-dsh-header]');
+    const rootEl = container.querySelector('.dshc-root');
+    assert.equal(rootEl.getAttribute('data-calendar-layout'), 'bento', 'fresh calendar defaults to Bento (cards) layout');
+    const focusRibbon = container.querySelector('[data-calendar-focus-ribbon="true"]');
+    assert.ok(focusRibbon, 'Today Focus Ribbon renders above calendar canvas');
+    assert.match(focusRibbon.textContent, /今天/, 'Today Focus Ribbon shows today badge');
+    assert.match(focusRibbon.textContent, /V3 Design Review/, 'Today Focus Ribbon shows next upcoming event');
+    assert.match(focusRibbon.textContent, /无时间冲突/, 'Today Focus Ribbon shows conflict-free indicator');
+    assert.match(focusRibbon.textContent, /\+ 快速新建/, 'Today Focus Ribbon renders + 快速新建 pill');
     const layoutPills = [...header.querySelectorAll('[aria-label="布局"] button')].map(b => b.textContent);
     assert.deepEqual(layoutPills, ['原生', '浮岛', '聚光', 'Bento']);
+    const bentoBtn = [...header.querySelectorAll('[aria-label="布局"] button')].find(b => b.textContent === 'Bento');
+    assert.equal(bentoBtn.getAttribute('aria-pressed'), 'true', 'Bento pill is pressed by default');
     assert.match(probe.CSS, /#ececec[\s\S]*#1b4f9c/i, 'win98 platinum toolbar contrast rule present');
 
     const tablist = container.querySelector('[data-dsh-tablist]');

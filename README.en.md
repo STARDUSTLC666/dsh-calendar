@@ -2,7 +2,7 @@
 
 # Calendar
 
-**DeepSeek Harness native calendar workbench: manage CalDAV schedules, find open slots, preview ICS imports, and switch layouts, palettes, and five UI themes.**
+**DeepSeek Harness native calendar workbench: opens in tactile Bento studio layout with a live Today Focus Ribbon (today badge, next-event countdown, conflict-free pill, 1-click `+ Quick event`), CalDAV scheduling, open-slot finder, ICS preview import, 4 layouts, 13 styles, and 8 fonts.**
 
 [![npm](https://img.shields.io/npm/v/dsh-calendar)](https://www.npmjs.com/package/dsh-calendar) [![downloads](https://raw.githubusercontent.com/STARDUSTLC666/dsh-suite/npm-downloads/assets/dsh-calendar-downloads.svg)](https://www.npmjs.com/package/dsh-calendar) [![total downloads](https://raw.githubusercontent.com/STARDUSTLC666/dsh-suite/npm-downloads/assets/dsh-calendar-total-downloads.svg)](https://www.npmjs.com/package/dsh-calendar)
 
@@ -12,23 +12,23 @@
   <source media="(prefers-color-scheme: dark) and (max-width: 640px)" srcset="https://raw.githubusercontent.com/STARDUSTLC666/dsh-calendar/main/docs/assets/intro/workflow-en-mobile-dark.svg">
   <source media="(max-width: 640px)" srcset="https://raw.githubusercontent.com/STARDUSTLC666/dsh-calendar/main/docs/assets/intro/workflow-en-mobile-light.svg">
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/STARDUSTLC666/dsh-calendar/main/docs/assets/intro/workflow-en-dark.svg">
-  <img src="https://raw.githubusercontent.com/STARDUSTLC666/dsh-calendar/main/docs/assets/intro/workflow-en-light.svg" alt="See your schedule and find time in your calendar. · workflow illustration" width="100%">
+  <img src="https://raw.githubusercontent.com/STARDUSTLC666/dsh-calendar/main/docs/assets/intro/workflow-en-light.svg" alt="Bento calendar studio & Today Focus Ribbon: inspect events, find slots, and review before saving. · workflow illustration" width="100%">
 </picture>
 
 ## Features
 
-- Plan with month, week and agenda views, week drag-to-reschedule, iCloud calendar discovery, and reviewed smart event drafts from text or screenshots.
-- Find candidates using duration, weekdays and buffers, and click **Copy free slots summary** to paste formatted meeting options straight into WeChat, DingTalk, Slack, or email.
-- Launch the interactive **? Tour** spotlight coachmark guide from the topbar (with first-visit auto-open and 1-click assistant prompt copy).
-- Review event drafts or ICS imports before confirming writes.
-- Harmonized layouts, event palettes, and five switchable UI themes (Native Airy, Warm Cream, Claude Warmth, Bright 8-Bit, and Airy Mint) with breathable slate dark mode.
+- **Bento studio default + Today Focus Ribbon**: Opens straight into the tactile **Bento** card grid (switchable between Native / Floating / Spotlight / Bento in one click), paired with a compact **Today Focus Ribbon** showing today's date badge, next-event countdown, conflict status, and a 1-click **`+ Quick event`** pill.
+- **Month, week & agenda scheduling**: Drag-to-reschedule in week view (15-min snap + 5-second undo), iCloud calendar auto-discovery, and reviewed smart event drafts from pasted text or screenshots.
+- **Find & share open slots**: Search candidates by duration, weekdays, and buffers, then click **Copy free slots summary** to paste formatted meeting options straight into WeChat, DingTalk, Slack, or email.
+- **Interactive `? Tour` spotlight guide**: 4-step topbar coachmark tour (Today Focus Ribbon -> Bento layout & views -> Find available time + 1-click prompt copy -> Conflict checks & smart drafts).
+- **Review before writing + 13 styles & 8 fonts**: Every draft and ICS import checks overlaps and duplicates before saving; switch across 13 visual styles, 4 event palettes, and 8 curated fonts (`Rounded Mono` default) with calm slate dark mode.
 
 <details>
 <summary>See a workbench example</summary>
 
-![Calendar month view in Mint theme with DSH native layout](https://raw.githubusercontent.com/STARDUSTLC666/dsh-calendar/main/docs/assets/intro/screen-en.webp)
+![Calendar default Bento studio layout with Today Focus Ribbon](https://raw.githubusercontent.com/STARDUSTLC666/dsh-calendar/main/docs/assets/intro/screen-en.webp)
 
-Calendar 0.18.1 running in DeepSeek Harness 0.2.2-rc.3 (Mint theme) with sample events.
+Calendar running in DeepSeek Harness 0.2.2-rc.3 (default Bento layout + Today Focus Ribbon) with sample events.
 
 </details>
 
@@ -44,11 +44,11 @@ For the web profile, replace `desktop` with `web`. Restart that DSH profile afte
 
 ## Start using it
 
-### Three-step workflow: Connect calendar -> Share free slots -> Review with assistant
+### Three-step workflow: Open Bento & Today Ribbon -> Find & share free slots -> Check conflicts & save
 
-1. **Connect your calendar**: Open **Calendar** in the sidebar, choose iCloud, Google, Nextcloud, or custom CalDAV in **Connection**, run **Test connection**, and save (or click **See a sample** first).
-2. **Find & share free slots**: Open **Find available time** (shortcut `F`), set duration, working hours, and buffers, then click **Copy free slots summary** to paste clean time options into WeChat, DingTalk, Slack, or email—or click **Create with this time** to open a pre-filled draft.
-3. **Review with your assistant**: Extract drafts from messages or screenshots in **New event**, preview `.ics` files before importing, or open **? Tour** in the topbar to copy ready-made DSH chat prompts:
+1. **Open the Bento studio & Today Focus Ribbon**: Open **Calendar** in the sidebar to see the default **Bento** card layout and live **Today Focus Ribbon** (today badge, next event countdown, conflict indicator, and `+ Quick event`). Choose iCloud, Google, Nextcloud, or custom CalDAV in **Connection**, run **Test connection**, and save—or click **See a sample** first.
+2. **Switch views & share free slots**: Press `M / W / A` for month/week/agenda or switch `Native / Floating / Spotlight / Bento` in the header. Press `F` for **Find available time**, set duration, working hours, and buffers, then click **Copy free slots summary** to share options—or **Create with this time** to open a pre-filled draft.
+3. **Verify conflicts & review with your assistant**: Click **`+ Quick event`** on the Today Focus Ribbon (or **New event**) to extract drafts from messages/screenshots with overlap alerts, preview `.ics` files before importing, or open **? Tour** in the topbar to copy ready-made DSH chat prompts:
 
 - `Find two 45-minute free slots this week in the afternoon (13:30–18:00) with a 15-minute buffer, and list the candidates first without creating an event.`
 - `Summarize today's meeting agenda in chronological order with locations, and highlight any scheduling overlaps.`

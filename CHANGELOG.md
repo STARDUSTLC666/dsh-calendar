@@ -1,5 +1,13 @@
 # 更新记录
 
+## 0.21.0 (2026-11-22)
+
+- **默认 Bento 卡片工作室布局 + 今日聚焦条（`TodayFocusRibbon`）**：
+  - 首次打开工作台默认呈现立体卡片式 **Bento** 布局（兼容 `bento` 偏好键，顶栏仍可一键切换 `原生 / 浮岛 / 聚光 / Bento` 与 13 套设计风格 + 8 种字体）。
+  - 在日历画布上方新增紧凑 **今日聚焦条**：实时显示今日日期徽章（一键回跳今天）、下一场日程实时倒计时胶囊（点击直达详情）、无冲突/冲突预警指示，以及一键 `+ 快速新建` 胶囊。
+- **交互引导、英文顶栏适配与文档焕新**：更新 4 步「? 引导」聚光灯导览（聚焦今日条 -> Bento 布局与视图 -> 找空闲时段与一键复制指令 -> 冲突核对与智能草稿），优化英文顶栏标签与响应式断点，同步刷新双语 README、使用说明、工作台说明、8 张浅深色流程示意图与最新工作台实景截图。
+- **Default Bento Studio Layout + Live Today Focus Ribbon**: opens fresh sessions directly in tactile **Bento** card layout (keeping 1-click `Native / Floating / Spotlight / Bento` switching + 13 styles & 8 fonts) and adds a compact **Today Focus Ribbon** above the calendar canvas (today badge, next-event countdown pill, conflict status indicator, and 1-click `+ Quick add`). Includes updated 4-step `? Tour`, crisp English header layout, and refreshed bilingual docs, workflow SVGs, and screenshots.
+
 ## 0.20.5 (2026-11-20)
 
 - 保留省略 calendars 配置的语义，恢复仅配置 caldavUrl 的单日历连接；显式空数组仍按原规则校验。
