@@ -251,7 +251,7 @@ export function apply(ctx: CalendarPluginContext, config?: CalendarConfig | null
         privateBackends.set(key,entry)
       }
       return entry
-    })
+    }, cfg.perUser === true)
   } catch (error) {
     console.warn('dsh-calendar: 面板路由未挂载：' + (error instanceof Error ? error.message : String(error)))
   }

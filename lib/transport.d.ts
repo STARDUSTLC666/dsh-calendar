@@ -6,4 +6,4 @@ export declare const AUTH_DRAFT_ROUTE = "/api/dsh-calendar/draft";
 export declare function installAuthenticatedCalendar(ctx: any, resolve: (principal: unknown) => {
     settings: CalendarSettingsBackend;
     imports: CalendarImportBackend;
-}): void;
+}, perUser?: boolean): void;

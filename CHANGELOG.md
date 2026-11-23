@@ -1,5 +1,10 @@
 # 更新记录
 
+## 0.21.3 (2026-11-23)
+
+- 修复 Harness 0.2.3 Alpha 中连接、ICS 导入和智能草稿接口返回 400。日历复用宿主对 Fetch 路由的鉴权，继续核对用户身份，并支持无请求体的连接状态查询。
+- Fix connection, ICS import and Smart Draft requests on Harness 0.2.3 Alpha by using the host-authenticated Fetch carrier and supporting bodyless connection status requests.
+
 ## 0.21.2 (2026-11-23)
 
 - 先确认日历连接，再请求日程。首次安装未配置账号时可直接进入连接设置或查看示例，避免提前拉取日程引发错误提示。面板也会显示宿主返回的具体错误。
