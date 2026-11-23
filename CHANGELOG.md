@@ -1,5 +1,10 @@
 # 更新记录
 
+## 0.21.2 (2026-11-23)
+
+- 先确认日历连接，再请求日程。首次安装未配置账号时可直接进入连接设置或查看示例，避免提前拉取日程引发错误提示。面板也会显示宿主返回的具体错误。
+- Check the connection before listing events. A fresh installation can proceed to setup or the sample calendar without a failed event request, and the workbench displays detailed host errors.
+
 ## 0.21.1 (2026-11-23)
 
 - **反代子路径与 DSH 桌面端认证修复**：将智能草稿路由 `DSH_CALENDAR_DRAFT_ROUTE` 改为相对路径 `api/dsh-calendar/draft`，确保反向代理子路径挂载下不逃逸站点根；在全部 3 条宿主认证路由（`/api/dsh-calendar/settings`、`/api/dsh-calendar/draft`、`/api/dsh-calendar/import`）统一豁免 DSH 桌面端 `Origin: dsh-app://app`（含 `Sec-Fetch-Site`），并补充单测覆盖。

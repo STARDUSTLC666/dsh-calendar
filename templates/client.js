@@ -407,7 +407,7 @@ window.__ModuleLoader__.load({ id: "dsh-calendar", factory: (require) => {
                 body = null;
             }
             if (!res.ok || !body || body.ok !== true) {
-                const message = body && body.error && body.error.message ? body.error.message : ("HTTP " + res.status);
+                const message = body?.error?.message || body?.message || ("HTTP " + res.status);
                 const error = new Error(message);
                 error.status = res.status;
                 error.code = body && body.error ? body.error.code : undefined;
@@ -1148,11 +1148,15 @@ window.__ModuleLoader__.load({ id: "dsh-calendar", factory: (require) => {
             ];
         }
         /** 拉一个时间窗的事件；demo 为真时用示例数据，不打网络。 */
-        function useCalendarData(range, reloadToken, demo) {
+        function useCalendarData(range, reloadToken, demo, configured) {
             const [state, setState] = useState({ loading: true, error: null, events: [], configured: true });
             useEffect(() => {
                 if (demo === true) {
                     setState({ loading: false, error: null, events: demoEvents(), configured: true });
+                    return () => { };
+                }
+                if (configured !== true) {
+                    setState({ loading: configured === null, error: null, events: [], configured: false });
                     return () => { };
                 }
                 let alive = true;
@@ -1163,7 +1167,7 @@ window.__ModuleLoader__.load({ id: "dsh-calendar", factory: (require) => {
                     .catch((error) => { if (alive)
                     setState({ loading: false, error, events: [], configured: error && error.code !== "not-configured" }); });
                 return () => { alive = false; };
-            }, [range.start, range.end, reloadToken, demo]);
+            }, [range.start, range.end, reloadToken, demo, configured]);
             return state;
         }
         // ───────────────────────────── 表单 ─────────────────────────────
@@ -1943,7 +1947,7 @@ __stardustUpdatesGuard(React, "dsh-calendar.import", { dirty: !!content.trim(), 
                 return () => { alive = false; };
             }, [reloadToken]);
             const range = useMemo(() => rangeOf(view, anchor), [view, anchor.getFullYear(), anchor.getMonth(), anchor.getDate()]);
-            const data = useCalendarData(range, reloadToken, demo);
+            const data = useCalendarData(range, reloadToken, demo, configured);
             const reload = () => setReloadToken((n) => n + 1);
             /** 渲染用的事件：把乐观改期叠加在服务器数据之上。 */
             const eventsWithMoves = useMemo(() => data.events.map((event) => {
