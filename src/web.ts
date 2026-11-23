@@ -416,9 +416,9 @@ export class CalendarSettingsBackend {
     if (request.method === 'GET' && !draft) return json(200,{ok:true,value:this.status()})
     if (request.method !== 'POST') return json(405,{ok:false,message:'Use POST'})
     if (request.headers.get('content-type')?.split(';')[0].trim().toLowerCase() !== 'application/json') return json(415,{ok:false,message:'JSON required'})
-    const origin = request.headers.get('origin'), site = request.headers.get('sec-fetch-site')
-    if (site && !['same-origin','none'].includes(site)) return json(403,{ok:false,message:'Cross-site request refused'})
-    if (origin) {
+    const origin = request.headers.get('origin'), site = request.headers.get('sec-fetch-site'), desktop = origin === 'dsh-app://app'
+    if (site && !['same-origin','none'].includes(site) && !desktop) return json(403,{ok:false,message:'Cross-site request refused'})
+    if (origin && !desktop) {
       try { const parsed = new URL(origin); if (!['http:','https:'].includes(parsed.protocol) || parsed.host !== (request.headers.get('host') || new URL(request.url).host)) return json(403,{ok:false,message:'Cross-origin request refused'}) }
       catch { return json(403,{ok:false,message:'Invalid origin'}) }
     }

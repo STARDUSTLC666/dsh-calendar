@@ -95,9 +95,9 @@ export class CalendarImportBackend {
   async fetch(request: Request): Promise<Response> {
     if (request.method !== 'POST') return fail(405, '请使用 POST')
     if (request.headers.get('x-dsh-calendar-import') !== '1' || request.headers.get('content-type')?.split(';')[0].trim().toLowerCase() !== 'application/json') return fail(403, '请从日历导入面板操作')
-    const site = request.headers.get('sec-fetch-site'), origin = request.headers.get('origin')
-    if (site && !['same-origin', 'none'].includes(site)) return fail(403, '拒绝跨站操作')
-    if (origin) {
+    const site = request.headers.get('sec-fetch-site'), origin = request.headers.get('origin'), desktop = origin === 'dsh-app://app'
+    if (site && !['same-origin', 'none'].includes(site) && !desktop) return fail(403, '拒绝跨站操作')
+    if (origin && !desktop) {
       try { const url = new URL(origin); if (!['http:', 'https:'].includes(url.protocol) || url.host !== (request.headers.get('host') || new URL(request.url).host)) return fail(403, '拒绝跨源操作') } catch { return fail(403, '无效来源') }
     }
     try {

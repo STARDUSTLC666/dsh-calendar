@@ -1,8 +1,8 @@
 /**
  * dsh-calendar —— CalDAV 日历工具插件（node 半身，配置走 cordis.patch.yml）。
  *
- * 插件导出 apply(ctx, config)：把五个面向模型的工具（calendar_list / calendar_create /
- * calendar_update / calendar_delete / calendar_search）注册进宿主进程的工具注册表。
+ * 插件导出 apply(ctx, config)：把七个面向模型的工具（calendar_list / calendar_create /
+ * calendar_update / calendar_delete / calendar_search / calendar_health / calendar_find_time）注册进宿主进程的工具注册表。
  * 配置缺失时插件照常加载，工具在 execute 时才抛出带中文指引的错误。
  *
  * @module dsh-calendar
@@ -69,7 +69,7 @@ export declare function attachSettings(ctx: CalendarPluginContext, cfg: Calendar
     ns: string;
 };
 /**
- * 插件入口：惰性解析配置并注册五个日历工具。
+ * 插件入口：惰性解析配置并注册七个日历工具。
  * @param ctx - 宿主上下文（至少含 tools.register）。
  * @param config - 插件配置（可缺省）。
  */

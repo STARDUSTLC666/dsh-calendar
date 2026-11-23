@@ -1,5 +1,12 @@
 # 更新记录
 
+## 0.21.1 (2026-11-23)
+
+- **反代子路径与 DSH 桌面端认证修复**：将智能草稿路由 `DSH_CALENDAR_DRAFT_ROUTE` 改为相对路径 `api/dsh-calendar/draft`，确保反向代理子路径挂载下不逃逸站点根；在全部 3 条宿主认证路由（`/api/dsh-calendar/settings`、`/api/dsh-calendar/draft`、`/api/dsh-calendar/import`）统一豁免 DSH 桌面端 `Origin: dsh-app://app`（含 `Sec-Fetch-Site`），并补充单测覆盖。
+- **打包收窄与文档同步**：将 `package.json` `files` 中的 `"scripts"` 收窄为 `"scripts/google-oauth.mjs"`；更新源码过时注释与中英 `USAGE` / `REFERENCE` 文档（补齐 `calendar_find_time`、认证通道 `/api/dsh-calendar/*`、`scripts/google-oauth.mjs` 说明、多集合 `calendars[]`、`scope:"series"`、语言切换链接与兼容更新范围文案）。
+- **Reverse-Proxy Subpath & DSH Desktop Origin Fixes**: Changed `DSH_CALENDAR_DRAFT_ROUTE` to relative `api/dsh-calendar/draft` so Smart Draft stays inside reverse-proxy subpath mounts; exempted DSH Desktop `Origin: dsh-app://app` (including `Sec-Fetch-Site`) across all three authenticated routes (`/settings`, `/draft`, `/import`) with unit tests.
+- **Packaging & Docs**: Narrowed `package.json` `files` from `"scripts"` to `"scripts/google-oauth.mjs"`, updated stale source comments, and synced bilingual `USAGE` and `REFERENCE` docs (`calendar_find_time`, `/api/dsh-calendar/*`, OAuth helper CLI, multi-collection `calendars[]`, `scope:"series"`, language links, and compatible update-scope wording).
+
 ## 0.21.0 (2026-11-22)
 
 - **默认 Bento 卡片工作室布局 + 今日聚焦条（`TodayFocusRibbon`）**：

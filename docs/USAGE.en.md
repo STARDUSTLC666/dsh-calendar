@@ -6,6 +6,8 @@
 
 The calendar workbench now opens by default in the tactile **Bento** card studio layout with a compact **Today Focus Ribbon** right above the calendar canvas (showing today's date badge, next-event countdown, conflict status, and a 1-click `+ Quick event` pill). The topbar keeps 1-click switching across 4 layouts (`Native / Floating / Spotlight / Bento`), 13 visual styles, 8 curated font pairings, and a refreshed 4-step **`? Tour`** spotlight walkthrough.
 
+For recurring series, explain the impact first and pass `scope:"series"` on `calendar_update` / `calendar_delete` after user confirmation — single-occurrence edits or deletes are not supported. Panel editing loads the original series dates, and delete confirmation covers the whole series. Series with cancelled, extra, or separately rescheduled occurrences cannot change start time, all-day mode, or recurrence rule as a whole (handle those in the original calendar app); summary, description, and location remain editable. TZID-qualified times preserve local clock time and DST semantics.
+
 Use YYYY-MM-DD for dates and ISO datetimes with Z or a UTC offset. Invalid dates fail before remote creation or updates. Existing events are preserved.
 
 ## Installation
@@ -122,8 +124,8 @@ Access tokens are cached in memory and checked before each DAV request, with ref
   config:
     provider: icloud
     username: you@icloud.com
-    caldavUrl: https://caldav.icloud.com/123456789/calendars/<日历ID>/
-    # password 推荐用环境变量 DSH_CALENDAR_PASSWORD
+    caldavUrl: https://caldav.icloud.com/123456789/calendars/<calendar-id>/
+    # password via DSH_CALENDAR_PASSWORD is recommended
 ```
 
 Manual iCloud YAML configuration requires a full collection URL. The workbench connection page can discover your calendars and save the address you select.
@@ -139,7 +141,7 @@ Manual iCloud YAML configuration requires a full collection URL. The workbench c
     host: https://cloud.example.com
     user: alice
     calendar: personal
-    # password 推荐用环境变量 DSH_CALENDAR_PASSWORD
+    # password via DSH_CALENDAR_PASSWORD is recommended
 ```
 
 The plugin assembles: `https://cloud.example.com/remote.php/dav/calendars/alice/personal/`.
@@ -153,7 +155,7 @@ The plugin assembles: `https://cloud.example.com/remote.php/dav/calendars/alice/
     provider: custom
     caldavUrl: https://dav.example.com/calendars/me/work/
     username: me
-    # password 推荐用环境变量 DSH_CALENDAR_PASSWORD
+    # password via DSH_CALENDAR_PASSWORD is recommended
 ```
 
 ## Authentication troubleshooting
@@ -173,9 +175,10 @@ If your CalDAV server is not directly reachable from your network (some regional
 - `calendar_health`: offline provider, endpoint and Basic/OAuth credential-completeness checks; never displays secrets or connects to the server.
 - `calendar_list`: list events in a time range (start/end, ISO 8601; defaults to the next 7 days). Recurring events are expanded by default (`expand` defaults to true, `maxOccurrences` defaults to 30, clamped to 1-200): each occurrence is a separate row with `isOccurrence: true` and `seriesStart`; non-recurring events keep `isOccurrence: false`. With `expand=false`, recurring events are returned as a single original entry with `rrule`. Results are stably sorted by start time.
 - `calendar_create`: create an event (summary/start/end required; description/location/allDay/rrule optional). Validates real calendar dates and `end >= start`.
-- `calendar_update`: edit an event by uid (summary/start/end/description/location/allDay/rrule optional; omitted fields keep their original values, including the recurrence rule and original properties such as ATTENDEE / ORGANIZER / VALARM).
-- `calendar_delete`: delete an event by uid
+- `calendar_update`: edit an event by uid (summary/start/end/description/location/allDay/rrule optional; omitted fields keep their original values, while passing an empty string `""` for `description`, `location`, or `rrule` clears the description, location, or recurrence rule; recurring series require `scope:"series"`; original properties such as ATTENDEE / ORGANIZER / VALARM are preserved).
+- `calendar_delete`: delete an event by uid (recurring series require `scope:"series"`).
 - `calendar_search`: search events by keyword within the `start`~`end` window (defaults to one year before/after now; client-side filter over title/description/location/UID, case-insensitive; `limit` defaults to 50, clamped to 1-200, and results are sorted by start time).
+- `calendar_find_time`: find available free slots within a date window (configurable duration, working hours/days, before/after buffers, and multi-collection queries), returning candidate intervals and shareable free-slot summaries.
 
 The stable event identifier `uid` is the CalDAV href (full object URL); `calendar_update` / `calendar_delete` use it.
 
@@ -190,7 +193,7 @@ Once installed, DSH grows a「Calendar」section in Settings; the chat page also
 - **Conflict notice**: before saving, overlapping events are listed and you are asked whether to continue.
 - **Configurable from the panel itself**: without a CalDAV account the panel shows guidance whose「Connection」button opens the form (test first, then save); a clearly labelled sample is one click away and never pretends to be your real calendar.
 - **Theme and locale aware**: colours come from the host design tokens (`--dsw-*`), so light/dark themes follow automatically; copy follows Settings → General.
-- **Security**: the panel only talks to the plugin’s own `/_dsh/dsh-calendar/settings`, which is loopback-only and re-checks Host, Origin and Content-Type on writes; credentials are never echoed back.
+- **Security**: the panel talks to the plugin's host-authenticated routes under `/api/dsh-calendar/*` (`/api/dsh-calendar/settings`, `/api/dsh-calendar/draft`, `/api/dsh-calendar/import`), supporting reverse-proxy subpaths and DSH Desktop while enforcing Origin, Sec-Fetch-Site, and Content-Type checks on writes; legacy loopback routes `/_dsh/dsh-calendar/*` remain available in single-user mode, and credentials are never echoed back.
 
 ## Time and timezone
 
@@ -200,16 +203,16 @@ Input and output are uniformly ISO 8601. Timed events are output in UTC (e.g. `2
 
 - Recurring event expansion: calendar_list expands RRULE by default via ICAL.RecurExpansion (`expand=true`), capped by `maxOccurrences`, and raises an explicit error when the iteration budget is exhausted; calendar_search only queries the `start`~`end` window (default one year before/after now) and still returns the original series (not expanded).
 - Single-instance reads vs edit/delete: calendar_list honors RECURRENCE-ID overrides when expanding (an occurrence separately rescheduled/retitled is returned with the override time and fields, including when the original instant is EXDATE-excluded); calendar_update / calendar_delete still operate on the whole recurring series (by uid) and cannot modify or delete just one occurrence.
-- OAuth credentials must be obtained beforehand: refresh-token authentication is supported, but there is no browser login UI / login CLI and runtime tokens are not written back to configuration.
+- OAuth credentials must be obtained beforehand: refresh-token authentication is supported; there is no in-panel browser login UI (for Google Desktop OAuth clients, use the bundled `node scripts/google-oauth.mjs` one-shot local callback helper to mint a refresh token), and runtime tokens are never written back to configuration.
 - Timezone rules: events with TZID (named timezone) are output converted to UTC (Z); all-day boundaries, DST, and other complex timezone rules are not handled finely.
-- A connection uses one calendar collection. For iCloud, discover the account's calendars and choose the one to connect.
+- Calendar collections: a standard single-calendar config uses one collection (iCloud connection setup can discover and pick a calendar); multiple collections can also be configured in YAML via `calendars[]` and switched across workbench and tools (see [deployment contract](MULTIUSER.md)).
 - Cancellation/timeout: tools use `timeoutMs` (60 seconds) and forward the host AbortSignal into token refresh and DAV network requests. Concurrent calls cancel independently.
 
 ## Development
 
 ```bash
 pnpm install
-pnpm test   # 构建 + node --test
+pnpm test   # build + node --test
 ```
 
 Build output in `lib/`; tests in `test/*.test.mjs` (no real account needed).

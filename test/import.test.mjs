@@ -106,7 +106,9 @@ test('import uses only authenticated carrier registration; cross-origin and null
   assert.equal(routes[0].path, CALENDAR_IMPORT_ROUTE); assert.equal(routes[0].requestBody, 'buffered')
   const request = headers => new Request('http://dsh.internal' + CALENDAR_IMPORT_ROUTE, { method: 'POST', headers: { 'content-type': 'application/json', 'x-dsh-calendar-import': '1', host: '127.0.0.1:8181', ...headers }, body: JSON.stringify({ action: 'zones' }) })
   assert.equal((await f.backend.fetch(request({ origin: 'http://127.0.0.1:8181' }))).status, 200)
-  for (const headers of [{ origin: 'null' }, { origin: 'https://evil.example' }, { 'sec-fetch-site': 'cross-site' }, { 'x-dsh-calendar-import': '' }]) assert.equal((await f.backend.fetch(request(headers))).status, 403)
+  assert.equal((await f.backend.fetch(request({ origin: 'dsh-app://app' }))).status, 200)
+  assert.equal((await f.backend.fetch(request({ origin: 'dsh-app://app', 'sec-fetch-site': 'cross-site' }))).status, 200)
+  for (const headers of [{ origin: 'null' }, { origin: 'https://evil.example' }, { origin: 'dsh-app://app.evil' }, { 'sec-fetch-site': 'cross-site' }, { 'x-dsh-calendar-import': '' }]) assert.equal((await f.backend.fetch(request(headers))).status, 403)
 })
 test('UID text cannot escape the collection or change the import filename on retry', async () => {
   const calls = [], service = new CalendarService(resolveConfig(config(), {}))

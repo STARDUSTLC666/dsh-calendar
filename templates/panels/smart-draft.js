@@ -1,4 +1,4 @@
-const DSH_CALENDAR_DRAFT_ROUTE = "/api/dsh-calendar/draft";
+const DSH_CALENDAR_DRAFT_ROUTE = "api/dsh-calendar/draft";
 const DSH_CALENDAR_IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp"];
 
 function draftImageData(file) {

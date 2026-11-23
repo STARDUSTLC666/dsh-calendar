@@ -198,6 +198,7 @@ Nextcloud / 自定义 Basic 服务：检查账号、密码或服务要求的应�
 - `calendar_update`：按 uid 改事件（summary/start/end/description/location/allDay/rrule 可选，未提供保留原值；description、location、rrule 显式传空字符串可清空说明、地点或停止重复；ATTENDEE、ORGANIZER、VALARM 等原始属性一并保留）
 - `calendar_delete`：按 uid 删事件
 - `calendar_search`：按关键词搜事件（只查询 start~end 窗口内的事件，缺省为当前时间前后各 1 年；客户端过滤标题/描述/地点/UID，不区分大小写；`limit` 默认 50、clamp 1-200，结果按开始时间排序）
+- `calendar_find_time`：在指定时间窗口内查找当前日历的空闲时段（支持时长、工作日/工作时间、前后缓冲与多集合查询），返回候选空档与可复制的空闲时段文案
 
 事件稳定标识 `uid` 为 CalDAV href（完整对象 URL），`calendar_update` / `calendar_delete` 使用它。
 
@@ -212,7 +213,7 @@ Nextcloud / 自定义 Basic 服务：检查账号、密码或服务要求的应�
 - **冲突提醒**：保存前若与已有日程重叠，会把重叠的几条列出来问你是否继续。
 - **没配置也能配**：未填 CalDAV 账号时显示引导，点「连接设置」就在面板里把账号填好（先测后存）；也可以点「查看示例」先看面板长什么样，示例数据有明确标注，不会冒充你的真实日历。
 - **跟随主题与语言**：配色全部走宿主设计令牌（`--dsw-*`），深浅色主题自动适配；文案跟随 Settings → General 的语言。
-- **安全**：面板只与插件自己的 `/_dsh/dsh-calendar/settings` 通信；该路由仅回环地址可达，写操作还要过 Host / Origin / Content-Type 三道校验，响应里永不回显账号密码。
+- **安全**：面板通过宿主认证通道 `/api/dsh-calendar/*`（`/api/dsh-calendar/settings`、`/api/dsh-calendar/draft`、`/api/dsh-calendar/import`）通信，支持反代子路径与 DSH 桌面端，并对写操作校验 Origin / Sec-Fetch-Site / Content-Type；单用户模式下保留旧回环兼容路由 `/_dsh/dsh-calendar/*`，响应里永不回显账号密码。
 
 ## 时间与时区
 
@@ -224,9 +225,9 @@ Nextcloud / 自定义 Basic 服务：检查账号、密码或服务要求的应�
 
 - 重复事件展开：calendar_list 默认用 ICAL.RecurExpansion 展开 RRULE（`expand=true`），受 `maxOccurrences` 封顶，展开超出迭代预算时显式报错；calendar_search 只查 start~end 窗口（默认当前前后各 1 年），仍返回原始系列（不展开）。
 - 单次实例的读取与改/删：calendar_list 展开时识别 RECURRENCE-ID 覆盖实例（单独改期/改标题的实例按覆盖后的时间与字段返回，被 EXDATE 排除原时间的覆盖实例仍会返回）；calendar_update / calendar_delete 仍针对整个重复系列（按 uid 操作），无法只修改或删除某一次发生。
-- OAuth 凭据需要事先取得：支持刷新令牌认证，但不提供浏览器登录 UI / 登录 CLI，也不把运行时令牌写回配置文件。
+- OAuth 凭据需要事先取得：支持刷新令牌认证，面板内不内置浏览器登录 UI（Google 桌面应用客户端可使用随包附带的 `node scripts/google-oauth.mjs` 一次性本地回调脚本换取刷新令牌），也不把运行时令牌写回配置文件。
 - 时区规则：带 TZID（命名时区）的事件输出会转成 UTC（Z）；全天边界、夏令时等复杂时区规则不做精细化处理。
-- 每个日历连接使用一个集合。iCloud 连接页可以发现账号中的日历，再选择其中一个。
+- 日历集合：默认单日历配置对应一个集合（iCloud 连接页可发现账号中的日历并选择）；也可在 YAML 中通过 `calendars[]` 配置多个日历集合并在工作台与工具间切换（见 [部署说明](MULTIUSER.md)）。
 - 取消/超时：工具使用 timeoutMs（60 秒），并向令牌刷新与 DAV 网络请求透传宿主 AbortSignal；并发调用独立取消。
 
 ## 开发
@@ -242,6 +243,6 @@ pnpm test   # 构建 + node --test
 
 ## 相关插件
 
-- [dsh-calendar](https://github.com/STARDUSTLC666/dsh-calendar) — CalDAV 日历五件套
+- [dsh-calendar](https://github.com/STARDUSTLC666/dsh-calendar) — CalDAV 日历工作台与 7 个日历工具
 - [dsh-slack](https://github.com/STARDUSTLC666/dsh-slack) — Slack 通知/收件箱
 - [dsh-dingtalk](https://github.com/STARDUSTLC666/dsh-dingtalk) — 钉钉群通知（零依赖）

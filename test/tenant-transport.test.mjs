@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { apply, AUTH_SETTINGS_ROUTE, createPersonSettingsFace, resolveCalendarCaller } from '../lib/index.js'
+import { apply, AUTH_DRAFT_ROUTE, AUTH_SETTINGS_ROUTE, createPersonSettingsFace, resolveCalendarCaller } from '../lib/index.js'
 
 function mount(t,extra={}){
  const directory=mkdtempSync(join(tmpdir(),'calendar-tenant-'));t.after(()=>rmSync(directory,{recursive:true,force:true}))
@@ -52,8 +52,18 @@ test('unauthorized, unidentified and cross-origin requests cannot choose a tenan
  assert.equal((await f.request({action:'connection',id:'alice'})).status,403)
  f.setPrincipal({kind:'user',id:'alice'})
  assert.equal((await f.request({action:'connection'},{origin:'https://evil.invalid'})).status,403)
+ assert.equal((await f.request({action:'connection'},{origin:'dsh-app://app.evil'})).status,403)
  assert.equal((await f.request({action:'connection'},{origin:'null'})).status,403)
  assert.equal((await f.request({action:'connection'},{'sec-fetch-site':'cross-site'})).status,403)
+ assert.equal((await f.request({action:'connection'},{origin:'dsh-app://app'})).status,200)
+ assert.equal((await f.request({action:'connection'},{origin:'dsh-app://app','sec-fetch-site':'cross-site'})).status,200)
+ const draftRoute=f.routes.get(AUTH_DRAFT_ROUTE);assert.ok(draftRoute)
+ const draftPost=(headers)=>draftRoute.fetch(new Request('https://dsh.example'+AUTH_DRAFT_ROUTE,{method:'POST',headers:{host:'dsh.example','content-type':'application/json',...headers},body:JSON.stringify({action:'models'})}))
+ assert.equal((await draftPost({origin:'https://evil.invalid'})).status,403)
+ assert.equal((await draftPost({origin:'dsh-app://app.evil'})).status,403)
+ assert.equal((await draftPost({'sec-fetch-site':'cross-site'})).status,403)
+ assert.equal((await draftPost({origin:'dsh-app://app'})).status,200)
+ assert.equal((await draftPost({origin:'dsh-app://app','sec-fetch-site':'cross-site'})).status,200)
  await assert.rejects(f.tools.get('calendar_health').execute({},{}),/verified calendar identity/i,'multi-user tools need a verified driver identity')
 })
 test('person connection saves retain server-side read-only and collection policy',async t=>{

@@ -1,5 +1,5 @@
 /**
- * 五个面向模型的日历工具：list / create / update / delete / search。
+ * 七个面向模型的日历工具：list / create / update / delete / search / health / find_time。
  * 直接调用 ctx.tools.register 注册【编译好的 JSON Schema】参数与 canonical 输出。
  *
  * @module dsh-calendar/tools
