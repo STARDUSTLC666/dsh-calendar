@@ -1449,7 +1449,7 @@ __stardustUpdatesGuard(React, "dsh-calendar.connection", { dirty: JSON.stringify
                 const mayKeep = iCloud && key === "password" ? savedICloudPassword : saved && connection?.[saved];
                 const hintKey = FIELD_HINT[form.provider]?.[key];
                 return h("div", {
-                    key, className: clsx(styles["dshc-field"], ["caldavUrl", "tokenUrl", "proxyUrl"].includes(key) && styles.fullField)
+                    key, className: clsx(styles["dshc-field"], ["caldavUrl", "host", "tokenUrl", "proxyUrl"].includes(key) && styles.fullField)
                 },
                     h("label", { htmlFor: formId + "-" + key }, t(FIELD_LABEL[key])),
                     h(Txt, {

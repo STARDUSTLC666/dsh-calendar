@@ -525,7 +525,7 @@
 .cardToolbar h3 { margin: 0; font-size: 14px; }
 .dshc-field { display: grid; align-content: start; gap: 4px; min-width: 0; margin: 0 0 10px; }
 .dshc-field > label, .dshc-field > span:first-child { color: var(--dsw-alias-label-secondary); font-weight: 500; font-size: 12px; }
-.dshc-two, .formGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 12px; }
+.dshc-two, .formGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 0 12px; }
 .fullField { grid-column: 1 / -1; }
 .dshc-input, .fieldControl, .dshc-btn.pickerTrigger {
   box-sizing: border-box;

@@ -1,5 +1,10 @@
 # 更新记录
 
+## 0.21.5 (2026-11-25)
+
+- 修复连接设置与日程双列表单排版：为 `.dshc-two` / `.formGrid` 补充 `align-items: start` 避免带提示文本的相邻字段上下错位，并将 Nextcloud 连接表单的 `host` 设为全宽以消除 `proxyUrl` 上方的右侧空洞。
+- Polish two-column form alignment in connection and schedule panels by setting `align-items: start` on `.dshc-two` / `.formGrid` and making Nextcloud `host` full-width to eliminate the empty right-column gap above `proxyUrl`.
+
 ## 0.21.4 (2026-11-24)
 
 - 新增 **「断开连接」** 入口（`disconnectConnection`）：带修订号校验与多用户隔离，断开后立即暂停面板与工具的 CalDAV 访问，同时保留当前连接资料且绝不回显密码或 OAuth 密钥；需要继续使用时在连接设置中一键「重新连接」测通后即恢复。
