@@ -17,6 +17,7 @@ export declare const SETTINGS_NAMESPACE = "dsh-calendar";
  * 因此可以共存 —— 谁设过谁说了算。
  */
 export declare const CalendarSettingsSchema: z<Schemastery.ObjectS<{
+    connectionDisabled: z<boolean, boolean>;
     provider: z<string, string>;
     caldavUrl: z<string, string>;
     username: z<string, string>;
@@ -32,6 +33,7 @@ export declare const CalendarSettingsSchema: z<Schemastery.ObjectS<{
     tokenUrl: z<string, string>;
     proxyUrl: z<string, string>;
 }>, Schemastery.ObjectT<{
+    connectionDisabled: z<boolean, boolean>;
     provider: z<string, string>;
     caldavUrl: z<string, string>;
     username: z<string, string>;
@@ -48,6 +50,7 @@ export declare const CalendarSettingsSchema: z<Schemastery.ObjectS<{
     proxyUrl: z<string, string>;
 }>>;
 export interface CalendarSettingsValue {
+    connectionDisabled?: boolean;
     provider: string;
     caldavUrl: string;
     username: string;

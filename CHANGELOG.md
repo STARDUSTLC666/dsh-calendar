@@ -1,5 +1,10 @@
 # 更新记录
 
+## 0.21.4 (2026-11-24)
+
+- 新增 **「断开连接」** 入口（`disconnectConnection`）：带修订号校验与多用户隔离，断开后立即暂停面板与工具的 CalDAV 访问，同时保留当前连接资料且绝不回显密码或 OAuth 密钥；需要继续使用时在连接设置中一键「重新连接」测通后即恢复。
+- Add **Disconnect** (`disconnectConnection`) with optimistic revision checking and per-person isolation: immediately suspends Calendar panel and tool CalDAV requests while retaining connection settings without echoing secrets, and restores access via a tested reconnect save.
+
 ## 0.21.3 (2026-11-23)
 
 - 修复 Harness 0.2.3 Alpha 中连接、ICS 导入和智能草稿接口返回 400。日历复用宿主对 Fetch 路由的鉴权，继续核对用户身份，并支持无请求体的连接状态查询。

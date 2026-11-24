@@ -349,6 +349,45 @@ test('saveConnection：先测后存，写进 settings 时带上 revision', async
   assert.equal(/app-pass/.test(res.state.raw), false, '响应不回显刚保存的密码');
 });
 
+test('disconnect suspends Calendar requests and a tested save reconnects', async () => {
+  const settings = fakeSettings({ provider: 'custom', caldavUrl: 'https://calendar.example/dav/', username: 'reader' });
+  const tested = [];
+  let calls = 0;
+  const backend = new CalendarSettingsBackend({
+    settings,
+    env: { DSH_CALENDAR_PASSWORD: 'fixture-only-' + process.pid },
+    serviceFactory: () => ({ async list() { calls++; return []; } }),
+    probeFactory: async config => { tested.push(config); return { count: 0, sample: [] }; },
+  });
+  const send = async body => {
+    const response = makeRes();
+    await backend.handle(makeReq({ body }), response);
+    return response.state;
+  };
+
+  assert.equal((await send({ action: 'connection' })).body.value.configured, true);
+  assert.equal((await send({ action: 'disconnectConnection', expectedRevision: 6 })).status, 400);
+  assert.equal(settings.state.writes.length, 0);
+
+  const paused = await send({ action: 'disconnectConnection', expectedRevision: 7 });
+  assert.equal(paused.status, 200);
+  assert.equal(paused.body.value.connection.configured, false);
+  assert.equal(paused.body.value.connection.disconnected, true);
+  assert.equal(paused.body.value.connection.username, 'reader');
+  assert.ok(!paused.raw.includes('fixture-only-'));
+  const blocked = await send({ action: 'list' });
+  assert.equal(blocked.status, 400);
+  assert.equal(calls, 0);
+
+  const connected = await send({ action: 'saveConnection' });
+  assert.equal(connected.status, 200);
+  assert.equal(connected.body.value.connection.configured, true);
+  assert.equal(connected.body.value.connection.disconnected, false);
+  assert.equal(tested[0].connectionDisabled, false);
+  assert.equal((await send({ action: 'list' })).status, 200);
+  assert.equal(calls, 1);
+});
+
 test('保存时留空密钥＝沿用已存的那一份（面板不用把密码回填到前端）', async () => {
   const settings = fakeSettings({
     provider: 'custom',

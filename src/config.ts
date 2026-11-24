@@ -36,6 +36,7 @@ export interface CalendarConfig {
   /** Opt-in legacy owner access in per-user mode; default is to require a person. */
   allowOwnerFallback?: boolean
   connectionsDir?: string
+  connectionDisabled?: boolean
   /** provider 预设；默认 custom。 */
   provider?: CalendarProvider
   /** 完整日历集合 URL；custom / icloud 必填，google / nextcloud 可由此手填覆盖预设。 */
@@ -94,6 +95,8 @@ export class ConfigError extends Error {
   }
 }
 
+export const CONNECTION_DISABLED_MESSAGE = '日历已断开连接，请在日历设置中重新连接。 / Calendar disconnected. Reconnect in Calendar settings.'
+
 export const CALENDAR_PROVIDERS: readonly CalendarProvider[] = ['google', 'icloud', 'nextcloud', 'custom']
 
 function nonEmpty(value: unknown): string | undefined {
@@ -121,6 +124,7 @@ function normalizeProvider(value: unknown): CalendarProvider {
  * @param env - 环境变量来源（测试可注入）。
  */
 export function resolveConfig(config: CalendarConfig | undefined, env: NodeJS.ProcessEnv = process.env): ResolvedConfig {
+  if (config?.connectionDisabled === true) throw new ConfigError(CONNECTION_DISABLED_MESSAGE)
   const provider = normalizeProvider(config?.provider)
   const credentials = resolveCredentials(config, env)
   const caldavUrl = buildCaldavUrl(config ?? {}, provider)

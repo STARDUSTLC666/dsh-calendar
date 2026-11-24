@@ -13,7 +13,7 @@
  * 面板要的是「事件列表 + 增删改」，所以这一层不做自己的状态：每次请求都问
  * CalDAV 服务器要，服务器就是唯一真相。缓存的只有 service 实例（token 复用）。
  */
-import { resolveConfig, type CalendarConfig } from './config.js'
+import { ConfigError, CONNECTION_DISABLED_MESSAGE, resolveConfig, type CalendarConfig } from './config.js'
 import { CalendarSettingsSchema, SETTINGS_NAMESPACE, draftToConfig, validateSettingsValue, type CalendarSettingsValue } from './settings.js'
 import { createConnectionService, connectionCollections } from './connections.js'
 import { discoverICloud } from './icloud.js'
@@ -141,7 +141,7 @@ export function hostFormsFaceOf(
     descriptor: () => findRow(),
     replace: async (value: Record<string, unknown>, revision: number): Promise<void> => {
       if (typeof provider.mutate === 'function') {
-        const ops = CONNECTION_KEYS.map(key => Object.hasOwn(value, key)
+        const ops = [...CONNECTION_KEYS, ...(Object.hasOwn(value, 'connectionDisabled') ? ['connectionDisabled'] : [])].map(key => Object.hasOwn(value, key)
           ? { op: 'set' as const, path: [key as string], value: value[key as string] }
           : { op: 'unset' as const, path: [key as string] })
         await provider.mutate(entryId, ops, revision)
@@ -259,6 +259,7 @@ export class CalendarSettingsBackend {
   /** 惰性解析配置；凭据/端点变化即重建（闭包内比较，不落盘不记日志）。 */
   private service(): CalendarServiceLike {
     const current = this.configOf()
+    if (current.connectionDisabled === true) throw new ConfigError(CONNECTION_DISABLED_MESSAGE)
     if (this.options.serviceFactory !== undefined) return this.options.serviceFactory(current)
     const env = current.perUser ? {} : this.options.env ?? process.env
     const rows = connectionCollections(current)
@@ -303,6 +304,7 @@ export class CalendarSettingsBackend {
       text(key).trim() !== '' || (typeof env[envKey] === 'string' && env[envKey]!.trim() !== '')
     return {
       configured,
+      disconnected: effective.connectionDisabled === true,
       ...(reason !== undefined ? { reason } : {}),
       readOnly: effective.readOnly === true,
       calendars: collections.map(row => ({ id: row.id, name: row.name ?? row.id, readOnly: !!effective.readOnly || !!row.readOnly })),
@@ -340,8 +342,13 @@ export class CalendarSettingsBackend {
     const storedValue = ((this.settings?.read?.() ?? {}) as Record<string, unknown>)
     // Policy/collection metadata is server-owned and never comes from form input.
     const policy = Object.fromEntries(['readOnly', 'calendars', 'writeCalendar'].filter(key => Object.hasOwn(storedValue, key)).map(key => [key, storedValue[key]]))
-    const stored = { ...policy, ...mergeConnection(storedValue, draft) }
-    const config = { ...this.configOf(), ...draftToConfig(stored as Partial<CalendarSettingsValue>) }
+    const current = this.configOf()
+    const stored = {
+      ...policy,
+      ...mergeConnection(storedValue, draft),
+      ...(current.connectionDisabled !== undefined ? { connectionDisabled: false } : {}),
+    }
+    const config = { ...current, ...draftToConfig(stored as Partial<CalendarSettingsValue>) }
     // null is an explicit credential removal. configOf() may still expose the
     // previous live/profile value until replace() commits, so do not let the
     // pre-save probe silently reuse a secret the user is clearing.
@@ -448,6 +455,20 @@ export class CalendarSettingsBackend {
     const action = typeof body.action === 'string' ? body.action : ''
     if (['create', 'update', 'delete'].includes(action) && this.configOf().readOnly) throw new Error('日历连接为只读 / Calendar connection is read-only')
     if (action === 'status' || action === 'connection') return this.connection()
+    if (action === 'disconnectConnection') {
+      const face = this.settings
+      if (!face) throw new Error('当前连接设置不可写 / Connection settings are read-only')
+      const revision = face.descriptor()?.revision ?? 0
+      if (body.expectedRevision !== undefined && body.expectedRevision !== revision) {
+        throw new Error('连接设置已更新，请刷新后重试。 / Connection settings changed. Refresh and try again.')
+      }
+      const stored = { ...face.read(), connectionDisabled: true }
+      await face.replace(stored, revision)
+      this.cachedService = undefined
+      this.cachedKey = undefined
+      try { this.options.onSettings?.(stored) } catch { /* Settings are already saved. */ }
+      return { disconnected: true, connection: this.connection() }
+    }
     if (action === 'discoverICloud') {
       const draft = connectionDraft(body)
       const current = this.configOf()
@@ -466,16 +487,17 @@ export class CalendarSettingsBackend {
       return { ok: true, ...probe, connection: this.connection() }
     }
     if (action === 'saveConnection') {
+      const face = this.settings
+      if (face === undefined) {
+        throw new Error('当前宿主的 settings 服务不可用：请在 profile 的 cordis.patch.yml 里配置 dsh-calendar 后重启')
+      }
+      const revision = face.descriptor()?.revision ?? 0
       const { stored, config } = this.proposed(connectionDraft(body))
       // 校验的是「落盘后的形状」：只有它同时覆盖了 YAML 兜底与面板新填的字段。
       validateSettingsValue(stored as Partial<CalendarSettingsValue>)
       // 默认先测再存：一个连不上的地址不该被写进 settings 再让人去猜哪里错了。
       const probe = body.test === false ? undefined : await this.probe(config)
-      const face = this.settings
-      if (face === undefined) {
-        throw new Error('当前宿主的 settings 服务不可用：请在 profile 的 cordis.patch.yml 里配置 dsh-calendar 后重启')
-      }
-      await face.replace(stored, face.descriptor()?.revision ?? 0)
+      await face.replace(stored, revision)
       try { this.options.onSettings?.(stored) } catch (error) { /* 同上 */ }
       return { saved: true, ...(probe !== undefined ? { probe } : {}), connection: this.connection() }
     }

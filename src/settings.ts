@@ -19,6 +19,7 @@ export const SETTINGS_NAMESPACE = 'dsh-calendar'
  * 因此可以共存 —— 谁设过谁说了算。
  */
 export const CalendarSettingsSchema = z.object({
+  connectionDisabled: z.boolean(),
   provider: z.string().default(''),
   caldavUrl: z.string().default(''),
   username: z.string().default(''),
@@ -36,6 +37,7 @@ export const CalendarSettingsSchema = z.object({
 })
 
 export interface CalendarSettingsValue {
+  connectionDisabled?: boolean
   provider: string
   caldavUrl: string
   username: string
@@ -52,7 +54,7 @@ export interface CalendarSettingsValue {
   proxyUrl: string
 }
 
-const TEXT_KEYS: readonly (keyof CalendarSettingsValue)[] = [
+const TEXT_KEYS: readonly (Exclude<keyof CalendarSettingsValue, 'connectionDisabled'>)[] = [
   'provider', 'caldavUrl', 'username', 'password', 'host', 'user', 'calendar',
   'calendarId', 'authMethod', 'clientId', 'clientSecret', 'refreshToken', 'tokenUrl', 'proxyUrl',
 ]
@@ -61,6 +63,7 @@ const TEXT_KEYS: readonly (keyof CalendarSettingsValue)[] = [
 export function toSettingsBase(config: CalendarConfig | undefined): Partial<CalendarSettingsValue> {
   const out: Partial<CalendarSettingsValue> = {}
   const cfg = (config ?? {}) as Record<string, unknown>
+  if (typeof cfg.connectionDisabled === 'boolean') out.connectionDisabled = cfg.connectionDisabled
   for (const key of TEXT_KEYS) {
     const value = cfg[key as string]
     if (typeof value === 'string' && value !== '') out[key] = value
@@ -83,6 +86,7 @@ export function toCalendarConfig(value: Partial<CalendarSettingsValue> | undefin
   const draft = (value ?? {}) as Partial<CalendarSettingsValue>
   const has = (key: keyof CalendarSettingsValue): boolean => user === null || (user !== undefined && user[key] !== undefined)
   const out: Record<string, unknown> = {}
+  if (has('connectionDisabled') && typeof draft.connectionDisabled === 'boolean') out.connectionDisabled = draft.connectionDisabled
   for (const key of TEXT_KEYS) {
     if (!has(key)) continue
     const raw = draft[key]

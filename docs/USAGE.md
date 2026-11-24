@@ -24,6 +24,8 @@ dsh plugin --profile web add dsh-calendar
 
 打开面板右上角的「连接设置」，选服务商 → 填地址与账号 → 点**「测试连接」**（它会真的去列未来 30 天的日程）→ 通过后点「保存并启用」。工具的下一次调用立刻用上新配置，不用重启、不用编辑 YAML。
 
+「断开连接」可以暂停面板和工具访问当前日历。需要继续时，打开「连接设置」点「重新连接」，连接测试通过后会恢复访问。连接资料保留在当前设置中。
+
 Harness 0.1.7 及以上通过宿主设置服务写入 profile 中的 `calendar` 配置行，修改立即生效；更早版本使用 `settings.yaml` 的 `dsh-calendar` 命名空间。密码、client secret 和 refresh token 只显示是否已配置，不回填到浏览器。若宿主设置服务不可用，则存入 `$DSH_HOME/data/dsh-calendar/connection.json`，面板会说明存储位置。已有配置与环境变量继续作为缺省值；无需重新填写原来的凭据。
 
 这里需要的是日历服务凭据，DSH 的模型 API 密钥不能用于日历登录。Google 使用 OAuth，iCloud 使用应用专用密码；查看面板和导入文件本身不依赖模型调用。

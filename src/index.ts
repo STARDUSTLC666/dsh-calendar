@@ -66,8 +66,9 @@ export function fileSettingsFace(file: string = connectionFile()): CalendarSetti
     kind: 'file',
     read: () => readConnectionFile(file).value,
     descriptor: () => ({ revision: readConnectionFile(file).revision }),
-    replace: async (value: Record<string, unknown>): Promise<void> => {
+    replace: async (value: Record<string, unknown>, revision: number): Promise<void> => {
       const current = readConnectionFile(file)
+      if (current.revision !== revision) throw new Error('连接设置已更新，请刷新后重试。 / Connection settings changed. Refresh and try again.')
       writeConnectionFile({ revision: current.revision + 1, value }, file)
     },
   }

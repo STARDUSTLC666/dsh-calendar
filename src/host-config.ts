@@ -32,6 +32,7 @@ export const Config: z = z.object({
   readOnly: z.boolean().volatile(),
   calendars: calendarCollectionsSchema.volatile(),
   writeCalendar: z.string().volatile(),
+  connectionDisabled: z.boolean().volatile(),
   provider: z.string().volatile(),
   caldavUrl: z.string().volatile(),
   username: z.string().volatile(),

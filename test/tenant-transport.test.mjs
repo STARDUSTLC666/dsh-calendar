@@ -79,6 +79,24 @@ test('person connection saves retain server-side read-only and collection policy
  assert.match(write.body.error.message,/read-only/)
 })
 
+test('disconnecting one verified person leaves other calendar connections active', async t => {
+ const f = mount(t)
+ const connect = () => f.request({action:'saveConnection',provider:'custom',username:'person',password:'fixture-'+process.pid,caldavUrl:'https://personal.invalid/calendar/',test:false})
+ assert.equal((await connect()).status,200)
+ f.setPrincipal({kind:'user',id:'bob'})
+ assert.equal((await connect()).status,200)
+ f.setPrincipal({kind:'user',id:'alice'})
+ const current = (await f.request({action:'connection'})).body.value
+ const disconnected = await f.request({action:'disconnectConnection',expectedRevision:current.revision})
+ assert.equal(disconnected.status,200)
+ assert.equal(disconnected.body.value.connection.configured,false)
+ assert.equal((await f.request({action:'list'})).status,400)
+ f.setPrincipal({kind:'user',id:'bob'})
+ assert.equal((await f.request({action:'connection'})).body.value.configured,true)
+ f.setPrincipal({kind:'user',id:'alice'})
+ assert.equal((await connect()).body.value.connection.configured,true)
+})
+
 test('verified identity drives model tools and missing identity never becomes owner',async t=>{
  const f=mount(t);let user={id:'alice'};f.setIdentity({current:()=>user});
  await f.request({action:'saveConnection',provider:'custom',username:'OIDC-ALICE',password:'p',caldavUrl:'https://alice.invalid/calendar/',test:false});
