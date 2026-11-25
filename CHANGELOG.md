@@ -1,5 +1,11 @@
 # 更新记录
 
+## 0.21.6 (2026-11-25)
+
+- 个人设置读写限制为 1 MiB，拒绝读取期间被替换的文件，并修复引导测试的定时器竞争。
+- Bound person settings reads and writes to 1 MiB, reject changed files, and make the tour timer test deterministic.
+
+
 ## 0.21.5 (2026-11-25)
 
 - 修复连接设置与日程双列表单排版：为 `.dshc-two` / `.formGrid` 补充 `align-items: start` 避免带提示文本的相邻字段上下错位，并将 Nextcloud 连接表单的 `host` 设为全宽以消除 `proxyUrl` 上方的右侧空洞。

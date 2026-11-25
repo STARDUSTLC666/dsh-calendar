@@ -12,7 +12,7 @@ if (!SOURCE.includes('return module.exports;')) {
 }
 const PATCHED = SOURCE.replace('return module.exports;', EXPOSE + '\nreturn module.exports;');
 
-async function mountEnv({ withHostModal = false, darkHost = false, events = [] } = {}) {
+async function mountEnv({ withHostModal = false, darkHost = false, events = [], scheduleTour } = {}) {
   const dom = new JSDOM('<!doctype html><html><body></body></html>', {
     pretendToBeVisual: true,
     url: 'http://localhost/',
@@ -62,7 +62,10 @@ async function mountEnv({ withHostModal = false, darkHost = false, events = [] }
     },
   };
 
-  new Function('window', 'document', 'navigator', PATCHED)(win, win.document, win.navigator);
+  const schedule = (callback, delay, ...args) => delay === 280 && scheduleTour
+    ? scheduleTour(callback)
+    : setTimeout(callback, delay, ...args);
+  new Function('window', 'document', 'navigator', 'setTimeout', PATCHED)(win, win.document, win.navigator, schedule);
 
   async function render(element) {
     const container = win.document.createElement('div');
@@ -252,7 +255,11 @@ test('CoachmarkTour (? 引导), spotlight + directional arrow, inline prompt cop
   assert.match(refZh, />=0\.2\.2-rc\.3/);
   assert.match(refEn, />=0\.2\.2-rc\.3/);
 
-  const { win, react, probe, render } = await mountEnv({ withHostModal: true });
+  let openTour;
+  const { win, react, probe, render } = await mountEnv({ withHostModal: true, scheduleTour(callback) {
+    openTour = callback;
+    return 0;
+  } });
   let copiedPrompt = '';
   Object.defineProperty(win.navigator, 'clipboard', {
     value: { async writeText(val) { copiedPrompt = String(val); } },
@@ -282,8 +289,9 @@ test('CoachmarkTour (? 引导), spotlight + directional arrow, inline prompt cop
     assert.equal(trigger.getAttribute('aria-expanded'), 'false');
     assert.equal(trigger.hasAttribute('aria-haspopup'), false, 'must not set aria-haspopup on coachmark trigger');
 
-    // Wait for first-visit 280ms auto-open timer; verify it does NOT steal focus
-    await react.act(async () => new Promise(r => setTimeout(r, 320)));
+    // Advance only the first-visit timer, independent of machine rendering load.
+    assert.equal(typeof openTour, 'function');
+    await react.act(async () => { openTour(); });
     const autoCard = container.querySelector('[data-tour-card="focus-ribbon"]');
     assert.ok(autoCard, 'first-visit auto-open must mount step 1 CoachmarkTour after 280ms');
     assert.equal(trigger.getAttribute('aria-expanded'), 'true');

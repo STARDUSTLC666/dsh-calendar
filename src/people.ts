@@ -6,8 +6,8 @@
  * authenticated DSH principal is the only identity source accepted here.
  */
 import { createHash, randomUUID } from 'node:crypto'
-import { chmod, mkdir, open, readFile, rename, rm } from 'node:fs/promises'
-import { readFileSync } from 'node:fs'
+import { chmod, lstat, mkdir, open, rename, rm } from 'node:fs/promises'
+import { closeSync, constants, fstatSync, lstatSync, openSync, readSync, type Stats } from 'node:fs'
 import { dirname, join } from 'node:path'
 import type { CalendarSettingsFace } from './web.js'
 
@@ -89,6 +89,16 @@ interface PersonSettingsDocument {
   value: Record<string, unknown>
 }
 
+const MAX_PERSON_SETTINGS_BYTES = 1024 * 1024
+
+function regularFile(info: Stats): boolean { return info.isFile() && !info.isSymbolicLink() }
+function sameFile(left: Stats, right: Stats): boolean { return left.dev === right.dev && left.ino === right.ino }
+
+function assertPersonSettingsFile(info: Stats): void {
+  if (!regularFile(info)) throw new Error('Person calendar settings must be a regular file.')
+  if (info.size > MAX_PERSON_SETTINGS_BYTES) throw new Error('Person calendar settings exceed the 1 MiB size limit.')
+}
+
 function emptyDocument(): PersonSettingsDocument {
   return { schemaVersion: 1, revision: 0, value: {} }
 }
@@ -104,11 +114,61 @@ function decodeDocument(text: string): PersonSettingsDocument {
 }
 
 function readDocumentSync(file: string): PersonSettingsDocument {
-  try { return decodeDocument(readFileSync(file, 'utf8')) }
+  let expected: Stats
+  try { expected = lstatSync(file) }
   catch (error) {
     if (record(error)?.code === 'ENOENT') return emptyDocument()
     throw error
   }
+  assertPersonSettingsFile(expected)
+  const flags = constants.O_RDONLY | (process.platform === 'win32' ? 0 : constants.O_NOFOLLOW ?? 0)
+  const descriptor = openSync(file, flags)
+  try {
+    const opened = fstatSync(descriptor)
+    const current = lstatSync(file)
+    assertPersonSettingsFile(opened)
+    if (!regularFile(current) || !sameFile(expected, opened) || !sameFile(opened, current)) throw new Error('Person calendar settings changed while being read.')
+    const chunks: Buffer[] = []
+    let size = 0
+    for (;;) {
+      const chunk = Buffer.allocUnsafe(Math.min(64 * 1024, MAX_PERSON_SETTINGS_BYTES + 1 - size))
+      const bytesRead = readSync(descriptor, chunk, 0, chunk.length, null)
+      if (!bytesRead) break
+      size += bytesRead
+      if (size > MAX_PERSON_SETTINGS_BYTES) throw new Error('Person calendar settings exceed the 1 MiB size limit.')
+      chunks.push(chunk.subarray(0, bytesRead))
+    }
+    return decodeDocument(Buffer.concat(chunks, size).toString('utf8'))
+  } finally { closeSync(descriptor) }
+}
+
+async function readDocument(file: string): Promise<PersonSettingsDocument> {
+  let expected: Stats
+  try { expected = await lstat(file) }
+  catch (error) {
+    if (record(error)?.code === 'ENOENT') return emptyDocument()
+    throw error
+  }
+  assertPersonSettingsFile(expected)
+  const flags = constants.O_RDONLY | (process.platform === 'win32' ? 0 : constants.O_NOFOLLOW ?? 0)
+  const handle = await open(file, flags)
+  try {
+    const opened = await handle.stat()
+    const current = await lstat(file)
+    assertPersonSettingsFile(opened)
+    if (!regularFile(current) || !sameFile(expected, opened) || !sameFile(opened, current)) throw new Error('Person calendar settings changed while being read.')
+    const chunks: Buffer[] = []
+    let size = 0
+    for (;;) {
+      const chunk = Buffer.allocUnsafe(Math.min(64 * 1024, MAX_PERSON_SETTINGS_BYTES + 1 - size))
+      const { bytesRead } = await handle.read(chunk, 0, chunk.length, null)
+      if (!bytesRead) break
+      size += bytesRead
+      if (size > MAX_PERSON_SETTINGS_BYTES) throw new Error('Person calendar settings exceed the 1 MiB size limit.')
+      chunks.push(chunk.subarray(0, bytesRead))
+    }
+    return decodeDocument(Buffer.concat(chunks, size).toString('utf8'))
+  } finally { await handle.close() }
 }
 
 const pathTails = new Map<string, Promise<void>>()
@@ -128,6 +188,8 @@ async function withPathLock<T>(file: string, action: () => Promise<T>): Promise<
 }
 
 async function writeAtomic(file: string, document: PersonSettingsDocument): Promise<void> {
+  const contents = JSON.stringify(document) + '\n'
+  if (Buffer.byteLength(contents) > MAX_PERSON_SETTINGS_BYTES) throw new Error('Person calendar settings exceed the 1 MiB size limit.')
   const directory = dirname(file)
   await mkdir(directory, { recursive: true, mode: 0o700 })
   if (process.platform !== 'win32') await chmod(directory, 0o700)
@@ -135,7 +197,7 @@ async function writeAtomic(file: string, document: PersonSettingsDocument): Prom
   let handle: Awaited<ReturnType<typeof open>> | undefined
   try {
     handle = await open(temporary, 'wx', 0o600)
-    await handle.writeFile(JSON.stringify(document) + '\n', 'utf8')
+    await handle.writeFile(contents, 'utf8')
     await handle.sync()
     await handle.close()
     handle = undefined
@@ -181,9 +243,5 @@ export function createPersonSettingsFace(connectionsDir: string, caller: Calenda
 /** Async convenience for integrations that need to read the isolated record. */
 export async function readPersonSettings(connectionsDir: string, caller: CalendarPersonCaller): Promise<Record<string, unknown>> {
   const file = personConnectionFile(connectionsDir, caller)
-  try { return decodeDocument(await readFile(file, 'utf8')).value }
-  catch (error) {
-    if (record(error)?.code === 'ENOENT') return {}
-    throw error
-  }
+  return (await readDocument(file)).value
 }

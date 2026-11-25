@@ -8,6 +8,7 @@ import {
   createPersonSettingsFace,
   personConnectionFile,
   personStorageKey,
+  readPersonSettings,
   resolveCalendarCaller,
 } from '../src/people.ts'
 
@@ -97,4 +98,22 @@ test('corrupt person settings fail closed rather than becoming an empty/global c
   await writeFile(personConnectionFile(directory, caller), '{broken')
   assert.throws(() => face.read(), /invalid JSON/)
   await assert.rejects(face.replace({ username: 'unsafe-overwrite' }, 0), /invalid JSON/)
+})
+
+test('person settings enforce the same byte cap on sync reads, async reads and writes', async t => {
+  const directory = await mkdtemp(join(tmpdir(), 'dsh-calendar-people-size-'))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const caller = { kind: 'person', subject: 'oidc:size-limit' }
+  const face = createPersonSettingsFace(directory, caller)
+  await face.replace({ username: 'preserved' }, 0)
+  const file = personConnectionFile(directory, caller)
+  const previous = await readFile(file, 'utf8')
+
+  await writeFile(file, ' '.repeat(1024 * 1024 + 1))
+  assert.throws(() => face.read(), /1 MiB size limit/)
+  await assert.rejects(readPersonSettings(directory, caller), /1 MiB size limit/)
+  await writeFile(file, previous)
+
+  await assert.rejects(face.replace({ payload: 'x'.repeat(1024 * 1024) }, 1), /1 MiB size limit/)
+  assert.equal(await readFile(file, 'utf8'), previous)
 })
