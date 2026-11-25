@@ -25,7 +25,7 @@ Native calendar workbench for DeepSeek Harness (`>=0.2.2-rc.3`): opens in the ta
 | **Multi-View Scheduling** | Month / Week / Agenda views (`M`/`W`/`A`), week-view drag-to-reschedule (15-min snap + 5s undo), iCloud auto-discovery & text/screenshot smart drafts |
 | **Open-Slot Finder & Share** | Search available times by duration, weekdays & buffers (`F`), then copy formatted slot summaries straight to chat or email |
 | **Conflict-Safe Writes & ICS** | Every new draft and `.ics` import checks overlaps and duplicates before saving to CalDAV |
-| **Tour & Synced Themes** | 4-step `? Tour` spotlight guide, 13 visual styles, 4 event palettes, and 8 fonts (default: YouYuan Mono) with soft-slate dark mode |
+| **Tour & Synced Themes** | 4-step `? Tour` spotlight guide, 13 visual styles, 4 event palettes, and 8 fonts (default: style-matched font) with soft-slate dark mode |
 
 <details>
 <summary>See a workbench example (Bento + Today Focus Ribbon)</summary>

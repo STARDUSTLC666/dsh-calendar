@@ -128,7 +128,7 @@ test('13-style theme switcher & 8-font pairing switcher sync workbench, harmoniz
       Array.from(probe.DSH_STYLES, item => item.id),
       ['harness', 'cream', 'claude', 'pixel8bit', 'mint', 'glass', 'eink', 'blueprint', 'risograph', 'win98', 'songhui', 'frutiger', 'gazette'],
     );
-    assert.equal(probe.DSH_DEFAULT_FONT, 'arcade');
+    assert.equal(probe.DSH_DEFAULT_FONT, 'auto');
     assert.deepEqual(
       Array.from(probe.DSH_FONTS, item => item.id),
       ['arcade', 'auto', 'songkai', 'fangsong', 'poster', 'retro98', 'serif', 'modern'],
@@ -136,7 +136,7 @@ test('13-style theme switcher & 8-font pairing switcher sync workbench, harmoniz
     assert.ok(probe.CSS.toLowerCase().includes('#f6f3ec'), 'gazette newsprint surface present in CSS');
     const rootSection = container.querySelector('.dshc-root');
     assert.equal(rootSection.getAttribute('data-dsh-style'), 'harness');
-    assert.equal(rootSection.getAttribute('data-dsh-font'), 'arcade');
+    assert.equal(rootSection.getAttribute('data-dsh-font'), 'auto');
 
     // Open StyleSwitcher menu and pick pixel8bit
     const switcherTrigger = container.querySelector('.dsh-style-trigger');
@@ -397,7 +397,7 @@ test('v3 header, sliding tab indicator, resizable split sidebar, shimmer skeleto
     assert.deepEqual(layoutPills, ['原生', '浮岛', '聚光', 'Bento']);
     const bentoBtn = [...header.querySelectorAll('[aria-label="布局"] button')].find(b => b.textContent === 'Bento');
     assert.equal(bentoBtn.getAttribute('aria-pressed'), 'true', 'Bento pill is pressed by default');
-    assert.match(probe.CSS, /#ececec[\s\S]*#1b4f9c/i, 'win98 platinum toolbar contrast rule present');
+    assert.match(probe.CSS, /#e6ecf6[\s\S]*#005fb8/i, 'win98 Mica Fluent backdrop + accent present');
 
     const tablist = container.querySelector('[data-dsh-tablist]');
     assert.ok(tablist, 'workspace tabs expose [data-dsh-tablist]');
