@@ -1,6 +1,6 @@
 {
   "name": "dsh-calendar",
-  "version": "0.21.6",
+  "version": "0.21.7",
   "description": "DeepSeek Harness 原生日历工作台：默认 Bento 卡片工作室与今日聚焦条（倒计时、冲突状态与一键新建），CalDAV 日程管理、月/周/议程视图、空闲时段建议、ICS 预览导入、4 套布局与 13 套设计风格 + 8 种字体切换。欢迎提交 issues 和 PR。",
   "type": "module",
   "main": "lib/index.js",
@@ -73,7 +73,7 @@
     "tsdav": "^2.3.1",
     "undici": "^8.11.2",
     "yaml": "^2.9.1",
-    "@stardustlc/dsh-updates": "0.2.10"
+    "@stardustlc/dsh-updates": "0.2.11"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

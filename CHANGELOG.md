@@ -1,5 +1,10 @@
 # 更新记录
 
+## 0.21.7 (2026-11-28)
+
+- 更新详情页现在会保留较新检查的结果，慢轮询返回时不再把版本或任务状态退回旧值。
+- Keep newer update-check results and job status when an older background request finishes later.
+
 ## 0.21.6 (2026-11-25)
 
 - 个人设置读写限制为 1 MiB，拒绝读取期间被替换的文件，并修复引导测试的定时器竞争。
