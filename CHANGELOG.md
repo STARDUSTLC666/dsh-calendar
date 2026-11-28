@@ -1,5 +1,10 @@
 # 更新记录
 
+## 0.21.8 (2026-11-28)
+
+- 窄屏下日历工具栏会换行，配色按钮保持可见并可触控。
+- Wrap the calendar toolbar on narrow screens so the color swatches stay visible and tappable.
+
 ## 0.21.7 (2026-11-28)
 
 - 更新详情页现在会保留较新检查的结果，慢轮询返回时不再把版本或任务状态退回旧值。
