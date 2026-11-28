@@ -1211,7 +1211,14 @@ button.focusConflictPill {
   .topbar { padding-inline: 8px; gap: 6px; }
   .topbar > [role="tablist"] { order: 3; width: 100%; overflow-x: auto; }
   .topbar > [role="tablist"] > [role="tab"] { flex: none; padding-inline: 6px; font-size: 12px; white-space: nowrap; }
-  .topActions { gap: 4px; }
+  .topbar > .topActions {
+    flex: 1 1 100%;
+    min-width: 0;
+    max-width: 100%;
+    margin-inline-start: 0;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
   .topbar .dshc-btn.commandTrigger { width: 28px; padding-inline: 0; }
   .triggerKey, .shortcutHints, .dshc-btn.toolbarConflicts { display: none; }
   .conflictCard .dshc-btn.conflictLink { display: flex; }
